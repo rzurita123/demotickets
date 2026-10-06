@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Demo navegable del sistema de tickets de Mesa de ayuda de ORMEN. Datos ficticios; los cambios quedan sólo en el navegador.">
+  <meta name="theme-color" content="#285D83">
+  <title>Sistema de tickets ORMEN (demo)</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Sin dependencias externas: scripts propios, en este orden. -->
+  <script defer src="js/util.js"></script>
+  <script defer src="js/dominio.js"></script>
+  <script defer src="js/data/catalogos.js"></script>
+  <script defer src="js/data/semilla.js"></script>
+  <script defer src="js/store.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/sugerencias.js"></script>
+  <script defer src="js/ui.js"></script>
+  <script defer src="js/charts.js"></script>
+  <script defer src="js/router.js"></script>
+  <script defer src="js/layout.js"></script>
+  <script defer src="js/views/comun.js"></script>
+  <script defer src="js/views/login.js"></script>
+  <script defer src="js/views/inicio.js"></script>
+  <script defer src="js/views/tickets.js"></script>
+  <script defer src="js/views/ticket-form.js"></script>
+  <script defer src="js/views/ticket-detalle.js"></script>
+  <script defer src="js/views/borradores.js"></script>
+  <script defer src="js/views/soluciones.js"></script>
+  <script defer src="js/views/estadisticas.js"></script>
+  <script defer src="js/views/admin.js"></script>
+  <script defer src="js/views/auditoria.js"></script>
+  <script defer src="js/views/correos.js"></script>
+  <script defer src="js/views/notas.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <noscript>
+    <p style="max-width: 560px; margin: 48px auto; padding: 0 16px; font-family: system-ui, sans-serif;">
+      Esta demo necesita JavaScript para funcionar. Activalo en el navegador y volvé a cargar la página.
+    </p>
+  </noscript>
+</body>
+</html>
