@@ -13,7 +13,7 @@
 (function (App) {
   'use strict';
 
-  const VERSION = 4;
+  const VERSION = 5;
 
   // ------------------------------------------------- Imágenes de ejemplo ---
 
@@ -422,6 +422,11 @@
       'No se puede resolver desde mesa de ayuda; se eleva.',
     ],
     privadoSugerencia: ['Se eleva la sugerencia para su evaluación.'],
+    bloqueo: [
+      'Esperamos que la agencia confirme el número de terminal para seguir.',
+      'Esperamos la respuesta del proveedor de terminales.',
+      'Esperamos que el encargado esté en la agencia para hacer la prueba.',
+    ],
     clienteRespuesta: ['Sí, sigue pasando.', 'Ahí les mandé la foto.', 'Es la terminal 2.', 'Ya está el encargado en la agencia.'],
   };
 
@@ -458,7 +463,7 @@
       const esOrmen = creador.rol !== 'CLIENTE';
       const creadoEn = iso(creadoMs);
       return {
-        id: null, numero: null, estado: 'ABIERTO',
+        id: null, numero: null, estado: esOrmen ? 'EN_PROCESO' : 'ABIERTO',
         titulo: titulo || plantilla.titulo,
         descripcion: descripcion || elegir(plantilla.descripciones),
         localidadId, sistemaId: plantilla.sistemaId, subsistemaId: plantilla.subsistemaId,
@@ -466,8 +471,8 @@
         criticidadId, tipoProblemaId: esOrmen ? plantilla.tipoProblemaId : 'tp-nodef',
         creadoPorId: creador.id, operadorId: esOrmen ? creador.id : null,
         creadoEn, actualizadoEn: creadoEn, cerradoEn: null,
-        adjuntos: [], solucion: null, registroDirecto: false,
-        actividad: [{ id: nuevoId('a'), tipo: 'creado', fecha: creadoEn, autorId: creador.id }],
+        adjuntos: [], solucion: null, registroDirecto: false, elevadoA: null,
+        actividad: [{ id: nuevoId('a'), tipo: 'creado', fecha: creadoEn, autorId: creador.id, estado: esOrmen ? 'EN_PROCESO' : 'ABIERTO', operadorId: esOrmen ? creador.id : null }],
         _plantilla: plantilla.id,
       };
     }
@@ -478,15 +483,36 @@
       return ev;
     }
     const comentar = (t, ms, autorId, texto, visibilidad, adjuntos) => evento(t, ms, { tipo: 'comentario', autorId, texto, visibilidad, adjuntos: adjuntos || [] });
-    function cambiarEstado(t, ms, autorId, a) {
-      const de = t.estado;
-      t.estado = a;
-      return evento(t, ms, { tipo: 'estado', autorId, de, a });
-    }
     function asignar(t, ms, autorId, operadorId) {
       const anteriorId = t.operadorId;
+      const de = t.estado;
       t.operadorId = operadorId;
-      return evento(t, ms, { tipo: 'asignado', autorId, operadorId, anteriorId });
+      if (de === 'ABIERTO') t.estado = 'EN_PROCESO';
+      return evento(t, ms, { tipo: 'asignado', autorId, operadorId, anteriorId, de, a: t.estado });
+    }
+    function elevar(t, ms, autorId, destino, texto) {
+      const anterior = t.elevadoA;
+      t.elevadoA = destino;
+      if (destino.tipo === 'usuario') t.operadorId = destino.id;
+      return evento(t, ms, { tipo: 'elevado', autorId, destino, anterior, texto });
+    }
+    function bloquear(t, ms, autorId, texto, visibilidad) {
+      t.estado = 'BLOQUEADO';
+      return evento(t, ms, { tipo: 'bloqueo', autorId, de: 'EN_PROCESO', a: 'BLOQUEADO', texto, visibilidad });
+    }
+    function desbloquear(t, ms, autorId) {
+      t.estado = 'EN_PROCESO';
+      return evento(t, ms, { tipo: 'desbloqueo', autorId, de: 'BLOQUEADO', a: 'EN_PROCESO', texto: null });
+    }
+    const grupo = (id) => ({ tipo: 'grupo', id });
+    const GRUPO_POR_SISTEMA = {
+      'sis-online': 'gs-infraestructura', 'sis-envio-archivos': 'gs-infraestructura', 'sis-correos': 'gs-infraestructura',
+      'sis-control-terminales': 'gs-proveedor-terminales', 'sis-todos-terminales': 'gs-proveedor-terminales', 'sis-instalaciones': 'gs-proveedor-terminales',
+    };
+    function destinoElevacion(plantilla) {
+      if (plantilla.sugerencia) return grupo('gs-desarrollo');
+      if (rnd() < 0.55) return grupo('gs-soporte-n2');
+      return grupo(GRUPO_POR_SISTEMA[plantilla.sistemaId] || 'gs-desarrollo');
     }
     function cerrar(t, ms, autorId, plantilla, usarCatalogo) {
       const de = t.estado;
@@ -502,9 +528,10 @@
     }
     function reabrir(t, ms, autorId) {
       const de = t.estado;
-      t.estado = 'ABIERTO';
+      t.estado = 'EN_PROCESO';
       t.cerradoEn = null;
-      return evento(t, ms, { tipo: 'reapertura', autorId, de });
+      t.operadorId = autorId;
+      return evento(t, ms, { tipo: 'reapertura', autorId, de, a: 'EN_PROCESO', operadorId: autorId });
     }
     function reloj(inicioMs) {
       let t = inicioMs;
@@ -517,38 +544,35 @@
     function desarrollar(t, { destino, operador, porCliente, plantilla, antiguedad }) {
       const paso = reloj(new Date(t.creadoEn).getTime());
       if (porCliente) {
-        if (destino === 'ABIERTO' && rnd() < 0.55) return; // queda sin asignar en la cola
+        if (destino === 'ABIERTO') return; // queda sin asignar en la cola
         asignar(t, paso(2, 45), operador.id, operador.id);
       }
       const op = operador.id;
-      if (destino === 'ABIERTO') {
+      if (destino === 'ABIERTO' || destino === 'EN_PROCESO') {
         if (rnd() < 0.35) comentar(t, paso(3, 50), op, elegir(TXT.privado), 'PRIVADO');
-        if (rnd() < 0.3) comentar(t, paso(3, 50), op, elegir(TXT.publicoAtencion), 'PUBLICO');
+        if (rnd() < 0.5) comentar(t, paso(3, 50), op, elegir(TXT.publicoAtencion), 'PUBLICO');
         return;
       }
-      if (destino === 'PENDIENTE') {
+      if (destino === 'BLOQUEADO') {
         if (rnd() < 0.4) comentar(t, paso(3, 60), op, elegir(TXT.privado), 'PRIVADO');
-        const ms = paso(5, 90);
-        cambiarEstado(t, ms, op, 'PENDIENTE');
-        comentar(t, ms + 1000, op, elegir(TXT.publicoPendiente), 'PUBLICO');
+        bloquear(t, paso(5, 90), op, elegir(TXT.bloqueo), rnd() < 0.6 ? 'PUBLICO' : 'PRIVADO');
         return;
       }
       if (destino === 'ELEVADO') {
         comentar(t, paso(5, 60), op, elegir(TXT.publicoAtencion), 'PUBLICO');
-        const ms = paso(20, 240);
-        cambiarEstado(t, ms, op, 'ELEVADO');
-        comentar(t, ms + 1000, op, elegir(plantilla.sugerencia ? TXT.privadoSugerencia : TXT.privadoElevado), 'PRIVADO');
+        elevar(t, paso(20, 240), op, destinoElevacion(plantilla), elegir(plantilla.sugerencia ? TXT.privadoSugerencia : TXT.privadoElevado));
         return;
       }
       // Cerrado
       if (rnd() < 0.4) comentar(t, paso(4, 60), op, elegir(TXT.publicoAtencion), 'PUBLICO');
       if (rnd() < 0.3) comentar(t, paso(4, 90), op, elegir(TXT.privado), 'PRIVADO');
       if (porCliente && rnd() < 0.18) {
-        const ms = paso(10, 120);
-        cambiarEstado(t, ms, op, 'PENDIENTE');
-        comentar(t, ms + 1000, op, elegir(TXT.publicoPendiente), 'PUBLICO');
+        bloquear(t, paso(10, 120), op, elegir(TXT.publicoPendiente), 'PUBLICO');
         comentar(t, paso(20, 600), t.creadoPorId, elegir(TXT.clienteRespuesta), 'PUBLICO');
-        cambiarEstado(t, paso(5, 60), op, 'ABIERTO');
+        desbloquear(t, paso(5, 60), op);
+      }
+      if (!plantilla.sugerencia && rnd() < 0.12) {
+        elevar(t, paso(20, 240), op, destinoElevacion(plantilla), elegir(TXT.privadoElevado));
       }
       const usarCatalogo = rnd() < 0.62;
       const msCierre = paso(10, rnd() < 0.7 ? 240 : 2880);
@@ -585,8 +609,8 @@
       const t = nuevoTicket({ plantilla, localidadId, creador, creadoMs, criticidadId });
       const reciente = antiguedad < 12 * DIA;
       const destino = !reciente
-        ? (rnd() < 0.965 ? 'CERRADO' : elegirPeso([['PENDIENTE', 1], ['ELEVADO', 2]]))
-        : elegirPeso([['CERRADO', 5], ['ABIERTO', 2.4], ['PENDIENTE', 1.4], ['ELEVADO', 1]]);
+        ? (rnd() < 0.965 ? 'CERRADO' : elegirPeso([['BLOQUEADO', 1], ['ELEVADO', 2]]))
+        : elegirPeso([['CERRADO', 5], ['ABIERTO', 2.6], ['EN_PROCESO', 1.6], ['BLOQUEADO', 0.9], ['ELEVADO', 1]]);
       desarrollar(t, { destino, operador, porCliente, plantilla, antiguedad });
       tickets.push(t);
     }
@@ -605,7 +629,7 @@
       t.adjuntos.push({ id: nuevoId('img'), nombre: 'mensaje-terminal.png', dataUrl: IMG_ERROR, autorId: 'u-mtechera', fecha: t.creadoEn });
       tickets.push(t);
     }
-    // 2) Pando · Lucía (otra usuaria de la misma localidad): Pendiente, atiende Valeria.
+    // 2) Pando · Lucía (otra usuaria de la misma localidad): Bloqueado esperando un dato de la agencia, atiende Valeria.
     {
       const ms = haceDias(1, 19, 40);
       const t = nuevoTicket({
@@ -615,11 +639,10 @@
       asignar(t, ms + 12 * MIN, 'u-vpereira', 'u-vpereira');
       comentar(t, ms + 20 * MIN, 'u-vpereira', 'Estamos revisando los movimientos del día.', 'PUBLICO');
       comentar(t, ms + 25 * MIN, 'u-vpereira', 'Puede ser un pago de premio registrado dos veces, como en otros casos de Caja.', 'PRIVADO');
-      cambiarEstado(t, ms + 31 * MIN, 'u-vpereira', 'PENDIENTE');
-      comentar(t, ms + 31 * MIN + 1000, 'u-vpereira', '¿Nos podés confirmar a qué hora hicieron el último pago de premio? Con ese dato terminamos de revisar.', 'PUBLICO');
+      bloquear(t, ms + 31 * MIN, 'u-vpereira', '¿Nos podés confirmar a qué hora hicieron el último pago de premio? Con ese dato terminamos de revisar.', 'PUBLICO');
       tickets.push(t);
     }
-    // 3) Pando · creado por ORMEN en nombre de la localidad: Elevado, con nota privada.
+    // 3) Pando · creado por ORMEN en nombre de la localidad: elevado dos veces (2º nivel y después Infraestructura).
     {
       const ms = haceDias(2, 10, 15);
       const t = nuevoTicket({
@@ -628,12 +651,13 @@
       });
       comentar(t, ms + 8 * MIN, 'u-nacosta', 'Estamos revisando la conexión de la agencia. Les avisamos por acá.', 'PUBLICO');
       comentar(t, ms + 30 * MIN, 'u-nacosta', 'Se reinició el router con el encargado y el problema sigue. Otras páginas cargan bien, así que no parece ser el proveedor de internet.', 'PRIVADO');
-      cambiarEstado(t, ms + 42 * MIN, 'u-nacosta', 'ELEVADO');
-      comentar(t, ms + 42 * MIN + 1000, 'u-nacosta', 'Se eleva porque requiere revisión fuera de mesa de ayuda.', 'PRIVADO');
+      elevar(t, ms + 42 * MIN, 'u-nacosta', grupo('gs-soporte-n2'), 'Se reinició el router y sigue sin conexión: requiere revisión fuera de Mesa de ayuda.');
       comentar(t, ms + 44 * MIN, 'u-nacosta', 'Lo pasamos a otro nivel de soporte para revisarlo en profundidad. Te avisamos por acá apenas tengamos novedades.', 'PUBLICO');
+      comentar(t, ms + 3 * HORA, 'u-nacosta', 'Soporte de 2º nivel confirma que el problema está en el enlace de la agencia, no en las terminales.', 'PRIVADO');
+      elevar(t, ms + 3 * HORA + 2 * MIN, 'u-nacosta', grupo('gs-infraestructura'), 'Soporte de 2º nivel lo deriva: hay que revisar el enlace de la agencia.');
       tickets.push(t);
     }
-    // 4) Lagomar · Laura: Abierto, atiende Camila. Pando no lo ve.
+    // 4) Lagomar · Laura: En proceso, atiende Camila. Pando no lo ve.
     {
       const ms = recienteOAyer(185);
       const t = nuevoTicket({
@@ -649,7 +673,7 @@
       plantilla: p('p-correo-no-llegan'), localidadId: 'loc-rosario', creador: usu('u-arodriguez'), creadoMs: recienteOAyer(70), criticidadId: 'cri-baja',
       descripcion: 'Desde el viernes no nos llegan los correos con los resúmenes diarios.',
     }));
-    // 6) Durazno · cargado por Valeria durante una llamada: Abierto, atiende Valeria.
+    // 6) Durazno · cargado por Valeria durante una llamada: En proceso, atiende Valeria.
     {
       const t = nuevoTicket({
         plantilla: p('p-liq-no-aparece'), localidadId: 'loc-durazno', creador: usu('u-vpereira'), creadoMs: recienteOAyer(40), criticidadId: 'cri-media',
@@ -657,7 +681,7 @@
       });
       tickets.push(t);
     }
-    // 7) Pando · cargado por Valeria: alta de usuario, Abierto.
+    // 7) Pando · cargado por Valeria: alta de usuario, En proceso.
     tickets.push(nuevoTicket({
       plantilla: p('p-usu-alta'), localidadId: 'loc-pando', creador: usu('u-vpereira'), creadoMs: recienteOAyer(150), criticidadId: 'cri-baja',
       descripcion: 'Marcelo pide un usuario para una cajera nueva que empieza mañana.',
@@ -681,6 +705,23 @@
       asignar(t, ms + 40 * MIN, 'u-crivero', 'u-crivero');
       comentar(t, ms + 50 * MIN, 'u-crivero', 'Gracias por la sugerencia. Quedó registrada para que ORMEN la evalúe.', 'PUBLICO');
       cerrar(t, ms + 50 * MIN + 1000, 'u-crivero', p('p-caja-sugerencia'), false);
+      tickets.push(t);
+    }
+
+    // 10) Paysandú · Javier: Nicolás lo eleva a Federico, que lo resuelve. De este ticket surge una solución aprobada.
+    {
+      const ms = haceDias(9, 9, 30);
+      const t = nuevoTicket({
+        plantilla: p('p-env-incompleto'), localidadId: 'loc-paysandu', creador: usu('u-jromero'), creadoMs: ms, criticidadId: 'cri-media',
+        descripcion: 'El archivo de jugadas que nos llegó hoy está incompleto: faltan los registros de la tarde.',
+      });
+      asignar(t, ms + 10 * MIN, 'u-nacosta', 'u-nacosta');
+      comentar(t, ms + 15 * MIN, 'u-nacosta', 'Recibimos el ticket y lo estamos revisando.', 'PUBLICO');
+      elevar(t, ms + 50 * MIN, 'u-nacosta', { tipo: 'usuario', id: 'u-fnunez' }, 'Federico conoce el proceso de recepción de archivos.');
+      comentar(t, ms + 90 * MIN, 'u-fnunez', 'El archivo se cortó durante la transferencia. Pedimos el reenvío.', 'PRIVADO');
+      comentar(t, ms + 100 * MIN, 'u-fnunez', 'Listo, ya llegó el archivo completo. Cualquier cosa nos avisás.', 'PUBLICO');
+      cerrar(t, ms + 101 * MIN, 'u-fnunez', p('p-env-incompleto'), false);
+      t._escenario = 'origen-solucion';
       tickets.push(t);
     }
 
@@ -751,12 +792,17 @@
         creadaEn: origen ? iso(new Date(origen.cerradoEn).getTime() + 3 * MIN) : iso(ahora - 5 * DIA),
       });
     }
-    propuesta({
-      id: 'sol-prop-env-incompleto', titulo: 'Pedir el reenvío de un archivo recibido incompleto',
-      descripcion: '1. Confirmar con la agencia qué archivo es y de qué fecha.\n2. Pedir el reenvío.\n3. Verificar que el archivo nuevo llegue completo.',
-      sistemaId: 'sis-envio-archivos', subsistemaId: 'sub-env-recepcion', palabrasClave: ['archivo incompleto', 'faltan registros', 'reenvío'],
-      creadaPorId: 'u-fnunez', creadaEn: iso(ahora - 2 * DIA - 3 * HORA),
-    });
+    {
+      const origen = tickets.find((t) => t._escenario === 'origen-solucion');
+      const creadaMs = new Date(origen.cerradoEn).getTime() + 4 * MIN;
+      propuesta({
+        id: 'sol-env-incompleto', titulo: 'Pedir el reenvío de un archivo recibido incompleto',
+        descripcion: '1. Confirmar con la agencia qué archivo es y de qué fecha.\n2. Pedir el reenvío.\n3. Verificar que el archivo nuevo llegue completo.',
+        sistemaId: 'sis-envio-archivos', subsistemaId: 'sub-env-recepcion', palabrasClave: ['archivo incompleto', 'faltan registros', 'reenvío'],
+        ticketOrigenId: origen.id, creadaPorId: 'u-fnunez', creadaEn: iso(creadaMs),
+        estado: 'APROBADA', revisadaPorId: 'u-scabrera', revisadaEn: iso(creadaMs + 26 * HORA),
+      });
+    }
     propuesta({
       id: 'sol-rech-reiniciar-todo', titulo: 'Reiniciar todas las terminales ante cualquier error',
       descripcion: 'Ante cualquier error, reiniciar todas las terminales de la agencia.',
@@ -766,6 +812,14 @@
       motivoRechazo: 'Es demasiado general. Conviene una solución por síntoma, con pasos concretos.',
     });
 
+    for (const sol of soluciones) {
+      const t = sol.ticketOrigenId && tickets.find((x) => x.id === sol.ticketOrigenId);
+      if (!t) continue;
+      t.actividad.push({ id: nuevoId('a'), tipo: 'propuesta', fecha: sol.creadaEn, autorId: sol.creadaPorId, solucionId: sol.id });
+      t.actividad.sort((a, b) => a.fecha.localeCompare(b.fecha));
+      if (sol.creadaEn > t.actualizadoEn) t.actualizadoEn = sol.creadaEn;
+    }
+
     // --- borradores de Valeria (bloc de notas durante la atención) ---
     function borrador(datos) {
       const creadoEn = iso(datos.ms);
@@ -773,7 +827,7 @@
         id: nuevoId('b'), numero: null, estado: 'BORRADOR', titulo: '', descripcion: '',
         localidadId: '', sistemaId: '', subsistemaId: '', tipoSolicitudId: 'ts-atencion', criticidadId: '', tipoProblemaId: 'tp-nodef',
         creadoPorId: 'u-vpereira', operadorId: 'u-vpereira', creadoEn, actualizadoEn: creadoEn, cerradoEn: null,
-        adjuntos: [], solucion: null, registroDirecto: false, actividad: [],
+        adjuntos: [], solucion: null, registroDirecto: false, elevadoA: null, actividad: [],
       }, datos, { ms: undefined });
     }
     const borradores = [
@@ -790,20 +844,24 @@
 
     // --- auditoría ---
     const nombreEstado = (e) => (D.ESTADOS[e] ? D.ESTADOS[e].nombre : e);
+    const nombreDestino = (d) => (d.tipo === 'grupo' ? (C.gruposSoporte.find((g) => g.id === d.id) || {}).nombre : (usu(d.id) || {}).nombre) || '—';
     const auditoria = [];
     const aud = (fecha, usuarioId, operacion, ticketId, detalle) => auditoria.push({ id: nuevoId('aud'), fecha, usuarioId, operacion, ticketId: ticketId || null, detalle: detalle || '' });
     for (const t of tickets) {
       for (const ev of t.actividad) {
         if (ev.tipo === 'creado') aud(ev.fecha, ev.autorId, 'TICKET_CREADO', t.id, '#' + t.numero + ' · ' + t.titulo);
         else if (ev.tipo === 'comentario') aud(ev.fecha, ev.autorId, ev.visibilidad === 'PRIVADO' ? 'COMENTARIO_PRIVADO' : 'COMENTARIO_PUBLICO', t.id, U.truncar(ev.texto, 90));
-        else if (ev.tipo === 'estado') aud(ev.fecha, ev.autorId, 'ESTADO', t.id, nombreEstado(ev.de) + ' → ' + nombreEstado(ev.a));
-        else if (ev.tipo === 'asignado') aud(ev.fecha, ev.autorId, 'ASIGNACION', t.id, 'Atiende: ' + (usu(ev.operadorId) || {}).nombre);
+        else if (ev.tipo === 'asignado') aud(ev.fecha, ev.autorId, 'ASIGNACION', t.id, 'Atiende: ' + (usu(ev.operadorId) || {}).nombre + (ev.de !== ev.a ? ' · ' + nombreEstado(ev.de) + ' → ' + nombreEstado(ev.a) : ''));
+        else if (ev.tipo === 'elevado') aud(ev.fecha, ev.autorId, 'ELEVACION', t.id, 'Elevado a ' + nombreDestino(ev.destino) + ' · ' + U.truncar(ev.texto, 70));
+        else if (ev.tipo === 'bloqueo') aud(ev.fecha, ev.autorId, 'BLOQUEO', t.id, 'En proceso → Bloqueado · ' + U.truncar(ev.texto, 70));
+        else if (ev.tipo === 'desbloqueo') aud(ev.fecha, ev.autorId, 'DESBLOQUEO', t.id, 'Bloqueado → En proceso');
         else if (ev.tipo === 'cierre') aud(ev.fecha, ev.autorId, 'CIERRE', t.id, nombreEstado(ev.de) + ' → Cerrado');
-        else if (ev.tipo === 'reapertura') aud(ev.fecha, ev.autorId, 'REAPERTURA', t.id, 'Cerrado → Abierto');
+        else if (ev.tipo === 'reapertura') aud(ev.fecha, ev.autorId, 'REAPERTURA', t.id, 'Cerrado → En proceso');
       }
     }
     for (const s of soluciones) {
-      aud(s.creadaEn, s.creadaPorId, s.ticketOrigenId ? 'SOLUCION_PROPUESTA' : 'SOLUCION_CREADA', s.ticketOrigenId, s.titulo);
+      const propuestaPorOperador = s.ticketOrigenId || usu(s.creadaPorId).rol === 'OPERADOR';
+      aud(s.creadaEn, s.creadaPorId, propuestaPorOperador ? 'SOLUCION_PROPUESTA' : 'SOLUCION_CREADA', s.ticketOrigenId, s.titulo);
       if (s.revisadaEn) aud(s.revisadaEn, s.revisadaPorId, s.estado === 'RECHAZADA' ? 'SOLUCION_RECHAZADA' : 'SOLUCION_APROBADA', null, s.titulo);
     }
     for (let dia = 6; dia >= 0; dia--) {
@@ -821,14 +879,13 @@
     for (const t of tickets) {
       const creador = usu(t.creadoPorId);
       if (!creador || creador.rol !== 'CLIENTE') continue;
-      let estado = 'ABIERTO';
+      let estado = t.actividad[0].estado || 'ABIERTO';
       const acts = t.actividad;
       const consumidos = new Set();
       for (let i = 0; i < acts.length; i++) {
         const ev = acts[i];
-        if (ev.tipo === 'estado') estado = ev.a;
+        if (ev.a) estado = ev.a;
         if (ev.tipo === 'cierre') estado = 'CERRADO';
-        if (ev.tipo === 'reapertura') estado = 'ABIERTO';
         if (consumidos.has(ev.id)) continue;
         const actor = usu(ev.autorId);
         if (!actor || actor.rol !== 'OPERADOR') continue;
@@ -838,11 +895,21 @@
         const sig = acts[i + 1];
         const pegado = (a, b) => b && b.autorId === a.autorId && Math.abs(new Date(b.fecha) - new Date(a.fecha)) <= 5000;
         if (ev.tipo === 'comentario' && ev.visibilidad === 'PUBLICO') {
-          if (pegado(ev, sig) && (sig.tipo === 'cierre' || sig.tipo === 'estado')) continue; // va en el correo siguiente
+          if (pegado(ev, sig) && sig.tipo === 'cierre') continue; // va en el correo siguiente
           motivo = 'comentario';
           detalle = 'Mensaje de Mesa de ayuda:\n"' + ev.texto + '"';
-        } else if (ev.tipo === 'estado' || ev.tipo === 'cierre' || ev.tipo === 'reapertura') {
-          motivo = ev.tipo === 'estado' ? 'estado' : ev.tipo;
+        } else if (ev.tipo === 'asignado' && ev.de === 'ABIERTO') {
+          motivo = 'en-proceso';
+        } else if (ev.tipo === 'elevado') {
+          motivo = 'elevado';
+          detalle = 'Lo derivamos a ' + nombreDestino(ev.destino) + ' para revisarlo. Te avisamos por acá apenas tengamos novedades.';
+        } else if (ev.tipo === 'bloqueo') {
+          motivo = 'bloqueado';
+          if (ev.visibilidad === 'PUBLICO') detalle = 'Mensaje de Mesa de ayuda:\n"' + ev.texto + '"';
+        } else if (ev.tipo === 'desbloqueo') {
+          motivo = 'estado';
+        } else if (ev.tipo === 'cierre' || ev.tipo === 'reapertura') {
+          motivo = ev.tipo;
           const ant = acts[i - 1];
           if (pegado(ev, sig) && sig.tipo === 'comentario' && sig.visibilidad === 'PUBLICO') {
             detalle = 'Mensaje de Mesa de ayuda:\n"' + sig.texto + '"';
@@ -858,7 +925,7 @@
     }
     correos.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-    for (const t of tickets) delete t._plantilla;
+    for (const t of tickets) { delete t._plantilla; delete t._escenario; }
 
     return {
       version: VERSION,
@@ -871,6 +938,7 @@
       tiposProblema: C.tiposProblema.map((x) => Object.assign({ activo: true }, x)),
       criticidades: C.criticidades.map((x) => Object.assign({ activo: true }, x)),
       tiposSolicitud: C.tiposSolicitud.map((x) => Object.assign({ activo: true }, x)),
+      gruposSoporte: C.gruposSoporte.map((x) => Object.assign({ activo: true, ejemplo: true }, x)),
       tickets: tickets.concat(borradores),
       soluciones,
       correos,

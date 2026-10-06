@@ -329,8 +329,9 @@
       tiposProblema: U.contarPor(registrados, (t) => t.tipoProblemaId),
       criticidades: U.contarPor(registrados, (t) => t.criticidadId),
       tiposSolicitud: U.contarPor(registrados, (t) => t.tipoSolicitudId),
+      gruposSoporte: U.contarPor(registrados, (t) => (t.elevadoA && t.elevadoA.tipo === 'grupo' ? t.elevadoA.id : null)),
     };
-    const SINGULAR = { sistemas: 'sistema', subsistemas: 'subsistema', tiposProblema: 'tipo de problema', criticidades: 'criticidad', tiposSolicitud: 'tipo de solicitud' };
+    const SINGULAR = { sistemas: 'sistema', subsistemas: 'subsistema', tiposProblema: 'tipo de problema', criticidades: 'criticidad', tiposSolicitud: 'tipo de solicitud', gruposSoporte: 'grupo de soporte' };
 
     function abrir(tipo, item, sistemaId) {
       const inNombre = h('input', { id: 'c-nombre', class: 'control', type: 'text', autocomplete: 'off', value: item ? item.nombre : '' });
@@ -418,6 +419,7 @@
           tarjetaLista('tiposProblema', 'Tipos de problema', 'Los del sistema actual. Los indica Mesa de ayuda al tratar el ticket.'),
           tarjetaLista('criticidades', 'Criticidades', 'Valores de muestra.', ui.pendiente('A definir', 'ORMEN no definió los niveles de criticidad.')),
           tarjetaLista('tiposSolicitud', 'Tipos de solicitud', 'Los del documento «Contexto a desarrollar».')),
+        tarjetaLista('gruposSoporte', 'Grupos de soporte', 'A quién se puede elevar un ticket, además de las personas de Mesa de ayuda.', ui.pendiente('Grupos de ejemplo', 'ORMEN todavía no definió los grupos reales.')),
       ],
     });
   };

@@ -42,7 +42,7 @@
       h('div', { class: 'pila' },
         h('span', { class: 'antetitulo', style: 'color: #F1DDB0' }, 'Demo navegable'),
         h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Sistema de tickets de Mesa de ayuda'),
-        h('p', null, 'Prototipo para recorrer con ORMEN cómo se crean, siguen y resuelven los tickets de bancas y agencias. Todos los datos son ficticios y los cambios quedan sólo en este navegador.')),
+        h('p', null, 'Prototipo para recorrer con ORMEN cómo se crean, siguen y resuelven los tickets de bancas y agencias. Todos los datos son ficticios.')),
       h('ul', null,
         [
           'Cada localidad ve sólo sus tickets; ORMEN ve todos.',

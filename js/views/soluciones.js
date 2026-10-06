@@ -1,8 +1,10 @@
 /* ==========================================================================
    Soluciones (para operadores y gestión de ORMEN).
    - Catálogo: soluciones aprobadas, también las cargadas sin ticket.
-   - Propuestas: las que un operador decidió pasar al catálogo quedan
-     pendientes hasta que un administrador las apruebe.
+   - Base de conocimiento: una solución es conocimiento depurado y
+     reutilizable, independiente del ticket del que pueda surgir. Flujo:
+     ticket → Proponer como solución → borrador → el administrador lo
+     revisa o edita → solución aprobada.
    - Búsqueda por descripción (HU03 / RF13).
    ========================================================================== */
 (function (App) {
@@ -13,7 +15,7 @@
 
   const PESTANAS = [
     { estado: 'APROBADA', texto: 'Catálogo' },
-    { estado: 'PENDIENTE', texto: 'Pendientes de aprobación' },
+    { estado: 'PENDIENTE', texto: 'Borradores por revisar' },
     { estado: 'RECHAZADA', texto: 'Rechazadas' },
   ];
 
@@ -43,7 +45,7 @@
       h('p', { class: 'resumen' }, s.descripcion),
       h('div', { class: 'chips' }, s.palabrasClave.slice(0, 4).map((p) => h('span', { class: 'palabra-clave' }, p)), extra ? h('span', { class: 'palabra-clave' }, '+' + extra) : null),
       h('div', { class: 'chico suave' },
-        s.estado === 'APROBADA' ? (usos ? 'Aplicada ' + U.plural(usos, 'vez', 'veces') : 'Todavía sin usos') : 'Propuesta por ' + (autor ? (autor.id === u.id ? 'vos' : autor.nombre) : '—') + ' · ' + U.relativo(s.creadaEn),
+        s.estado === 'APROBADA' ? (usos ? 'Aplicada ' + U.plural(usos, 'vez', 'veces') : 'Todavía sin usos') : 'Borrador de ' + (autor ? (autor.id === u.id ? 'vos' : autor.nombre) : '—') + ' · ' + U.relativo(s.creadaEn),
         ' · ', origenTexto(s)));
   }
 
@@ -85,8 +87,8 @@
       U.vaciar(resultados);
       if (q.estado === 'PENDIENTE') {
         resultados.append(ui.aviso(esAdmin
-          ? 'Las propuso Mesa de ayuda al cerrar un ticket (o cargándolas a mano). No se sugieren hasta que las apruebes.'
-          : 'Esperan la aprobación de un administrador. Mientras tanto no se sugieren.', null, 'reloj'));
+          ? 'Borradores que propuso Mesa de ayuda desde un ticket cerrado (o cargándolos a mano). Revisalos, editalos si hace falta y aprobalos: recién ahí se sugieren.'
+          : 'Borradores que esperan la revisión de un administrador. Mientras tanto no se sugieren.', null, 'borrador'));
       }
       if (q.estado === 'RECHAZADA') resultados.append(avisoRechazadas());
       const orden = q.orden || 'usos';
@@ -97,7 +99,7 @@
       if (!lista.length) {
         resultados.append(h('div', { class: 'card' }, ui.vacio({
           icono: 'libro',
-          titulo: q.estado === 'PENDIENTE' ? 'No hay soluciones pendientes de aprobación' : q.estado === 'RECHAZADA' ? 'No hay soluciones rechazadas' : 'No hay soluciones con estos filtros',
+          titulo: q.estado === 'PENDIENTE' ? 'No hay borradores por revisar' : q.estado === 'RECHAZADA' ? 'No hay soluciones rechazadas' : 'No hay soluciones con estos filtros',
           texto: q.q || q.sis || q.origen ? 'Probá quitando algún filtro.' : null,
         })));
         return;
@@ -124,7 +126,7 @@
       ui.cabecera({
         antetitulo: 'Para Mesa de ayuda',
         titulo: 'Soluciones',
-        subtitulo: 'Soluciones aprobadas que el sistema sugiere al cargar un ticket. Las de tickets cerrados pasan al catálogo si el operador lo decide y un administrador las aprueba.',
+        subtitulo: 'Base de conocimiento: soluciones depuradas, reutilizables y aprobadas por un administrador, que el sistema sugiere al cargar un ticket. Un ticket cerrado no es por sí solo una solución: desde el ticket se propone un borrador, que el administrador revisa y aprueba.',
         acciones: [
           h('a', { class: 'btn btn-neutro', href: '#/soluciones/buscar' }, ui.icono('buscar', 'i-sm'), 'Buscar por descripción'),
           h('a', { class: 'btn btn-primario', href: '#/soluciones/nueva' }, ui.icono('mas', 'i-sm'), esAdmin ? 'Cargar solución' : 'Proponer solución'),
@@ -217,12 +219,12 @@
       lateral.append(esAdmin
         ? h('section', { class: 'card acento-dorado pila', 'aria-labelledby': 'sec-revision' },
           h('h2', { id: 'sec-revision' }, 'Revisión'),
-          h('p', { class: 'chico' }, 'Propuesta por ', h('strong', null, autor ? autor.nombre : '—'), ' ', U.relativo(s.creadaEn), '. Una vez aprobada, el sistema la empieza a sugerir.'),
+          h('p', { class: 'chico' }, 'Borrador de ', h('strong', null, autor ? autor.nombre : '—'), ' ', U.relativo(s.creadaEn), '. Revisá que sea general y reutilizable; podés editarlo antes de aprobar. Una vez aprobada, el sistema la empieza a sugerir.'),
           h('div', { class: 'acciones-ticket' },
             h('button', { type: 'button', class: 'btn btn-exito', onClick: aprobar }, ui.icono('checkCirculo', 'i-sm'), 'Aprobar'),
             h('a', { class: 'btn btn-neutro', href: '#/soluciones/' + s.id + '/editar?aprobar=1' }, ui.icono('editar', 'i-sm'), 'Editar y aprobar'),
             h('button', { type: 'button', class: 'btn btn-peligro', onClick: rechazar }, ui.icono('xCirculo', 'i-sm'), 'Rechazar')))
-        : ui.aviso('Pendiente de aprobación: un administrador la tiene que revisar. Mientras tanto no se sugiere.', null, 'reloj'));
+        : ui.aviso('Borrador por revisar: un administrador lo tiene que revisar y aprobar. Mientras tanto no se sugiere.', null, 'borrador'));
     } else if (s.estado === 'RECHAZADA') {
       lateral.append(ui.aviso([h('strong', null, 'Rechazada'), ' por ', revisor ? revisor.nombre : '—', ' el ', U.fecha(s.revisadaEn), '. Motivo: ', s.motivoRechazo || '—'], 'rojo'), avisoRechazadas());
     } else if (esAdmin) {
@@ -337,7 +339,7 @@
           s = S.guardarSolucion(datos, u, existente ? existente.id : null);
         }
         ctx.marcarSucio(false);
-        ui.toast(aprobarAlGuardar ? 'Solución aprobada: desde ahora se sugiere.' : existente ? 'Cambios guardados.' : esAdmin ? 'Solución cargada en el catálogo.' : 'Solución propuesta. Queda pendiente de aprobación.');
+        ui.toast(aprobarAlGuardar ? 'Solución aprobada: desde ahora se sugiere.' : existente ? 'Cambios guardados.' : esAdmin ? 'Solución cargada en el catálogo.' : 'Borrador de solución creado. Queda esperando la revisión de un administrador.');
         App.router.ir('/soluciones/' + s.id);
       } catch (err) {
         if (err.campos) ui.mostrarErrores(form, err.campos, resumen);
@@ -354,7 +356,7 @@
         titulo,
         subtitulo: existente ? existente.titulo : 'Una solución general, que no viene de un ticket puntual (ORMEN confirmó que se pueden cargar).',
       }),
-      !esAdmin ? ui.aviso('Como operador, la solución queda pendiente hasta que un administrador la apruebe (supuesto: el mismo circuito que las soluciones que vienen de un ticket).', null, 'reloj') : null,
+      !esAdmin ? ui.aviso('Como operador, la solución queda como borrador hasta que un administrador la revise y apruebe (supuesto: el mismo circuito que los borradores que vienen de un ticket).', null, 'borrador') : null,
       h('div', { class: 'dos-columnas' }, form,
         h('aside', { class: 'pila' }, h('section', { class: 'card pila', 'aria-labelledby': 'sec-probar' },
           h('h2', { id: 'sec-probar' }, 'Probar las palabras clave'),

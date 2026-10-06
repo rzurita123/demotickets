@@ -88,7 +88,9 @@
   async function restablecerDatos(u) {
     const ok = await App.ui.confirmar({
       titulo: 'Restablecer los datos de la demo',
-      mensaje: 'Se borran los tickets, comentarios, soluciones y usuarios que hayas cargado en este navegador y se vuelven a generar los datos de ejemplo. Las demás pestañas también se actualizan.',
+      mensaje: App.store.estadoRemoto() === 'local'
+        ? 'Se borran los tickets, comentarios, soluciones y usuarios que hayas cargado en este navegador y se vuelven a generar los datos de ejemplo. Las demás pestañas también se actualizan.'
+        : 'La base es compartida: se borran los tickets, comentarios, soluciones y usuarios que cargó cualquier persona y se vuelven a generar los datos de ejemplo para todos.',
       textoConfirmar: 'Restablecer',
       peligro: true,
     });
@@ -143,10 +145,33 @@
     return h('header', { class: 'barra' }, interior, movil);
   }
 
+  const TEXTOS_GUARDADO = {
+    local: ['Los cambios se guardan sólo en este navegador.', null],
+    conectando: ['Conectando con la base compartida…', 'refrescar'],
+    compartida: ['Base compartida: todos ven los mismos datos.', 'usuarios'],
+    guardando: ['Guardando en la base compartida…', 'refrescar'],
+    'sin-conexion': ['Sin conexión con la base compartida: los cambios quedan en este navegador hasta que vuelva.', 'alerta'],
+  };
+
+  /** Dónde se guardan los cambios; se actualiza solo cuando cambia la conexión. */
+  let quitarOyenteGuardado = null;
+  function estadoGuardado() {
+    const el = h('span', { class: 'estado-guardado texto-largo', 'aria-live': 'polite' });
+    const pintar = (modo) => {
+      const [texto, ic] = TEXTOS_GUARDADO[modo] || TEXTOS_GUARDADO.local;
+      U.vaciar(el).append(ic ? App.ui.icono(ic, 'i-sm') : '', texto);
+      el.dataset.modo = modo;
+    };
+    pintar(App.store.estadoRemoto());
+    if (quitarOyenteGuardado) quitarOyenteGuardado();
+    quitarOyenteGuardado = App.store.alCambiarRemoto(pintar);
+    return el;
+  }
+
   function franja() {
     return h('div', { class: 'franja-demo' }, h('div', { class: 'contenedor' },
       App.ui.icono('info', 'i-sm'),
-      h('span', null, h('strong', null, 'Demo con datos ficticios.'), h('span', { class: 'texto-largo' }, ' Los cambios se guardan sólo en este navegador.')),
+      h('span', null, h('strong', null, 'Demo con datos ficticios.'), ' ', estadoGuardado()),
       h('a', { href: '#/notas' }, 'Qué está confirmado y qué falta definir')));
   }
 

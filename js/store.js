@@ -82,6 +82,164 @@
     }
   }
 
+  // ---------------------------------------------------- Base compartida ---
+
+  /**
+   * En la demo publicada en Vercel la base se comparte entre todas las
+   * personas por medio de api/db (un JSON en Vercel Blob). localStorage
+   * sigue siendo la copia local: con ella arranca la pantalla y es la única
+   * base cuando la demo se abre con doble clic o con un servidor sin api/.
+   *
+   * Para no gastar las operaciones del plan gratuito de Vercel Blob, los
+   * cambios se suben agrupados y la base se vuelve a leer al abrir la demo y
+   * al volver a la pestaña (no hay consultas periódicas).
+   */
+  const API = 'api/db';
+  const ESPERA_SUBIDA = 1200;
+  const ESPERA_LECTURA = 15000;
+  const CLAVE_ETAG = CLAVE + ':etag';
+  const remoto = { modo: 'local', etag: null, pendiente: false, subiendo: false, temporizador: null, ultimaLectura: 0 };
+  const oyentesRemoto = new Set();
+
+  function cambiarModo(modo) {
+    if (remoto.modo === modo) return;
+    remoto.modo = modo;
+    for (const fn of oyentesRemoto) {
+      try { fn(modo); } catch (e) { console.error(e); }
+    }
+  }
+
+  /** 'local', 'conectando', 'compartida', 'guardando' o 'sin-conexion'. */
+  function estadoRemoto() {
+    return remoto.modo;
+  }
+
+  function alCambiarRemoto(fn) {
+    oyentesRemoto.add(fn);
+    return () => oyentesRemoto.delete(fn);
+  }
+
+  const usaRemoto = () => remoto.modo !== 'local';
+
+  /** El etag se comparte con las otras pestañas de este navegador (cambian la misma base). */
+  function guardarEtag(etag) {
+    remoto.etag = etag || null;
+    try {
+      if (etag) localStorage.setItem(CLAVE_ETAG, etag);
+      else localStorage.removeItem(CLAVE_ETAG);
+    } catch { /* queda en memoria */ }
+  }
+
+  async function leerRemoto(forzar) {
+    if (!usaRemoto()) return;
+    if (!forzar && (remoto.pendiente || remoto.subiendo || Date.now() - remoto.ultimaLectura < ESPERA_LECTURA)) return;
+    remoto.ultimaLectura = Date.now();
+    let res;
+    try {
+      res = await fetch(API, { cache: 'no-store', headers: remoto.etag && !forzar ? { 'If-None-Match': remoto.etag } : {} });
+    } catch {
+      cambiarModo('sin-conexion');
+      return;
+    }
+    if (!res.headers.get('X-Demo-Db') || res.status === 501) {
+      // No hay api/ (doble clic o servidor estático) o no tiene Vercel Blob conectado: todo queda en el navegador.
+      cambiarModo('local');
+      return;
+    }
+    if (res.status === 304) { cambiarModo('compartida'); return; }
+    if (!res.ok) { cambiarModo('sin-conexion'); return; }
+    const { etag, db: base } = await res.json();
+    if (!base || base.version < App.semilla.VERSION || !Array.isArray(base.tickets)) {
+      // Vacía o de una versión anterior de la demo: se reemplaza por la de este navegador.
+      guardarEtag(etag);
+      cambiarModo('compartida');
+      programarSubida(0);
+      return;
+    }
+    if (base.version > App.semilla.VERSION) {
+      cambiarModo('local');
+      emitir({ externo: false, aviso: 'Hay una versión más nueva de la demo. Recargá la página para ver los datos compartidos.' });
+      return;
+    }
+    guardarEtag(etag);
+    cambiarModo('compartida');
+    if (JSON.stringify(base) !== JSON.stringify(db)) {
+      if (forzar) remoto.pendiente = false; // gana la base compartida
+      db = base;
+      escribir();
+      emitir({ externo: true });
+    }
+  }
+
+  function programarSubida(espera) {
+    if (!usaRemoto()) return;
+    remoto.pendiente = true;
+    if (remoto.modo === 'conectando') return; // se sube cuando termina la primera lectura
+    clearTimeout(remoto.temporizador);
+    remoto.temporizador = setTimeout(subir, espera == null ? ESPERA_SUBIDA : espera);
+  }
+
+  async function subir() {
+    if (!usaRemoto() || remoto.modo === 'conectando') return;
+    if (remoto.subiendo) { programarSubida(); return; }
+    remoto.subiendo = true;
+    remoto.pendiente = false;
+    cambiarModo('guardando');
+    let res = null;
+    try {
+      res = await fetch(API, {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, remoto.etag ? { 'If-Match': remoto.etag } : {}),
+        body: JSON.stringify(db),
+      });
+    } catch { /* sin conexión: se reintenta con el próximo cambio o al volver a la pestaña */ }
+    remoto.subiendo = false;
+    if (res && res.ok) {
+      guardarEtag((await res.json()).etag);
+      cambiarModo('compartida');
+    } else if (res && res.status === 412) {
+      // Otra persona guardó antes: gana su versión.
+      remoto.pendiente = false;
+      cambiarModo('compartida');
+      await leerRemoto(true);
+      emitir({ externo: true, aviso: 'Otra persona cambió los datos al mismo tiempo. Se cargó la última versión y tu último cambio no se guardó: repetilo.' });
+      return;
+    } else if (res && res.status === 413) {
+      remoto.pendiente = false;
+      cambiarModo('sin-conexion');
+      emitir({ externo: false, aviso: 'La base quedó demasiado grande para guardarla en línea (probá con menos imágenes). El cambio quedó sólo en este navegador.' });
+      return;
+    } else {
+      remoto.pendiente = true;
+      cambiarModo('sin-conexion');
+      return;
+    }
+    if (remoto.pendiente) programarSubida();
+  }
+
+  async function conectarRemoto() {
+    if (!/^https?:$/.test(location.protocol)) return;
+    cambiarModo('conectando');
+    await leerRemoto(true);
+    if (remoto.modo !== 'local' && remoto.pendiente) programarSubida(0);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (remoto.pendiente && remoto.modo === 'sin-conexion') programarSubida(0);
+      else leerRemoto(false);
+    });
+    window.addEventListener('online', () => { if (remoto.pendiente) programarSubida(0); });
+    window.addEventListener('beforeunload', (e) => {
+      if (remoto.pendiente || remoto.subiendo) e.preventDefault();
+    });
+  }
+
+  /** Vuelve a leer la base compartida ahora (botón "Actualizar"). */
+  function sincronizar() {
+    if (remoto.pendiente) { programarSubida(0); return Promise.resolve(); }
+    return leerRemoto(true);
+  }
+
   /** Aplica un cambio; si no se puede guardar, lo deshace. */
   function mutar(fn) {
     const respaldo = JSON.stringify(db);
@@ -97,6 +255,7 @@
       throw new ErrorDemo('El navegador no tiene espacio para guardar este cambio. Probá con menos imágenes o restablecé los datos de la demo.');
     }
     emitir({ externo: false });
+    programarSubida();
     return resultado;
   }
 
@@ -108,6 +267,7 @@
       escribir();
     }
     window.addEventListener('storage', (e) => {
+      if (e.key === CLAVE_ETAG) { remoto.etag = e.newValue || null; return; }
       if (e.key !== CLAVE) return;
       const nuevo = leerGuardado();
       if (nuevo) db = nuevo;
@@ -117,6 +277,7 @@
       }
       emitir({ externo: true });
     });
+    conectarRemoto();
     return { almacenamiento: disponible };
   }
 
@@ -130,6 +291,7 @@
     if (usuarioId && usuario(usuarioId)) auditar(usuarioId, 'DATOS_RESTABLECIDOS', null, 'Se volvió a generar la base de ejemplo');
     escribir();
     emitir({ externo: false, restablecido: true });
+    programarSubida(0);
   }
 
   // ---------------------------------------------------------- Consultas ---
@@ -239,12 +401,17 @@
     return t;
   }
 
-  /** Lo privado (comentarios y motivos de reapertura) es sólo para ORMEN. */
+  /**
+   * Lo privado es sólo para ORMEN: comentarios privados, motivos de
+   * reapertura y de elevación, motivos de bloqueo privados y las propuestas
+   * de solución.
+   */
+  const EVENTOS_SIN_TEXTO_PARA_CLIENTE = ['reapertura', 'cierre', 'elevado', 'desbloqueo'];
   function actividadVisible(t, u) {
     if (u.rol !== 'CLIENTE') return t.actividad.slice();
     return t.actividad
-      .filter((ev) => !(ev.tipo === 'comentario' && ev.visibilidad === 'PRIVADO'))
-      .map((ev) => (ev.tipo === 'reapertura' || ev.tipo === 'cierre' ? Object.assign({}, ev, { texto: null }) : ev));
+      .filter((ev) => !(ev.tipo === 'comentario' && ev.visibilidad === 'PRIVADO') && ev.tipo !== 'propuesta')
+      .map((ev) => (EVENTOS_SIN_TEXTO_PARA_CLIENTE.includes(ev.tipo) || (ev.tipo === 'bloqueo' && ev.visibilidad === 'PRIVADO') ? Object.assign({}, ev, { texto: null }) : ev));
   }
 
   /** Imágenes del ticket y de los comentarios que el usuario puede ver. */
@@ -276,6 +443,7 @@
   function registrarAuditoria(usuarioId, operacion, ticketId, detalle) {
     auditar(usuarioId, operacion, ticketId, detalle);
     escribir();
+    programarSubida();
   }
 
   // -------------------------------------------------- Correos simulados ---
@@ -385,6 +553,7 @@
       adjuntos: (adjuntos || []).map((a) => Object.assign({}, a, { id: U.uid('img') })),
     };
     db.soluciones.push(s);
+    evento(t, { tipo: 'propuesta', autorId: u.id, solucionId: s.id });
     auditar(u.id, 'SOLUCION_PROPUESTA', t.id, s.titulo);
     return s;
   }
@@ -392,9 +561,10 @@
   // ---------------------------------------------------- Alta de tickets ---
 
   /**
-   * Crea un ticket (estado Abierto) o, si `registroDirecto`, lo registra
-   * directamente como Cerrado con su solución. Si viene `borradorId`, el
-   * borrador se convierte en el ticket.
+   * Crea un ticket: Abierto si lo crea un cliente; En proceso, atendido por
+   * quien lo carga, si lo crea Mesa de ayuda. Con `registroDirecto` el
+   * operador registra problema y solución y queda directamente Cerrado. Si
+   * viene `borradorId`, el borrador se convierte en el ticket.
    */
   function crearTicket(datos, u, opciones) {
     const op = opciones || {};
@@ -412,16 +582,18 @@
     return mutar(() => {
       const ahora = U.isoAhora();
       const numero = db.secuencias.ticket++;
-      const t = Object.assign({ id: 't-' + numero, numero, estado: 'ABIERTO' }, datosTicket(datos, u), {
+      const esOp = u.rol === 'OPERADOR';
+      const t = Object.assign({ id: 't-' + numero, numero, estado: esOp ? 'EN_PROCESO' : 'ABIERTO' }, datosTicket(datos, u), {
         creadoPorId: u.id,
-        operadorId: u.rol === 'OPERADOR' ? u.id : null,
+        operadorId: esOp ? u.id : null,
+        elevadoA: null,
         creadoEn: ahora,
         actualizadoEn: ahora,
         cerradoEn: null,
         adjuntos: copiarAdjuntos(datos.adjuntos, u.id, ahora),
         solucion: null,
         registroDirecto: !!op.registroDirecto,
-        actividad: [{ id: U.uid('a'), tipo: 'creado', fecha: ahora, autorId: u.id, desdeBorrador: !!op.borradorId }],
+        actividad: [{ id: U.uid('a'), tipo: 'creado', fecha: ahora, autorId: u.id, estado: esOp ? 'EN_PROCESO' : 'ABIERTO', operadorId: esOp ? u.id : null, desdeBorrador: !!op.borradorId }],
       });
       if (op.borradorId) {
         db.tickets = db.tickets.filter((x) => x.id !== op.borradorId);
@@ -465,7 +637,7 @@
       if (!b) {
         b = Object.assign({
           id: U.uid('b'), numero: null, estado: 'BORRADOR', creadoPorId: u.id, operadorId: u.id,
-          creadoEn: ahora, cerradoEn: null, solucion: null, registroDirecto: false, actividad: [], adjuntos: [],
+          creadoEn: ahora, cerradoEn: null, solucion: null, registroDirecto: false, elevadoA: null, actividad: [], adjuntos: [],
         }, campos);
         db.tickets.push(b);
       } else {
@@ -530,32 +702,10 @@
     });
   }
 
-  /** Cambio entre estados activos: Abierto, Pendiente y Elevado. */
-  function cambiarEstado(ticketId, u, nuevo, datos) {
-    const t = ticketActivoParaOperador(ticketId, u);
-    const extra = datos || {};
-    exigir(t.estado !== 'CERRADO', 'El ticket está cerrado: reabrilo primero.');
-    exigir(D.ESTADOS_ACTIVOS.includes(nuevo), 'Estado no válido. Para cerrar, usá "Cerrar con solución".');
-    exigir(nuevo !== t.estado, 'El ticket ya está en ese estado.');
-    const texto = limpio(extra.texto);
-    if (texto && extra.visibilidad !== 'PUBLICO' && extra.visibilidad !== 'PRIVADO') throw errorDeCampos({ visibilidad: 'Elegí si el comentario es público o privado.' });
-    return mutar(() => {
-      const de = t.estado;
-      t.estado = nuevo;
-      evento(t, { tipo: 'estado', autorId: u.id, de, a: nuevo });
-      auditar(u.id, 'ESTADO', t.id, nombreEstado(de) + ' → ' + nombreEstado(nuevo));
-      let detalle = null;
-      if (texto) {
-        evento(t, { tipo: 'comentario', autorId: u.id, texto, visibilidad: extra.visibilidad, adjuntos: [] });
-        auditar(u.id, extra.visibilidad === 'PRIVADO' ? 'COMENTARIO_PRIVADO' : 'COMENTARIO_PUBLICO', t.id, U.truncar(texto, 90));
-        if (extra.visibilidad === 'PUBLICO') detalle = 'Mensaje de Mesa de ayuda:\n"' + texto + '"';
-      }
-      enviarCorreo(t, u, 'estado', detalle);
-      return t;
-    });
-  }
-
-  /** "Atiende": quién de Mesa de ayuda tiene el ticket (supuesto de la demo). */
+  /**
+   * "Atiende": quién de Mesa de ayuda tiene el ticket. Tomarlo o asignarlo
+   * pasa un ticket Abierto a En proceso; uno Bloqueado sigue bloqueado.
+   */
   function asignar(ticketId, u, operadorId) {
     const t = ticketActivoParaOperador(ticketId, u);
     exigir(t.estado !== 'CERRADO', 'El ticket está cerrado.');
@@ -564,9 +714,114 @@
     exigir(t.operadorId !== operadorId, 'El ticket ya lo atiende ' + op.nombre + '.');
     return mutar(() => {
       const anteriorId = t.operadorId;
+      const de = t.estado;
       t.operadorId = operadorId;
-      evento(t, { tipo: 'asignado', autorId: u.id, operadorId, anteriorId });
-      auditar(u.id, 'ASIGNACION', t.id, 'Atiende: ' + op.nombre);
+      if (de === 'ABIERTO') t.estado = 'EN_PROCESO';
+      evento(t, { tipo: 'asignado', autorId: u.id, operadorId, anteriorId, de, a: t.estado });
+      auditar(u.id, 'ASIGNACION', t.id, 'Atiende: ' + op.nombre + (de !== t.estado ? ' · ' + nombreEstado(de) + ' → ' + nombreEstado(t.estado) : ''));
+      if (de !== t.estado) enviarCorreo(t, u, 'en-proceso', null);
+      return t;
+    });
+  }
+
+  /** Devuelve el ticket a la cola: nadie lo atiende y vuelve a Abierto. */
+  function liberar(ticketId, u) {
+    const t = ticketActivoParaOperador(ticketId, u);
+    exigir(t.estado === 'EN_PROCESO', 'Sólo se puede devolver a la cola un ticket En proceso.');
+    return mutar(() => {
+      const anteriorId = t.operadorId;
+      t.operadorId = null;
+      t.estado = 'ABIERTO';
+      evento(t, { tipo: 'liberado', autorId: u.id, anteriorId, de: 'EN_PROCESO', a: 'ABIERTO' });
+      auditar(u.id, 'LIBERACION', t.id, 'En proceso → Abierto · sin asignar');
+      return t;
+    });
+  }
+
+  /** Grupos de soporte y personas de Mesa de ayuda a las que se puede elevar. */
+  function grupoSoporte(id) {
+    return porId(db.gruposSoporte, id);
+  }
+
+  function destinoDesdeClave(clave) {
+    const [tipo, id] = String(clave || '').split(':');
+    if (tipo === 'grupo' && grupoSoporte(id)) return { tipo, id };
+    if (tipo === 'usuario' && usuario(id)) return { tipo, id };
+    return null;
+  }
+
+  function nombreDestino(d) {
+    if (!d) return '—';
+    if (d.tipo === 'grupo') return nombre('gruposSoporte', d.id, 'Grupo eliminado');
+    const x = usuario(d.id);
+    return x ? x.nombre : 'Usuario eliminado';
+  }
+
+  const mismoDestino = (a, b) => !!a && !!b && a.tipo === b.tipo && a.id === b.id;
+
+  /**
+   * Elevación: el ticket En proceso se deriva a un grupo de soporte o a otra
+   * persona de Mesa de ayuda. Puede elevarse varias veces; `elevadoA` guarda
+   * el último destino y la actividad, el recorrido completo. Si se eleva a
+   * un operador, pasa a atenderlo esa persona.
+   */
+  function elevar(ticketId, u, datos) {
+    const t = ticketActivoParaOperador(ticketId, u);
+    exigir(t.estado !== 'ABIERTO', 'Primero tomá el ticket: sólo se eleva un ticket En proceso.');
+    exigir(t.estado !== 'BLOQUEADO', 'El ticket está bloqueado: desbloquealo antes de elevarlo.');
+    exigir(t.estado === 'EN_PROCESO', 'Sólo se eleva un ticket En proceso.');
+    const destino = destinoDesdeClave(datos && datos.destino);
+    const e = {};
+    if (!destino) e.destino = 'Elegí a quién se eleva.';
+    else if (destino.tipo === 'grupo' && grupoSoporte(destino.id).activo === false) e.destino = 'Ese grupo está inactivo.';
+    else if (destino.tipo === 'usuario') {
+      const p = usuario(destino.id);
+      if (p.rol !== 'OPERADOR' || p.activo === false) e.destino = 'Elegí un operador activo.';
+      else if (p.id === t.operadorId) e.destino = 'Ya lo atiende ' + p.nombre + '.';
+    }
+    if (!e.destino && mismoDestino(destino, t.elevadoA)) e.destino = 'El ticket ya está elevado a ' + nombreDestino(destino) + '.';
+    const motivo = limpio(datos && datos.motivo);
+    if (!motivo) e.motivo = 'Escribí por qué se eleva.';
+    if (Object.keys(e).length) throw errorDeCampos(e);
+    return mutar(() => {
+      const anterior = t.elevadoA || null;
+      t.elevadoA = destino;
+      if (destino.tipo === 'usuario') t.operadorId = destino.id;
+      evento(t, { tipo: 'elevado', autorId: u.id, destino, anterior, texto: motivo });
+      auditar(u.id, 'ELEVACION', t.id, 'Elevado a ' + nombreDestino(destino) + ' · ' + U.truncar(motivo, 70));
+      enviarCorreo(t, u, 'elevado', 'Lo derivamos a ' + nombreDestino(destino) + ' para revisarlo. Te avisamos por acá apenas tengamos novedades.');
+      return t;
+    });
+  }
+
+  /** Bloqueado: detenido por un factor externo. El motivo es obligatorio. */
+  function bloquear(ticketId, u, datos) {
+    const t = ticketActivoParaOperador(ticketId, u);
+    exigir(t.estado !== 'ABIERTO', 'Primero tomá el ticket: sólo se bloquea un ticket En proceso.');
+    exigir(t.estado === 'EN_PROCESO', 'El ticket ya está bloqueado.');
+    const texto = limpio(datos && datos.texto);
+    const e = {};
+    if (!texto) e.texto = 'Escribí qué factor externo lo detiene.';
+    if (datos.visibilidad !== 'PUBLICO' && datos.visibilidad !== 'PRIVADO') e.visibilidad = 'Elegí si el motivo es público o privado.';
+    if (Object.keys(e).length) throw errorDeCampos(e);
+    return mutar(() => {
+      t.estado = 'BLOQUEADO';
+      evento(t, { tipo: 'bloqueo', autorId: u.id, de: 'EN_PROCESO', a: 'BLOQUEADO', texto, visibilidad: datos.visibilidad });
+      auditar(u.id, 'BLOQUEO', t.id, 'En proceso → Bloqueado · ' + U.truncar(texto, 70));
+      enviarCorreo(t, u, 'bloqueado', datos.visibilidad === 'PUBLICO' ? 'Mensaje de Mesa de ayuda:\n"' + texto + '"' : null);
+      return t;
+    });
+  }
+
+  function desbloquear(ticketId, u, datos) {
+    const t = ticketActivoParaOperador(ticketId, u);
+    exigir(t.estado === 'BLOQUEADO', 'El ticket no está bloqueado.');
+    const texto = limpio(datos && datos.texto);
+    return mutar(() => {
+      t.estado = 'EN_PROCESO';
+      evento(t, { tipo: 'desbloqueo', autorId: u.id, de: 'BLOQUEADO', a: 'EN_PROCESO', texto: texto || null });
+      auditar(u.id, 'DESBLOQUEO', t.id, 'Bloqueado → En proceso' + (texto ? ' · ' + U.truncar(texto, 70) : ''));
+      enviarCorreo(t, u, 'estado', null);
       return t;
     });
   }
@@ -609,8 +864,9 @@
   }
 
   /**
-   * Cierre: todo ticket cerrado tiene su solución (ORMEN). El operador puede
-   * proponerla para el catálogo; queda pendiente de aprobación.
+   * Cierre: todo ticket cerrado tiene su solución (ORMEN). Se puede cerrar
+   * desde cualquier estado activo. El operador puede proponerla como
+   * solución: queda como borrador hasta que un administrador la apruebe.
    */
   function cerrar(ticketId, u, datos) {
     const t = ticketActivoParaOperador(ticketId, u);
@@ -647,19 +903,105 @@
     });
   }
 
-  /** ORMEN: "luego de cerrado se tendría que reabrir para ingresar nuevos comentarios". */
+  /**
+   * ORMEN: "luego de cerrado se tendría que reabrir para ingresar nuevos
+   * comentarios". Vuelve a En proceso y lo atiende quien lo reabre.
+   */
   function reabrir(ticketId, u, datos) {
     const t = ticketActivoParaOperador(ticketId, u);
     exigir(t.estado === 'CERRADO', 'Sólo se puede reabrir un ticket cerrado.');
     const motivo = limpio(datos && datos.motivo);
     return mutar(() => {
-      t.estado = 'ABIERTO';
+      t.estado = 'EN_PROCESO';
       t.cerradoEn = null;
-      evento(t, { tipo: 'reapertura', autorId: u.id, de: 'CERRADO', texto: motivo || null });
-      auditar(u.id, 'REAPERTURA', t.id, 'Cerrado → Abierto' + (motivo ? ' · ' + U.truncar(motivo, 70) : ''));
+      t.operadorId = u.id;
+      evento(t, { tipo: 'reapertura', autorId: u.id, de: 'CERRADO', a: 'EN_PROCESO', operadorId: u.id, texto: motivo || null });
+      auditar(u.id, 'REAPERTURA', t.id, 'Cerrado → En proceso' + (motivo ? ' · ' + U.truncar(motivo, 70) : ''));
       enviarCorreo(t, u, 'reapertura', null);
       return t;
     });
+  }
+
+  /**
+   * Recorrido del ticket: por qué responsables (cola, personas, grupos) y
+   * estados pasó, armado a partir de la actividad. Cada paso dura hasta el
+   * siguiente; el último sigue abierto (hasta = null) salvo que esté cerrado.
+   */
+  const COLA = { tipo: 'cola', id: 'cola' };
+
+  function recorrido(t) {
+    const pasos = [];
+    let resp = COLA;
+    let estado = 'ABIERTO';
+    function paso(ev, motivo) {
+      const ult = pasos[pasos.length - 1];
+      if (ult && ult.estado === estado && ult.responsable.tipo === resp.tipo && ult.responsable.id === resp.id) return;
+      if (ult) ult.hasta = ev.fecha;
+      pasos.push({ responsable: resp, estado, desde: ev.fecha, hasta: null, motivo, autorId: ev.autorId, texto: ev.texto || null, visibilidad: ev.visibilidad || null });
+    }
+    const persona = (id) => (id ? { tipo: 'usuario', id } : COLA);
+    for (const ev of t.actividad) {
+      if (ev.tipo === 'creado') {
+        estado = ev.estado || 'ABIERTO';
+        resp = estado === 'ABIERTO' ? COLA : persona(ev.operadorId || ev.autorId);
+        paso(ev, 'creado');
+      } else if (ev.tipo === 'asignado') {
+        resp = persona(ev.operadorId);
+        if (ev.a) estado = ev.a;
+        paso(ev, ev.operadorId === ev.autorId ? 'tomado' : 'asignado');
+      } else if (ev.tipo === 'liberado') {
+        resp = COLA; estado = 'ABIERTO'; paso(ev, 'liberado');
+      } else if (ev.tipo === 'elevado') {
+        resp = ev.destino; paso(ev, 'elevado');
+      } else if (ev.tipo === 'bloqueo') {
+        estado = 'BLOQUEADO'; paso(ev, 'bloqueo');
+      } else if (ev.tipo === 'desbloqueo') {
+        estado = 'EN_PROCESO'; paso(ev, 'desbloqueo');
+      } else if (ev.tipo === 'cierre') {
+        resp = persona(ev.autorId); estado = 'CERRADO'; paso(ev, ev.registroDirecto ? 'registroDirecto' : 'cierre');
+      } else if (ev.tipo === 'reapertura') {
+        resp = persona(ev.operadorId || ev.autorId); estado = 'EN_PROCESO'; paso(ev, 'reapertura');
+      }
+    }
+    const ult = pasos[pasos.length - 1];
+    if (ult && ult.estado === 'CERRADO') ult.hasta = ult.desde;
+    return pasos;
+  }
+
+  /** Nombre de quien tiene el ticket en un paso del recorrido. */
+  function nombreResponsable(r) {
+    if (!r || r.tipo === 'cola') return 'Cola de Mesa de ayuda';
+    return nombreDestino(r);
+  }
+
+  // ------------------------------------------- Del ticket a la solución ---
+
+  /** Borrador o solución aprobada que surgió del ticket (las rechazadas no cuentan). */
+  function propuestaDeTicket(t) {
+    return db.soluciones.find((s) => s.ticketOrigenId === t.id && s.estado !== 'RECHAZADA') || null;
+  }
+
+  /** Solución aprobada que surgió del ticket (para el destacado). */
+  function solucionOriginadaPor(t) {
+    return db.soluciones.find((s) => s.ticketOrigenId === t.id && s.estado === 'APROBADA') || null;
+  }
+
+  /**
+   * "Proponer como solución" desde un ticket cerrado: crea un borrador de
+   * solución independiente del ticket, que un administrador revisa, edita y
+   * aprueba. El ticket queda como está.
+   */
+  function proponerSolucion(ticketId, u, datos) {
+    const t = ticket(ticketId);
+    exigir(t && t.estado !== 'BORRADOR', 'El ticket no existe.');
+    exigir(esOrmen(u), 'Sólo ORMEN puede proponer soluciones.');
+    exigir(t.estado === 'CERRADO' && t.solucion, 'Sólo se propone como solución un ticket cerrado.');
+    const previa = propuestaDeTicket(t);
+    exigir(!previa, previa && previa.estado === 'APROBADA' ? 'De este ticket ya surgió una solución.' : 'Este ticket ya tiene un borrador de solución esperando revisión.');
+    const e = validarPropuesta({ titulo: datos.titulo, palabrasClave: datos.palabrasClave });
+    if (!limpio(datos.descripcion)) e.propuestaDescripcion = 'Escribí la solución (los pasos a seguir).';
+    if (Object.keys(e).length) throw errorDeCampos(e);
+    return mutar(() => crearPropuesta(t, u, datos, datos.descripcion, t.solucion.adjuntos, U.isoAhora()));
   }
 
   // --------------------------------------------------------- Soluciones ---
@@ -875,6 +1217,7 @@
     tiposProblema: 'Tipos de problema',
     criticidades: 'Criticidades',
     tiposSolicitud: 'Tipos de solicitud',
+    gruposSoporte: 'Grupos de soporte',
   };
 
   function guardarItemCatalogo(tipo, datos, admin, id) {
@@ -893,11 +1236,11 @@
       if (existente) {
         const antes = existente.nombre;
         existente.nombre = n;
-        if (tipo === 'subsistemas') existente.ejemplo = false;
+        if (tipo === 'subsistemas' || tipo === 'gruposSoporte') existente.ejemplo = false;
         auditar(admin.id, 'CATALOGO', null, NOMBRES_CATALOGO[tipo] + ': ' + (antes === n ? n : antes + ' → ' + n));
         return existente;
       }
-      const prefijos = { sistemas: 'sis', subsistemas: 'sub', tiposProblema: 'tp', criticidades: 'cri', tiposSolicitud: 'ts' };
+      const prefijos = { sistemas: 'sis', subsistemas: 'sub', tiposProblema: 'tp', criticidades: 'cri', tiposSolicitud: 'ts', gruposSoporte: 'gs' };
       const item = { id: U.uid(prefijos[tipo]), nombre: n, activo: true };
       if (tipo === 'subsistemas') Object.assign(item, { sistemaId, ejemplo: false });
       if (tipo === 'criticidades') Object.assign(item, { orden: lista.length + 1, clase: '' });
@@ -944,7 +1287,7 @@
 
   App.store = {
     ErrorDemo,
-    iniciar, alCambiar, restablecer, registrarAuditoria,
+    iniciar, alCambiar, restablecer, registrarAuditoria, estadoRemoto, alCambiarRemoto, sincronizar,
     get datos() { return db; },
     get almacenamientoDisponible() { return disponible; },
     // consultas
@@ -953,13 +1296,14 @@
     usuarios, operadores, localidades, sistemas, subsistemasDe, catalogo,
     puedeVerTicket, ticketsVisibles, borradoresDe, ticketPorNumero, ticketParaUsuario, borradorParaUsuario,
     actividadVisible, imagenesVisibles, correosPara,
-    soluciones, usosDeSolucion, contarUsos,
+    grupoSoporte, nombreDestino, recorrido, nombreResponsable,
+    soluciones, usosDeSolucion, contarUsos, propuestaDeTicket, solucionOriginadaPor,
     validarTicket, normalizarPalabras,
     // tickets
     crearTicket, guardarBorrador, descartarBorrador,
-    comentar, cambiarEstado, asignar, modificarClasificacion, cerrar, reabrir,
+    comentar, asignar, liberar, elevar, bloquear, desbloquear, modificarClasificacion, cerrar, reabrir,
     // soluciones
-    guardarSolucion, aprobarSolucion, rechazarSolucion,
+    proponerSolucion, guardarSolucion, aprobarSolucion, rechazarSolucion,
     // administración
     guardarUsuario, cambiarActivoUsuario, guardarLocalidad, cambiarActivaLocalidad,
     guardarItemCatalogo, cambiarActivoItem, guardarParametros,

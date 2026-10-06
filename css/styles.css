@@ -283,8 +283,14 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
 .badge.grande { height: 28px; font-size: 14px; padding: 0 12px; }
 .estado-BORRADOR { background: var(--gris-claro); color: var(--gris-oscuro); box-shadow: inset 0 0 0 1px #B7C1CB; }
 .estado-ABIERTO { background: var(--azul-claro); color: #1D5F8F; }
-.estado-PENDIENTE { background: var(--dorado-claro); color: var(--dorado-oscuro); }
-.estado-ELEVADO { background: var(--naranja-claro); color: var(--naranja); }
+.estado-EN_PROCESO { background: var(--dorado-claro); color: var(--dorado-oscuro); }
+.estado-BLOQUEADO { background: var(--rojo-claro); color: var(--rojo); }
+.badge.elevado { background: var(--naranja-claro); color: var(--naranja); }
+button.badge { border: 0; cursor: pointer; font-family: inherit; }
+button.badge:hover { filter: brightness(.96); text-decoration: underline; }
+a.badge { text-decoration: none; }
+a.badge:hover { text-decoration: underline; }
+.badge.origen-solucion { background: var(--dorado-claro); color: var(--dorado-oscuro); box-shadow: inset 0 0 0 1px var(--dorado); }
 .estado-CERRADO { background: var(--verde-claro); color: var(--verde); }
 .cri-alta { background: var(--rojo-claro); color: var(--rojo); }
 .cri-media { background: var(--dorado-claro); color: var(--dorado-oscuro); }
@@ -834,3 +840,35 @@ a.mosaico:hover, button.mosaico:hover { border-color: var(--azul); text-decorati
   body { background: #fff; }
   .card { box-shadow: none; }
 }
+
+/* ---------- Recorrido del ticket ---------- */
+.recorrido-envoltura { overflow-x: auto; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--superficie); }
+.recorrido-envoltura:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.recorrido-svg { display: block; font-family: var(--fuente); }
+.recorrido-svg .rec-carril { font-size: 13.5px; font-weight: 700; fill: var(--tinta); }
+.recorrido-svg .rec-carril-detalle { font-size: 12px; fill: var(--texto-suave); }
+.recorrido-svg .rec-col { font-size: 12px; font-weight: 700; fill: var(--tinta); }
+.recorrido-svg .rec-col-fecha { font-size: 11.5px; fill: var(--texto-suave); }
+.recorrido-svg .rec-nodo-estado { font-size: 11.5px; font-weight: 700; }
+.recorrido-svg .rec-nodo-elev { font-size: 11px; font-weight: 700; fill: var(--naranja); }
+.rec-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--texto-suave); }
+.rec-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.rec-leyenda i { width: 12px; height: 12px; border-radius: 999px; border: 2px solid; display: inline-block; }
+.rec-leyenda i.elev { border: 2px dashed var(--naranja); background: transparent; }
+.rec-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rec-lista li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radio-sm); background: var(--superficie-2); }
+.rec-lista li.elevado { background: var(--naranja-claro); }
+.rec-lista .rec-num { flex: none; width: 24px; height: 24px; border-radius: 999px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); display: inline-flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--tinta); }
+.rec-lista .nota { display: block; }
+.ticket-cabecera .fila-sm button.badge, .ticket-cabecera .fila-sm a.badge { font-size: 13px; }
+.subtitulo-celda-elev { color: var(--naranja); font-weight: 600; }
+.pasos-flujo { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.pasos-flujo li { padding: 4px 10px; border-radius: 999px; background: var(--gris-claro); color: var(--texto-suave); font-weight: 600; }
+.pasos-flujo li + li::before { content: "→"; margin-right: 6px; color: var(--texto-suave); }
+.pasos-flujo li.hecho { background: var(--verde-claro); color: var(--verde); }
+.pasos-flujo li.actual { background: var(--dorado-claro); color: var(--dorado-oscuro); box-shadow: inset 0 0 0 1px var(--dorado); }
+.marca-fila { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+.marca-fila.elev { color: var(--naranja); }
+.marca-fila.sol { color: var(--dorado-oscuro); }
+.estado-guardado { display: inline-flex; align-items: center; gap: 5px; }
+.estado-guardado[data-modo="sin-conexion"] { color: var(--rojo); font-weight: 600; }

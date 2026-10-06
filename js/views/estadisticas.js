@@ -270,7 +270,7 @@
       const periodo = PERIODOS.find((p) => p.clave === q.periodo);
       const lista = [
         C.mosaico({ etiqueta: 'Tickets registrados', icono: 'ticket', valor: filtrados.length, detalle: q.tramo ? DIM.tramo.nombre(q.tramo) : periodo.texto }),
-        C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso, detalle: [U.plural(cuenta('ABIERTO'), 'abierto', 'abiertos'), U.plural(cuenta('PENDIENTE'), 'pendiente', 'pendientes'), U.plural(cuenta('ELEVADO'), 'elevado', 'elevados')].join(' · ') }),
+        C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso, detalle: [U.plural(cuenta('ABIERTO'), 'abierto', 'abiertos'), U.plural(cuenta('EN_PROCESO'), 'en proceso', 'en proceso'), U.plural(cuenta('BLOQUEADO'), 'bloqueado', 'bloqueados'), U.plural(filtrados.filter((t) => t.elevadoA && D.ESTADOS_ACTIVOS.includes(t.estado)).length, 'elevado', 'elevados')].join(' · ') }),
         C.mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados, detalle: U.porcentaje(cerrados, filtrados.length) + ' de los registrados' }),
       ];
       if (!esCliente) {

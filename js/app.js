@@ -51,6 +51,7 @@
     // Otra pestaña cambió los datos: se redibuja, salvo que haya algo a medio cargar.
     let avisoPendiente = null;
     App.store.alCambiar((info) => {
+      if (info.aviso) App.ui.toast(info.aviso, { tipo: 'aviso', duracion: 10000 });
       if (!info.externo) return;
       if (R.estaSucio() || hayModalAbierto()) {
         if (avisoPendiente) avisoPendiente();

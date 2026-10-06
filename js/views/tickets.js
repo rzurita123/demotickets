@@ -14,8 +14,9 @@
   const ESTADOS_FILTRO = [
     { clave: 'en-curso', texto: 'En curso', fn: (t) => D.ESTADOS_ACTIVOS.includes(t.estado) },
     { clave: 'ABIERTO', texto: 'Abiertos', fn: (t) => t.estado === 'ABIERTO' },
-    { clave: 'PENDIENTE', texto: 'Pendientes', fn: (t) => t.estado === 'PENDIENTE' },
-    { clave: 'ELEVADO', texto: 'Elevados', fn: (t) => t.estado === 'ELEVADO' },
+    { clave: 'EN_PROCESO', texto: 'En proceso', fn: (t) => t.estado === 'EN_PROCESO' },
+    { clave: 'BLOQUEADO', texto: 'Bloqueados', fn: (t) => t.estado === 'BLOQUEADO' },
+    { clave: 'elevados', texto: 'Elevados en curso', fn: (t) => !!t.elevadoA && D.ESTADOS_ACTIVOS.includes(t.estado) },
     { clave: 'CERRADO', texto: 'Cerrados', fn: (t) => t.estado === 'CERRADO' },
     { clave: 'todos', texto: 'Todos', fn: () => true },
   ];

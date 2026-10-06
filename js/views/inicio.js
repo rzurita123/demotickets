@@ -42,7 +42,8 @@
     const desde = Date.now() - 30 * U.DIA;
     const cerrados = tickets.filter((t) => t.estado === 'CERRADO').sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
     const cerrados30 = cerrados.filter((t) => new Date(t.cerradoEn).getTime() >= desde).length;
-    const pendientes = enCurso.filter((t) => t.estado === 'PENDIENTE');
+    const bloqueados = enCurso.filter((t) => t.estado === 'BLOQUEADO');
+    const elevados = enCurso.filter((t) => t.elevadoA).length;
 
     return h('div', { class: 'pila-lg' },
       ui.cabecera({
@@ -54,16 +55,16 @@
           h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear un ticket'),
         ],
       }),
-      pendientes.length ? ui.aviso([
-        h('strong', null, pendientes.length === 1 ? 'Hay un ticket en Pendiente' : 'Hay ' + pendientes.length + ' tickets en Pendiente'),
-        ', es decir, en espera de algo externo (por ejemplo, una respuesta de ustedes): ',
-        pendientes.map((t, i) => [i ? ', ' : '', App.comun.enlaceTicket(t, '#' + t.numero + ' ' + t.titulo)]),
+      bloqueados.length ? ui.aviso([
+        h('strong', null, bloqueados.length === 1 ? 'Hay un ticket Bloqueado' : 'Hay ' + bloqueados.length + ' tickets Bloqueados'),
+        ', es decir, en espera de un factor externo (por ejemplo, una respuesta de ustedes): ',
+        bloqueados.map((t, i) => [i ? ', ' : '', App.comun.enlaceTicket(t, '#' + t.numero + ' ' + t.titulo)]),
         '.',
-      ], null, 'reloj') : null,
+      ], null, 'pausa') : null,
       h('div', { class: 'mosaicos' },
-        mosaico({ etiqueta: 'Abiertos', icono: 'circulo', valor: cuenta('ABIERTO'), detalle: 'Pendientes de atención', href: '#/tickets?estado=ABIERTO' }),
-        mosaico({ etiqueta: 'Pendientes', icono: 'reloj', valor: cuenta('PENDIENTE'), detalle: 'En espera de algo externo', href: '#/tickets?estado=PENDIENTE' }),
-        mosaico({ etiqueta: 'Elevados', icono: 'elevar', valor: cuenta('ELEVADO'), detalle: 'Pasados a otro nivel de soporte', href: '#/tickets?estado=ELEVADO' }),
+        mosaico({ etiqueta: 'Abiertos', icono: 'circulo', valor: cuenta('ABIERTO'), detalle: 'Todavía no atendidos', href: '#/tickets?estado=ABIERTO' }),
+        mosaico({ etiqueta: 'En proceso', icono: 'reloj', valor: cuenta('EN_PROCESO'), detalle: elevados ? U.plural(elevados, 'elevado a otro nivel', 'elevados a otro nivel') : 'Mesa de ayuda los está atendiendo', href: '#/tickets?estado=EN_PROCESO' }),
+        mosaico({ etiqueta: 'Bloqueados', icono: 'pausa', valor: cuenta('BLOQUEADO'), detalle: 'Por un factor externo', href: '#/tickets?estado=BLOQUEADO' }),
         mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados30, detalle: 'En los últimos 30 días', href: '#/tickets?estado=CERRADO' })),
       tarjeta('Tickets en curso',
         enCurso.length
@@ -86,8 +87,8 @@
     const enCurso = S.ticketsVisibles(u).filter(activo);
     const sinAsignar = enCurso.filter((t) => !t.operadorId).sort(App.comun.ORDENES.criticidad.fn);
     const mios = enCurso.filter((t) => t.operadorId === u.id).sort(App.comun.ORDENES.actualizados.fn);
-    const misPendientes = mios.filter((t) => t.estado === 'PENDIENTE').length;
-    const elevados = enCurso.filter((t) => t.estado === 'ELEVADO').length;
+    const misBloqueados = mios.filter((t) => t.estado === 'BLOQUEADO').length;
+    const elevados = enCurso.filter((t) => t.elevadoA).length;
     const borradores = S.borradoresDe(u);
 
     function tomar(t) {
@@ -120,12 +121,12 @@
           h('div', { class: 'cabeza' }, h('span', { class: 'icono-caja' }, ui.icono('checkCirculo', 'i-lg')), h('span', { class: 'eyebrow' }, 'Ya resuelto')),
           h('h2', null, 'Ya lo resolví'),
           h('p', null, 'Registrá un ticket que resolviste durante la llamada, con la solución aplicada.'),
-          h('div', { class: 'pie-puerta' }, ui.pendiente('A analizar con ORMEN', 'ORMEN registra hoy tickets directamente como cerrados; cómo funcionará en el sistema nuevo quedó a analizar en conjunto.'), h('span', { class: 'ir' }, 'Registrar', ui.icono('flechaDer', 'i-sm'))))),
+          h('div', { class: 'pie-puerta' }, h('span'), h('span', { class: 'ir' }, 'Registrar', ui.icono('flechaDer', 'i-sm'))))),
       formBuscar,
       h('div', { class: 'mosaicos' },
         mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar.length, detalle: 'Tickets en curso que nadie tomó', href: '#/tickets?atiende=sin' }),
-        mosaico({ etiqueta: 'Mis tickets en curso', icono: 'usuario', valor: mios.length, detalle: U.plural(misPendientes, 'en Pendiente', 'en Pendiente'), href: '#/tickets?atiende=' + u.id }),
-        mosaico({ etiqueta: 'Elevados', icono: 'elevar', valor: elevados, detalle: 'De todo el equipo', href: '#/tickets?estado=ELEVADO' }),
+        mosaico({ etiqueta: 'Mis tickets en curso', icono: 'usuario', valor: mios.length, detalle: U.plural(misBloqueados, 'bloqueado', 'bloqueados'), href: '#/tickets?atiende=' + u.id }),
+        mosaico({ etiqueta: 'Elevados en curso', icono: 'elevar', valor: elevados, detalle: 'De todo el equipo', href: '#/tickets?estado=elevados' }),
         mosaico({ etiqueta: 'Mis borradores', icono: 'borrador', valor: borradores.length, detalle: 'Sólo los ves vos', href: '#/borradores' })),
       tarjeta('Sin asignar',
         sinAsignar.length
@@ -151,7 +152,7 @@
     const tickets = S.ticketsVisibles(u);
     const enCurso = tickets.filter(activo);
     const sinAsignar = enCurso.filter((t) => !t.operadorId).length;
-    const elevados = enCurso.filter((t) => t.estado === 'ELEVADO').sort(App.comun.ORDENES.actualizados.fn);
+    const elevados = enCurso.filter((t) => t.elevadoA).sort(App.comun.ORDENES.actualizados.fn);
     const desde = Date.now() - 30 * U.DIA;
     const cerrados30 = tickets.filter((t) => t.estado === 'CERRADO' && new Date(t.cerradoEn).getTime() >= desde).length;
     const porAprobar = S.soluciones({ estado: 'PENDIENTE' }).sort((a, b) => b.creadaEn.localeCompare(a.creadaEn));
@@ -175,7 +176,7 @@
           h('div', { class: 'clasif' }, ui.clasificacion(s.sistemaId, s.subsistemaId)),
           h('div', { class: 'chico suave' }, 'Propuesta por ', autor ? autor.nombre : '—', ' · ', U.relativo(s.creadaEn), origen ? ' · desde el ticket #' + origen.numero : ' · sin ticket de origen'));
       }))
-      : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay soluciones esperando aprobación' });
+      : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay borradores de solución por revisar' });
 
     return h('div', { class: 'pila-lg' },
       ui.cabecera({
@@ -185,20 +186,19 @@
         acciones: [h('a', { class: 'btn btn-neutro', href: '#/estadisticas' }, ui.icono('grafico', 'i-sm'), 'Estadísticas')],
       }),
       h('div', { class: 'mosaicos' },
-        mosaico({ etiqueta: 'Tickets en curso', icono: 'lista', valor: enCurso.length, detalle: 'Abiertos, pendientes y elevados', href: '#/tickets' }),
+        mosaico({ etiqueta: 'Tickets en curso', icono: 'lista', valor: enCurso.length, detalle: 'Abiertos, en proceso y bloqueados', href: '#/tickets' }),
         mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar, detalle: 'En curso, sin operador', href: '#/tickets?atiende=sin' }),
-        mosaico({ etiqueta: 'Elevados', icono: 'elevar', valor: elevados.length, detalle: 'Pasados a otro nivel', href: '#/tickets?estado=ELEVADO' }),
+        mosaico({ etiqueta: 'Elevados en curso', icono: 'elevar', valor: elevados.length, detalle: 'Derivados a otro grupo o persona', href: '#/tickets?estado=elevados' }),
         mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados30, detalle: 'En los últimos 30 días', href: '#/tickets?estado=CERRADO' }),
-        mosaico({ etiqueta: 'Soluciones por aprobar', icono: 'libro', valor: porAprobar.length, detalle: 'Propuestas de Mesa de ayuda', href: '#/soluciones?estado=PENDIENTE' })),
+        mosaico({ etiqueta: 'Soluciones por aprobar', icono: 'libro', valor: porAprobar.length, detalle: 'Borradores de Mesa de ayuda', href: '#/soluciones?estado=PENDIENTE' })),
       h('div', { class: 'dos-columnas' },
         h('div', { class: 'pila-lg' },
-          tarjeta('Soluciones pendientes de aprobación', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
-          tarjeta('Tickets elevados',
-            h('div', { class: 'pila' },
-              ui.avisoPendiente('¿A quién se eleva un ticket?', 'ORMEN pidió el estado Elevado (pasado a otro nivel de soporte), pero todavía no definió a qué personas o grupos se eleva. Por ahora sólo cambia el estado.'),
-              elevados.length
-                ? App.comun.tablaTickets(elevados.slice(0, 6), ['numero', 'ticket', 'localidad', 'atiende', 'actualizado'], { caption: 'Tickets elevados' })
-                : ui.vacio({ titulo: 'No hay tickets elevados' })))),
+          tarjeta('Borradores de solución por revisar', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
+          tarjeta('Tickets elevados en curso',
+            elevados.length
+              ? App.comun.tablaTickets(elevados.slice(0, 6), ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'actualizado'], { caption: 'Tickets elevados en curso' })
+              : ui.vacio({ titulo: 'No hay tickets elevados en curso' }),
+            elevados.length > 6 ? verTodos('#/tickets?estado=elevados', 'Ver los ' + elevados.length) : null)),
         h('div', { class: 'pila-lg' },
           App.charts.tarjeta({
             titulo: 'Tickets registrados por mes',

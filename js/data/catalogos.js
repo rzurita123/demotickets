@@ -13,6 +13,8 @@
      Software, Equipamiento, Configuración).
    - Tipos de solicitud: los del documento "Contexto a desarrollar".
    - Criticidad: valores de ejemplo (Alta, Media, Baja); ORMEN no los definió.
+   - Grupos de soporte (a quién se eleva un ticket): EJEMPLOS, ORMEN no
+     los definió.
    - Usuarios: personas FICTICIAS. Las del equipo de operadores y la gerencia
      retoman las personas de las historias de usuario.
 
@@ -103,6 +105,17 @@
     { id: 'ts-sugerencia', nombre: 'Sugerencia de funcionalidad' },
   ];
 
+  /**
+   * Grupos a los que se puede elevar un ticket (además de las personas de
+   * Mesa de ayuda). Son EJEMPLOS: ORMEN todavía no definió los reales.
+   */
+  const gruposSoporte = [
+    { id: 'gs-soporte-n2', nombre: 'Soporte técnico (2º nivel)' },
+    { id: 'gs-infraestructura', nombre: 'Infraestructura y redes' },
+    { id: 'gs-desarrollo', nombre: 'Desarrollo de sistemas' },
+    { id: 'gs-proveedor-terminales', nombre: 'Proveedor de terminales' },
+  ];
+
   // Todos los usuarios de la demo usan la contraseña "demo".
   // Los correos usan el dominio reservado .example para que no sean reales.
   const usuarios = [
@@ -147,5 +160,5 @@
   /** Usuarios destacados en la pantalla de ingreso (uno por rol). */
   const accesosRapidos = ['u-vpereira', 'u-scabrera', 'u-mtechera', 'u-lgomez'];
 
-  App.catalogos = { localidades, sistemas, subsistemas, tiposProblema, criticidades, tiposSolicitud, usuarios, parametros, accesosRapidos };
+  App.catalogos = { localidades, sistemas, subsistemas, tiposProblema, criticidades, tiposSolicitud, gruposSoporte, usuarios, parametros, accesosRapidos };
 })(window.App = window.App || {});

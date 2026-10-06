@@ -7,8 +7,9 @@
   'use strict';
 
   /**
-   * Estados acordados con ORMEN (respuestas de octubre). Las descripciones
-   * son las del documento de preguntas; "Elevado" lo pidió ORMEN.
+   * Estados del ticket. "Elevado" no es un estado: es un atributo que dice a
+   * qué grupo o persona se derivó el ticket (`elevadoA`); el recorrido
+   * completo sale de la actividad.
    */
   const ESTADOS = {
     BORRADOR: {
@@ -16,16 +17,16 @@
       descripcion: 'Guardado a medio completar. Sólo lo ve quien lo creó y no cuenta en estadísticas.',
       icono: 'borrador',
     },
-    ABIERTO: { nombre: 'Abierto', descripcion: 'Ticket registrado, pendiente de atención.', icono: 'circulo' },
-    PENDIENTE: { nombre: 'Pendiente', descripcion: 'En espera de algo externo, por ejemplo una respuesta del cliente.', icono: 'reloj' },
-    ELEVADO: { nombre: 'Elevado', descripcion: 'Pasado a otro nivel de soporte.', icono: 'elevar' },
+    ABIERTO: { nombre: 'Abierto', descripcion: 'Registrado y todavía no atendido: nadie de Mesa de ayuda lo tomó.', icono: 'circulo' },
+    EN_PROCESO: { nombre: 'En proceso', descripcion: 'Un operador de Mesa de ayuda lo está atendiendo.', icono: 'reloj' },
+    BLOQUEADO: { nombre: 'Bloqueado', descripcion: 'Detenido por un factor externo, por ejemplo un proveedor o una respuesta de la agencia.', icono: 'pausa' },
     CERRADO: { nombre: 'Cerrado', descripcion: 'Resuelto, con la solución aplicada registrada.', icono: 'check' },
   };
 
   /** Estados en los que el ticket está en curso (no borrador ni cerrado). */
-  const ESTADOS_ACTIVOS = ['ABIERTO', 'PENDIENTE', 'ELEVADO'];
+  const ESTADOS_ACTIVOS = ['ABIERTO', 'EN_PROCESO', 'BLOQUEADO'];
   /** Estados que cuentan para estadísticas (todo menos borrador). */
-  const ESTADOS_REGISTRADOS = ['ABIERTO', 'PENDIENTE', 'ELEVADO', 'CERRADO'];
+  const ESTADOS_REGISTRADOS = ['ABIERTO', 'EN_PROCESO', 'BLOQUEADO', 'CERRADO'];
 
   const ROLES = {
     OPERADOR: { nombre: 'Operador', descripcion: 'Mesa de ayuda de ORMEN: ve y resuelve tickets.' },
@@ -45,10 +46,14 @@
     COMENTARIO_PUBLICO: 'Comentario público',
     COMENTARIO_PRIVADO: 'Comentario privado',
     ASIGNACION: 'Asignación',
+    LIBERACION: 'Ticket devuelto a la cola',
+    ELEVACION: 'Elevación de ticket',
+    BLOQUEO: 'Ticket bloqueado',
+    DESBLOQUEO: 'Ticket desbloqueado',
     DATOS: 'Modificación de datos del ticket',
     CIERRE: 'Cierre de ticket',
     REAPERTURA: 'Reapertura de ticket',
-    SOLUCION_PROPUESTA: 'Solución propuesta al catálogo',
+    SOLUCION_PROPUESTA: 'Borrador de solución propuesto',
     SOLUCION_CREADA: 'Solución cargada en el catálogo',
     SOLUCION_EDITADA: 'Solución modificada',
     SOLUCION_APROBADA: 'Solución aprobada',
@@ -73,6 +78,9 @@
     const asuntos = {
       comentario: `Ticket ${numero}: nueva respuesta de Mesa de ayuda`,
       estado: `Ticket ${numero}: el estado cambió a ${estado}`,
+      'en-proceso': `Ticket ${numero}: Mesa de ayuda lo está atendiendo`,
+      elevado: `Ticket ${numero}: se derivó a otro nivel de soporte`,
+      bloqueado: `Ticket ${numero}: en espera de un factor externo`,
       cierre: `Ticket ${numero} cerrado`,
       reapertura: `Ticket ${numero} reabierto`,
     };

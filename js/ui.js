@@ -21,6 +21,8 @@
     editar: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/>',
     circulo: '<circle cx="12" cy="12" r="7.5"/>',
     reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    pausa: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+    recorrido: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h5a5 5 0 0 1 5 5M17 13a5 5 0 0 1-5 5H7"/>',
     elevar: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
     check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
     checkCirculo: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>',
@@ -224,8 +226,29 @@
 
   function badgeSolucion(estado) {
     if (estado === 'APROBADA') return h('span', { class: 'badge aprobada' }, icono('checkCirculo', 'i-sm'), 'Aprobada');
-    if (estado === 'PENDIENTE') return h('span', { class: 'badge pendiente-aprob' }, icono('reloj', 'i-sm'), 'Pendiente de aprobación');
+    if (estado === 'PENDIENTE') return h('span', { class: 'badge pendiente-aprob', title: 'Borrador de solución: espera que un administrador lo revise y apruebe.' }, icono('borrador', 'i-sm'), 'Borrador · por revisar');
     return h('span', { class: 'badge rechazada' }, icono('xCirculo', 'i-sm'), 'Rechazada');
+  }
+
+  /**
+   * Atributo "Elevado a …" de un ticket. Con `alClic` es un botón (abre el
+   * recorrido del ticket).
+   */
+  function badgeElevado(t, alClic) {
+    if (!t.elevadoA) return null;
+    const contenido = [icono('elevar', 'i-sm'), 'Elevado a ' + App.store.nombreDestino(t.elevadoA)];
+    return alClic
+      ? h('button', { type: 'button', class: 'badge elevado', title: 'Ver el recorrido del ticket', onClick: alClic }, contenido)
+      : h('span', { class: 'badge elevado' }, contenido);
+  }
+
+  /** Destacado de un ticket del que surgió una solución aprobada. */
+  function badgeOrigenSolucion(sol, enlace) {
+    if (!sol) return null;
+    const contenido = [icono('libro', 'i-sm'), 'Originó una solución'];
+    return enlace
+      ? h('a', { class: 'badge origen-solucion', href: '#/soluciones/' + sol.id, title: '«' + sol.titulo + '»' }, contenido)
+      : h('span', { class: 'badge origen-solucion', title: '«' + sol.titulo + '»' }, contenido);
   }
 
   function badgeTipoSolicitud(id) {
@@ -689,7 +712,7 @@
 
   App.ui = {
     ICONOS, icono, toast, mostrarError, modal, cerrarModales, confirmar,
-    badgeEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeTipoSolicitud,
+    badgeEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeTipoSolicitud, badgeElevado, badgeOrigenSolucion,
     pendiente, avisoPendiente, aviso, nombreRol, avatar, vacio, tiempo, cabecera,
     campo, grupo, select, segmentado, valorRadio, limpiarErrores, mostrarErrores, entradaPalabras,
     selectorImagenes, galeria, lightbox,

@@ -22,13 +22,15 @@
     ['Cada cliente pertenece a una localidad y ve todos los tickets de su localidad, sin jerarquías: Pando no ve los de Lagomar.', F.ormen],
     ['Los tickets que ORMEN crea en nombre de una localidad los ve esa localidad.', F.ormen],
     ['Datos de ingreso: sistema o servicio afectado, subsistema en caso de corresponder, descripción, criticidad y tipo de solicitud (atención o sugerencia de funcionalidad).', F.contexto],
-    ['Estados: Borrador, Abierto, Pendiente, Elevado (lo pidió ORMEN) y Cerrado. El borrador sólo lo ve quien lo creó y no cuenta en estadísticas.', F.dudas],
+    ['Estados: Abierto (todavía no atendido), En proceso (un operador lo atiende y se ve quién), Bloqueado (por un factor externo) y Cerrado (resuelto). Además, Borrador: sólo lo ve quien lo creó y no cuenta en estadísticas.', F.ormen],
+    ['Elevado no es un estado sino un atributo: dice a qué grupo o persona se elevó el ticket. Se puede elevar varias veces y el recorrido se ve en un gráfico.', F.ormen],
     ['Un ticket cerrado se reabre para agregarle comentarios. Todo ticket cerrado tiene su solución.', F.dudas],
+    ['Un operador puede registrar un ticket directamente como Cerrado, con el problema y la solución.', F.ormen],
     ['Comentarios públicos (los ve la localidad) y privados (sólo ORMEN).', F.contexto],
     ['Imágenes pegadas o adjuntas, en la descripción y en las soluciones.', F.dudas],
     ['Aviso por correo al creador cuando un operador actualiza el ticket: deseable, no obligatorio.', F.ormen],
     ['Las soluciones son para los operadores y se pueden cargar independientes de un ticket. La wiki de ORMEN queda para procedimientos.', F.dudas],
-    ['La solución de un ticket pasa al catálogo si el operador lo decide y queda pendiente de aprobación de un administrador.', F.dudas],
+    ['Las soluciones son una base de conocimiento aparte: conocimiento depurado, reutilizable y aprobado por un administrador. Desde un ticket cerrado se propone un borrador de solución; el ticket sigue existiendo y queda destacado si de él surgió una solución.', F.ormen],
     ['Sugerencias desde el catálogo y desde tickets anteriores del mismo sistema o de la misma localidad, ordenadas por puntaje: mismo sistema y subsistema, más palabras clave en la descripción.', F.dudas],
     ['Estadísticas: la localidad ve las suyas y el seguimiento de sus tickets; gestión ve las generales por sistema y subsistema, fecha, usuario de Mesa de ayuda, tipo de ticket y tipo de problema.', F.contexto],
   ];
@@ -37,8 +39,7 @@
   const PENDIENTE = [
     ['Integración con la central 3CX. El equipo propuso dos alternativas: transcripción como apoyo, o además una descripción sugerida con IA.', 'Espera la vuelta de Bruno'],
     ['Auditoría: registro propio del sistema o integrado con la que ya tiene ORMEN.', 'Espera la vuelta de Bruno'],
-    ['Registro directo de un ticket como Cerrado: ORMEN lo hace hoy.', 'A analizar en conjunto con ORMEN'],
-    ['A quién se eleva un ticket: no hay grupos de segundo nivel definidos.', 'A definir con ORMEN'],
+    ['Grupos a los que se eleva un ticket: en la demo son ejemplos (Soporte técnico de 2º nivel, Infraestructura y redes, Desarrollo, Proveedor de terminales).', 'Falta la lista de ORMEN'],
     ['Qué pasa con una solución rechazada por el administrador.', 'A definir con ORMEN'],
     ['Cuántos puntos vale cada criterio de la sugerencia de soluciones.', 'A definir con ORMEN'],
     ['Subsistemas reales: en la demo, salvo «Otros», son ejemplos.', 'Falta la lista de ORMEN'],
@@ -55,10 +56,13 @@
     'El cliente puede comentar en los tickets de su localidad; sus comentarios son siempre públicos.',
     'La solución del ticket la ve sólo ORMEN; la localidad ve que se cerró y los mensajes públicos.',
     'El tipo de problema lo indica Mesa de ayuda; el cliente no lo elige.',
-    '«Atiende»: un operador toma el ticket o se lo asigna a otro. Si cierra uno sin asignar, queda a su nombre.',
+    '«Atiende»: un operador toma el ticket o se lo asigna a otro, y pasa a En proceso. Si lo carga Mesa de ayuda, queda En proceso a nombre de quien lo carga. Si cierra uno sin asignar, queda a su nombre.',
+    'Se eleva un ticket En proceso, con un motivo privado. Si se eleva a una persona de Mesa de ayuda, pasa a atenderlo ella; si se eleva a un grupo, lo sigue quien lo atendía.',
+    'Bloqueado pide el motivo y elegir si es público o privado; quien lo atiende lo sigue teniendo. Para elevarlo, primero se desbloquea.',
+    'Reabrir deja el ticket En proceso a nombre de quien lo reabre.',
     'El ticket tiene un título además de la descripción.',
     'Los borradores son de Mesa de ayuda.',
-    'Las soluciones que carga un operador sin ticket también quedan pendientes de aprobación.',
+    'Las soluciones que carga un operador sin ticket también quedan como borrador hasta que un administrador las apruebe. Un administrador también puede proponer un ticket como solución.',
     'Para rechazar una solución se pide un motivo; queda guardada como rechazada y no se sugiere.',
     'El motivo de una reapertura es privado.',
     'Las estadísticas son para administradores y clientes; los operadores no tienen esa pantalla.',
@@ -66,7 +70,7 @@
   ];
 
   const FUERA = [
-    'Servidor y base de datos: el sistema real va en .NET (ASP.NET Core y Entity Framework Core) con SQL Server. Acá todo se guarda en el navegador.',
+    'Servidor y base de datos: el sistema real va en .NET (ASP.NET Core y Entity Framework Core) con SQL Server. Acá la base es un JSON: en el navegador o, publicada en Vercel, compartido en Vercel Blob.',
     'Envío real de correos e integraciones con 3CX, WhatsApp y Slack.',
     'Ingreso con los usuarios de ORMEN o por SSO: en la demo todos entran con la contraseña «demo».',
     'HTTPS, protección de datos personales (Ley 18.331) y seguridad del servidor.',
@@ -82,8 +86,8 @@
     ['HU05', 'RF9', 'Detalle del ticket: estado, quién lo atiende y clasificación.'],
     ['HU06', 'RF10', 'Detalle del ticket: comentario público.'],
     ['HU07', 'RF11', 'Detalle del ticket: comentario privado.'],
-    ['HU08', 'RF12', 'Estado Elevado. A quién se eleva está pendiente.'],
-    ['HU09', 'RF14', 'Cerrar con solución, y proponerla al catálogo.'],
+    ['HU08', 'RF12', 'Detalle del ticket › Elevar: a un grupo o a una persona. Al hacer clic en «Elevado a…» se ve el recorrido.'],
+    ['HU09', 'RF14', 'Cerrar con solución, y proponer el ticket como solución (borrador para el administrador).'],
     ['HU10', 'RF15', 'Cerrar con solución y reabrir.'],
     ['HU11', 'RF16', 'Estadísticas (administrador y cliente).'],
     ['HU12', 'RF3 · RF17', 'Correos simulados. WhatsApp no está en la demo.'],
@@ -120,14 +124,16 @@
     const S = App.store;
     const tickets = S.datos.tickets.filter((t) => t.estado !== 'BORRADOR').sort((a, b) => b.numero - a.numero);
     const pandoSinAsignar = tickets.find((t) => t.localidadId === 'loc-pando' && t.estado === 'ABIERTO' && !t.operadorId);
+    const elevado = tickets.find((t) => t.localidadId === 'loc-pando' && t.elevadoA && t.estado !== 'CERRADO');
     const lagomar = tickets.find((t) => t.localidadId === 'loc-lagomar');
     const num = (t) => (t ? h('strong', null, '#' + t.numero) : null);
     return h('ol', { class: 'pila-sm', style: 'margin: 0; padding-left: 20px' },
       h('li', null, h('strong', null, 'Valeria (operadora): '), 'en Inicio, abrí el ticket de Pando sin asignar ', num(pandoSinAsignar),
-        '. Mirá las sugerencias, tomalo, dejá un comentario público y otro privado, y cerralo con una solución proponiéndola al catálogo.'),
+        '. Mirá las sugerencias, tomalo (pasa a En proceso), dejá un comentario público y otro privado, y cerralo con una solución proponiéndola como solución reutilizable.'),
+      h('li', null, h('strong', null, 'Valeria: '), 'abrí el ticket elevado ', num(elevado), ' y hacé clic en «Elevado a…» para ver su recorrido. Elevá otro ticket tuyo a un grupo, o bloquealo por un factor externo.'),
       h('li', null, h('strong', null, 'Marcelo (cliente de Pando), en otra pestaña: '), 've el ticket cerrado, sólo el comentario público y el aviso en «Correos simulados». Probá abrir el ticket de Lagomar ',
         num(lagomar), ' cambiando el número en la dirección.'),
-      h('li', null, h('strong', null, 'Silvia (administradora): '), 'aprobá la solución propuesta en Soluciones, mirá Estadísticas y encontrá el acceso denegado en Auditoría.'),
+      h('li', null, h('strong', null, 'Silvia (administradora): '), 'revisá y aprobá el borrador de solución en Soluciones (el ticket de origen queda destacado), mirá Estadísticas y encontrá el acceso denegado en Auditoría.'),
       h('li', null, h('strong', null, 'Valeria otra vez: '), 'con «Ya lo resolví» registrá un ticket ya resuelto, y guardá un borrador.'));
   }
 
@@ -147,7 +153,7 @@
           h('h2', { id: 'n-uso' }, 'Cómo usarla'),
           h('ul', { class: 'pila-sm', style: 'margin: 0; padding-left: 20px' },
             h('li', null, 'En la pantalla de ingreso hay un acceso rápido por rol. Todos los usuarios de prueba usan la contraseña ', h('strong', null, 'demo'), '.'),
-            h('li', null, 'Los datos son ficticios y se guardan sólo en este navegador. «Restablecer datos de la demo», en el menú del usuario, vuelve al punto de partida.'),
+            h('li', null, 'Los datos son ficticios. Publicada en Vercel con la base compartida, todos ven los mismos datos; si no, se guardan sólo en este navegador (lo dice la franja amarilla). «Restablecer datos de la demo», en el menú del usuario, vuelve al punto de partida.'),
             h('li', null, 'Cada pestaña puede tener un usuario distinto: un operador en una y un cliente en otra, y los cambios se ven en las dos.'),
             h('li', null, 'Lo que lleva esta marca está pendiente o a definir: ', ui.pendiente('Pendiente con ORMEN'), '.'))),
         h('section', { class: 'card pila', 'aria-labelledby': 'n-recorrido' },

@@ -35,6 +35,18 @@
     return h('span', { class: 'fila-sm', style: 'flex-wrap: nowrap' }, App.ui.avatar(op, 'sm'), h('span', null, op ? op.nombre : '—'));
   }
 
+  /** Marcas chicas debajo del título: elevado y, para ORMEN, si originó una solución. */
+  function marcas(t) {
+    const S = App.store;
+    const ui = App.ui;
+    const u = App.auth.usuarioActual();
+    const sol = u && u.rol !== 'CLIENTE' ? S.solucionOriginadaPor(t) : null;
+    return [
+      t.elevadoA ? [' · ', h('span', { class: 'marca-fila elev', title: 'Elevado a ' + S.nombreDestino(t.elevadoA) }, ui.icono('elevar', 'i-sm'), 'Elevado a ' + S.nombreDestino(t.elevadoA))] : null,
+      sol ? [' · ', h('span', { class: 'marca-fila sol', title: '«' + sol.titulo + '»' }, ui.icono('libro', 'i-sm'), 'Originó una solución')] : null,
+    ];
+  }
+
   /**
    * Tabla de tickets. columnas: lista de claves entre
    * numero, ticket, localidad, creador, estado, criticidad, atiende, actualizado, creado.
@@ -49,7 +61,7 @@
         th: 'Ticket',
         td: (t) => ui.celda('Ticket', h('div', { class: 'titulo-celda' },
           enlaceTicket(t, t.titulo),
-          h('span', { class: 'sub' }, clasificacionCorta(t), t.tipoSolicitudId === 'ts-sugerencia' ? ' · Sugerencia' : '', t.registroDirecto ? ' · Registrado ya resuelto' : '')), 'sin-label'),
+          h('span', { class: 'sub' }, clasificacionCorta(t), t.tipoSolicitudId === 'ts-sugerencia' ? ' · Sugerencia' : '', t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t))), 'sin-label'),
       },
       localidad: { th: 'Localidad', td: (t) => ui.celda('Localidad', S.nombre('localidades', t.localidadId)) },
       creador: { th: 'Creado por', td: (t) => { const u = S.usuario(t.creadoPorId); return ui.celda('Creado por', u ? (u.rol === 'CLIENTE' ? u.nombre : u.nombre + ' (Mesa de ayuda)') : '—'); } },

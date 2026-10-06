@@ -68,7 +68,7 @@
       chkProponer.disabled = !!solucionCatalogoId;
       ayudaProponer.textContent = solucionCatalogoId
         ? 'La solución ya viene del catálogo, no hace falta proponerla.'
-        : 'Queda pendiente hasta que un administrador la apruebe.';
+        : 'Se crea un borrador de solución: un administrador lo revisa y lo aprueba.';
       if (solucionCatalogoId) {
         chkProponer.checked = false;
         bloqueProponer.hidden = true;
@@ -86,8 +86,7 @@
     const subtituloPagina = h('p', { class: 'subtitulo' });
 
     // ------------------------------------------------------- Secciones ---
-    const avisoResuelto = ui.avisoPendiente('Registro directo como Cerrado',
-      'ORMEN registra hoy tickets ya resueltos, pero cómo va a funcionar en el sistema nuevo quedó a analizar en conjunto. En la demo, el ticket se guarda directamente como Cerrado con su solución.');
+    const avisoResuelto = ui.aviso('Registro directo: si ya resolviste el problema durante la llamada, registrá el problema y la solución aplicada y el ticket queda directamente Cerrado.', 'verde', 'checkCirculo');
 
     const segModo = esOperador && !b ? h('fieldset', { class: 'card compacta' },
       h('legend', { class: 'sr-only' }, '¿Cómo lo registrás?'),
@@ -97,7 +96,7 @@
           nombre: 'modo',
           valor: modo,
           opciones: [
-            { valor: 'nuevo', texto: 'Ticket nuevo (queda Abierto)', icono: 'ticket' },
+            { valor: 'nuevo', texto: 'Ticket nuevo (queda En proceso)', icono: 'ticket' },
             { valor: 'resuelto', texto: 'Ya lo resolví (queda Cerrado)', icono: 'checkCirculo' },
           ],
           onChange: (v) => cambiarModo(v),
@@ -121,12 +120,12 @@
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el));
 
     const cardSolucion = h('section', { class: 'card acento-dorado pila', 'aria-labelledby': 'sec-solucion', hidden: modo !== 'resuelto' },
-      h('div', { class: 'fila-entre' }, h('h2', { id: 'sec-solucion' }, 'Solución aplicada'), ui.pendiente('A analizar con ORMEN')),
+      h('div', { class: 'fila-entre' }, h('h2', { id: 'sec-solucion' }, 'Solución aplicada')),
       basadaEn,
       ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion, ayuda: 'Todo ticket cerrado tiene su solución. Podés partir de una de las sugerencias de solución.' }),
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes de la solución ', h('span', { class: 'opcional' }, '(opcional)')), imgSolucion.el),
       h('div', { class: 'pila-sm' },
-        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('span', null, h('strong', null, 'Proponer esta solución para el catálogo'), h('br'), ayudaProponer))),
+        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('span', null, h('strong', null, 'Proponer como solución reutilizable'), h('br'), ayudaProponer))),
       bloqueProponer);
 
     const tresCx = esOperador ? h('section', { class: 'tres-cx', 'aria-labelledby': 'sec-3cx' },
@@ -241,8 +240,8 @@
       try {
         const t = S.crearTicket(leer(), u, opciones);
         ctx.marcarSucio(false);
-        const prop = modo === 'resuelto' && chkProponer.checked ? ' La solución quedó pendiente de aprobación.' : '';
-        ui.toast((modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado. Queda Abierto.') + prop);
+        const prop = modo === 'resuelto' && chkProponer.checked ? ' Se creó un borrador de solución para que lo revise un administrador.' : '';
+        ui.toast((modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado. Queda En proceso, a tu nombre.') + prop);
         App.router.ir('/tickets/' + t.numero);
       } catch (e) {
         if (e.campos) ui.mostrarErrores(form, e.campos, resumen);
@@ -289,8 +288,8 @@
           h('h2', { id: 'sec-como-sigue' }, 'Cómo sigue'),
           h('ol', { class: 'pila-sm', style: 'margin: 0; padding-left: 20px' },
             h('li', null, 'El ticket queda ', h('strong', null, 'Abierto'), ' y lo ve todo tu equipo de ', S.nombre('localidades', u.localidadId), '.'),
-            h('li', null, 'Mesa de ayuda lo atiende y responde en el ticket.'),
-            h('li', null, 'Si necesitan algo de ustedes, pasa a ', h('strong', null, 'Pendiente'), '.'),
+            h('li', null, 'Cuando alguien de Mesa de ayuda lo toma pasa a ', h('strong', null, 'En proceso'), ' y ves quién lo atiende.'),
+            h('li', null, 'Si hace falta, se eleva a otro grupo o persona; si depende de algo externo (por ejemplo, un dato de ustedes), queda ', h('strong', null, 'Bloqueado'), '.'),
             h('li', null, 'Cuando se resuelve, queda ', h('strong', null, 'Cerrado'), '.')),
           h('p', { class: 'chico suave' }, 'Cada vez que Mesa de ayuda lo actualiza te llega un aviso por correo (en la demo, en «Correos simulados»). ORMEN lo marcó como deseable.')));
 
