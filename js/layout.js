@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Marco de la aplicación: barra superior con la navegación de cada rol,
-   menú del usuario, franja de demo y pie.
+   Marco de la aplicación: barra superior con la navegación de cada rol
+   y menú del usuario.
    ========================================================================== */
 (function (App) {
   'use strict';
@@ -113,7 +113,6 @@
         h('div', { class: 'fuerte' }, u.nombre),
         h('div', { class: 'chico suave' }, App.ui.nombreRol(u) + ' · ' + detalle),
         h('div', { class: 'muy-chico suave' }, u.email)),
-      h('a', { href: '#/notas' }, App.ui.icono('info'), 'Notas de la demo'),
       h('a', { href: '#/correos' }, App.ui.icono('correo'), 'Correos simulados'),
       h('div', { class: 'sep', role: 'separator' }),
       h('button', { type: 'button', onClick: () => { App.auth.salir(); App.router.ir('/ingresar', { reemplazar: true }); } }, App.ui.icono('usuarios'), 'Cambiar de usuario'),
@@ -125,7 +124,7 @@
   }
 
   function barra(u, ruta) {
-    const interior = h('div', { class: 'contenedor barra-interior' }, marca(), h('span', { class: 'pill-demo' }, 'Demo'));
+    const interior = h('div', { class: 'contenedor barra-interior' }, marca(), estadoGuardado());
     if (!u) {
       interior.append(h('div', { class: 'barra-acciones' }, h('a', { class: 'btn btn-primario btn-sm', href: '#/ingresar' }, 'Ingresar')));
       return h('header', { class: 'barra' }, interior);
@@ -145,40 +144,29 @@
     return h('header', { class: 'barra' }, interior, movil);
   }
 
+  // Sólo se muestra algo cuando la base compartida no está al día.
   const TEXTOS_GUARDADO = {
-    local: ['Los cambios se guardan sólo en este navegador.', null],
-    conectando: ['Conectando con la base compartida…', 'refrescar'],
-    compartida: ['Base compartida: todos ven los mismos datos.', 'usuarios'],
-    guardando: ['Guardando en la base compartida…', 'refrescar'],
-    'sin-conexion': ['Sin conexión con la base compartida: los cambios quedan en este navegador hasta que vuelva.', 'alerta'],
+    conectando: ['Conectando…', 'refrescar'],
+    guardando: ['Guardando…', 'refrescar'],
+    'sin-conexion': ['Sin conexión', 'alerta'],
   };
 
-  /** Dónde se guardan los cambios; se actualiza solo cuando cambia la conexión. */
+  /** Estado de la conexión con la base compartida; se actualiza solo. */
   let quitarOyenteGuardado = null;
   function estadoGuardado() {
-    const el = h('span', { class: 'estado-guardado texto-largo', 'aria-live': 'polite' });
+    const el = h('span', { class: 'estado-guardado', 'aria-live': 'polite' });
     const pintar = (modo) => {
-      const [texto, ic] = TEXTOS_GUARDADO[modo] || TEXTOS_GUARDADO.local;
-      U.vaciar(el).append(ic ? App.ui.icono(ic, 'i-sm') : '', texto);
+      const par = TEXTOS_GUARDADO[modo];
+      U.vaciar(el);
+      el.hidden = !par;
+      if (par) el.append(App.ui.icono(par[1], 'i-sm'), par[0]);
+      el.title = modo === 'sin-conexion' ? 'Los cambios quedan en este navegador hasta que vuelva la conexión.' : '';
       el.dataset.modo = modo;
     };
     pintar(App.store.estadoRemoto());
     if (quitarOyenteGuardado) quitarOyenteGuardado();
     quitarOyenteGuardado = App.store.alCambiarRemoto(pintar);
     return el;
-  }
-
-  function franja() {
-    return h('div', { class: 'franja-demo' }, h('div', { class: 'contenedor' },
-      App.ui.icono('info', 'i-sm'),
-      h('span', null, h('strong', null, 'Demo con datos ficticios.'), ' ', estadoGuardado()),
-      h('a', { href: '#/notas' }, 'Qué está confirmado y qué falta definir')));
-  }
-
-  function pie() {
-    return h('footer', { class: 'pie' }, h('div', { class: 'contenedor' },
-      h('span', null, 'Sistema de tickets ORMEN · Demo navegable · Proyecto Integrador, Universidad ORT Uruguay, 2026'),
-      h('span', null, 'Datos ficticios · ', h('a', { href: '#/notas' }, 'Notas de la demo'))));
   }
 
   function montar(nodo, info) {
@@ -190,7 +178,7 @@
     }
     const main = h('main', { id: 'contenido', class: 'main', tabindex: '-1' }, h('div', { class: 'contenedor' }, nodo));
     const saltar = h('button', { type: 'button', class: 'skip-link', onClick: () => { const t = document.getElementById('titulo-pagina') || main; t.focus(); } }, 'Saltar al contenido');
-    app.append(saltar, barra(info.usuario, info.ctx.ruta), franja(), main, pie());
+    app.append(saltar, barra(info.usuario, info.ctx.ruta), main);
   }
 
   // Cerrar menús al hacer clic afuera o con Escape.

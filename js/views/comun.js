@@ -89,7 +89,7 @@
 
   /** Indicador numérico (inicio y estadísticas). Con href es un enlace. */
   function mosaico(op) {
-    return h(op.href ? 'a' : 'div', { class: 'mosaico', href: op.href || null },
+    return h(op.href ? 'a' : 'div', { class: 'mosaico', href: op.href || null, dataset: op.tono ? { tono: op.tono } : null },
       h('span', { class: 'etiqueta' }, op.icono && App.ui.icono(op.icono, 'i-sm'), op.etiqueta),
       h('span', { class: 'valor' }, U.formatoNumero(op.valor)),
       op.detalle && h('span', { class: 'detalle' }, op.detalle));

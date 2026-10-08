@@ -69,10 +69,7 @@
     guardarSesion(null);
   }
 
-  /**
-   * Permisos por rol. Lo marcado como supuesto está explicado en
-   * "Notas de la demo".
-   */
+  /** Permisos por rol. */
   const PERMISOS = {
     'tickets.crear': ['OPERADOR', 'CLIENTE'],
     'tickets.tratar': ['OPERADOR'],

@@ -57,9 +57,7 @@
 
     return h('div', { class: 'pila' },
       ui.cabecera({
-        antetitulo: 'Mesa de ayuda',
         titulo: 'Mis borradores',
-        subtitulo: 'Tickets a medio cargar. Sólo los ves vos: la localidad no los ve y no cuentan en estadísticas.',
         acciones: [h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket')],
       }),
       contenido);

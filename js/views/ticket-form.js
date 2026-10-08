@@ -33,7 +33,7 @@
       U.vaciar(selSub);
       const subs = selSistema.value ? S.subsistemasDe(selSistema.value, true) : [];
       selSub.append(h('option', { value: '' }, selSistema.value ? 'Sin subsistema' : 'Elegí primero el sistema'));
-      subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre + (x.ejemplo ? ' (ejemplo)' : ''))));
+      subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre)));
       selSub.disabled = !selSistema.value;
       selSub.value = valor && subs.some((x) => x.id === valor) ? valor : '';
     }
@@ -54,10 +54,9 @@
     const chkProponer = h('input', { type: 'checkbox', id: 't-proponer' });
     const inPropTitulo = h('input', { id: 't-prop-titulo', class: 'control', type: 'text', maxlength: '120' });
     const palabras = ui.entradaPalabras({ id: 't-prop-palabras', alCambiar: marcar });
-    const ayudaProponer = h('span', { class: 'ayuda' });
     const bloqueProponer = h('div', { class: 'pila', hidden: true },
       ui.campo({ nombre: 'propuestaTitulo', id: 't-prop-titulo', etiqueta: 'Título para el catálogo', requerido: true, control: inPropTitulo }),
-      ui.campo({ nombre: 'propuestaPalabras', id: 't-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el, ayuda: 'Se usan para sugerir la solución cuando aparecen en la descripción de un ticket nuevo.' }));
+      ui.campo({ nombre: 'propuestaPalabras', id: 't-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el }));
     chkProponer.addEventListener('change', () => {
       bloqueProponer.hidden = !chkProponer.checked;
       if (chkProponer.checked && !inPropTitulo.value.trim()) inPropTitulo.value = inTitulo.value.trim();
@@ -66,9 +65,6 @@
     function pintarBasadaEn() {
       U.vaciar(basadaEn);
       chkProponer.disabled = !!solucionCatalogoId;
-      ayudaProponer.textContent = solucionCatalogoId
-        ? 'La solución ya viene del catálogo, no hace falta proponerla.'
-        : 'Se crea un borrador de solución: un administrador lo revisa y lo aprueba.';
       if (solucionCatalogoId) {
         chkProponer.checked = false;
         bloqueProponer.hidden = true;
@@ -83,59 +79,45 @@
 
     const resumen = h('div');
     const tituloPagina = h('h1', { id: 'titulo-pagina', tabindex: '-1' });
-    const subtituloPagina = h('p', { class: 'subtitulo' });
 
     // ------------------------------------------------------- Secciones ---
-    const avisoResuelto = ui.aviso('Registro directo: si ya resolviste el problema durante la llamada, registrá el problema y la solución aplicada y el ticket queda directamente Cerrado.', 'verde', 'checkCirculo');
-
-    const segModo = esOperador && !b ? h('fieldset', { class: 'card compacta' },
+    const segModo = esOperador && !b ? h('fieldset', { class: 'modo-registro' },
       h('legend', { class: 'sr-only' }, '¿Cómo lo registrás?'),
-      h('div', { class: 'fila-entre' },
-        h('span', { class: 'fuerte' }, '¿Cómo lo registrás?'),
-        ui.segmentado({
-          nombre: 'modo',
-          valor: modo,
-          opciones: [
-            { valor: 'nuevo', texto: 'Ticket nuevo (queda En proceso)', icono: 'ticket' },
-            { valor: 'resuelto', texto: 'Ya lo resolví (queda Cerrado)', icono: 'checkCirculo' },
-          ],
-          onChange: (v) => cambiarModo(v),
-        }))) : null;
+      ui.segmentado({
+        nombre: 'modo',
+        valor: modo,
+        opciones: [
+          { valor: 'nuevo', texto: 'Ticket nuevo', icono: 'ticket' },
+          { valor: 'resuelto', texto: 'Ya lo resolví', icono: 'checkCirculo' },
+        ],
+        onChange: (v) => cambiarModo(v),
+      })) : null;
 
     const cardDatos = h('section', { class: 'card pila', 'aria-labelledby': 'sec-datos' },
       h('h2', { id: 'sec-datos' }, 'Datos del ticket'),
       h('div', { class: 'grid-2' },
-        ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: esOperador, control: selLocalidad, ayuda: esOperador ? 'La banca o agencia afectada. El ticket lo ve esa localidad.' : 'Tu usuario pertenece a esta localidad.' }),
+        ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: esOperador, control: selLocalidad }),
         ui.campo({ nombre: 'sistemaId', id: 't-sistema', etiqueta: 'Sistema o servicio afectado', requerido: true, control: selSistema })),
       h('div', { class: 'grid-2' },
-        ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub, ayuda: 'Si corresponde. Los marcados como «ejemplo» son de muestra: faltan los subsistemas reales de ORMEN.' }),
+        ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub }),
         esOperador ? ui.campo({ nombre: 'tipoProblemaId', id: 't-tipo-problema', etiqueta: 'Tipo de problema', opcional: true, control: selTipoProblema }) : h('div')),
       ui.grupo({ nombre: 'tipoSolicitudId', etiqueta: 'Tipo de solicitud', requerido: true, control: segTipo }),
-      ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri, extraEtiqueta: ui.pendiente('Valores de ejemplo', 'ORMEN todavía no definió los niveles de criticidad.') }));
+      ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri }));
 
     const cardProblema = h('section', { class: 'card pila', 'aria-labelledby': 'sec-problema' },
       h('h2', { id: 'sec-problema' }, 'Problema'),
       ui.campo({ nombre: 'titulo', id: 't-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
-      ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción del problema', requerido: true, control: inDesc, ayuda: 'Podés pegar capturas de pantalla directamente en este campo.' }),
+      ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción del problema', requerido: true, control: inDesc }),
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el));
 
     const cardSolucion = h('section', { class: 'card acento-dorado pila', 'aria-labelledby': 'sec-solucion', hidden: modo !== 'resuelto' },
       h('div', { class: 'fila-entre' }, h('h2', { id: 'sec-solucion' }, 'Solución aplicada')),
       basadaEn,
-      ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion, ayuda: 'Todo ticket cerrado tiene su solución. Podés partir de una de las sugerencias de solución.' }),
+      ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion }),
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes de la solución ', h('span', { class: 'opcional' }, '(opcional)')), imgSolucion.el),
       h('div', { class: 'pila-sm' },
-        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('span', null, h('strong', null, 'Proponer como solución reutilizable'), h('br'), ayudaProponer))),
+        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('strong', null, 'Proponer como solución reutilizable'))),
       bloqueProponer);
-
-    const tresCx = esOperador ? h('section', { class: 'tres-cx', 'aria-labelledby': 'sec-3cx' },
-      h('div', { class: 'fila-entre' },
-        h('h2', { id: 'sec-3cx', class: 'fila-sm', style: 'font-size: 16px' }, ui.icono('telefono'), 'Llamada telefónica (3CX)'),
-        ui.pendiente('Pendiente con ORMEN')),
-      h('p', { class: 'chico' }, 'La integración con la central 3CX está a la espera de la respuesta de ORMEN. Las dos alternativas que propuso el equipo; en ambas el operador confirma siempre el ticket:'),
-      h('div', { class: 'alternativas' },
-        h('div', { class: 'alt' }, h('strong', null, 'A · Transcripción como apoyo'), 'El sistema transcribe la llamada y el operador decide si adjunta la transcripción, separada de la descripción.'),
-        h('div', { class: 'alt' }, h('strong', null, 'B · Transcripción y descripción sugerida con IA'), 'Como A, y además una IA propone un borrador de descripción que el operador revisa y confirma.'))) : null;
 
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
     const btnBorrador = esOperador ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
@@ -146,7 +128,7 @@
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
-      resumen, segModo, cardDatos, cardProblema, cardSolucion, tresCx, acciones);
+      resumen, segModo, cardProblema, cardDatos, cardSolucion, acciones);
     form.addEventListener('input', marcar);
     form.addEventListener('change', marcar);
     form.addEventListener('submit', (e) => { e.preventDefault(); crear(); });
@@ -159,14 +141,14 @@
       const res = App.sugerencias.buscar({ texto, sistemaId: selSistema.value, subsistemaId: selSub.value, localidadId: esOperador ? selLocalidad.value : u.localidadId });
       U.vaciar(listaSug);
       if (!texto.trim() && !selSistema.value) {
-        estadoSug.textContent = 'Escribí el título o la descripción, o elegí el sistema, para ver soluciones parecidas.';
+        estadoSug.textContent = 'Escribí el problema para ver soluciones parecidas.';
         return;
       }
       if (!res.length) {
-        estadoSug.textContent = 'No se encontraron soluciones relevantes. Probá con otras palabras o revisá el sistema elegido.';
+        estadoSug.textContent = 'Sin coincidencias.';
         return;
       }
-      estadoSug.textContent = U.plural(res.length, 'sugerencia', 'sugerencias') + ', de mayor a menor puntaje.';
+      estadoSug.textContent = U.plural(res.length, 'sugerencia', 'sugerencias');
       res.forEach((r, i) => listaSug.append(ui.tarjetaSugerencia(r, { mejor: i === 0, alUsar: usarSolucion })));
     }
     const actualizarDiferido = U.debounce(actualizarSugerencias, 250);
@@ -198,15 +180,9 @@
     function cambiarModo(v) {
       modo = v;
       cardSolucion.hidden = modo !== 'resuelto';
-      avisoResuelto.hidden = modo !== 'resuelto';
       if (btnBorrador) btnBorrador.hidden = modo === 'resuelto';
       U.vaciar(btnCrear).append(ui.icono(modo === 'resuelto' ? 'checkCirculo' : 'enviar', 'i-sm'), modo === 'resuelto' ? 'Registrar ticket cerrado' : 'Crear ticket');
       tituloPagina.textContent = b ? 'Continuar borrador' : modo === 'resuelto' ? 'Registrar ticket resuelto' : 'Nuevo ticket';
-      subtituloPagina.textContent = b
-        ? 'Completá los datos que falten y creá el ticket. Hasta entonces sólo lo ves vos.'
-        : modo === 'resuelto'
-          ? 'Para cuando lo resolviste durante la llamada y lo documentás después.'
-          : esOperador ? 'Cargalo mientras hablás con la agencia: a medida que escribís aparecen soluciones parecidas.' : 'Contanos qué pasa y Mesa de ayuda lo va a atender.';
       ctx.titulo(tituloPagina.textContent);
       if (!b && esOperador) App.router.actualizarQuery(modo === 'resuelto' ? { modo: 'resuelto' } : {});
     }
@@ -254,7 +230,7 @@
         const nuevo = S.guardarBorrador(leer(), u, b ? b.id : null);
         ctx.marcarSucio(false);
         ui.limpiarErrores(form);
-        ui.toast('Borrador guardado. Sólo lo ves vos y no cuenta en estadísticas.');
+        ui.toast('Borrador guardado.');
         if (!b) App.router.ir('/borradores/' + nuevo.id, { reemplazar: true });
         else ctx.refrescar();
       } catch (e) {
@@ -278,32 +254,21 @@
     const lateral = esOperador
       ? h('aside', { class: 'panel-sugerencias', 'aria-labelledby': 'sec-sugerencias' },
         h('section', { class: 'card pila' },
-          h('div', { class: 'pila-sm' },
-            h('h2', { id: 'sec-sugerencias', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias de solución'),
-            h('p', { class: 'chico suave' }, 'Del catálogo y de tickets cerrados del mismo sistema o la misma localidad. Puntaje: mismo sistema y subsistema + palabras clave. ', ui.pendiente('Puntos provisorios', 'ORMEN explicó los criterios pero no cuántos puntos vale cada uno.')),
+          h('div', { class: 'fila-entre' },
+            h('h2', { id: 'sec-sugerencias', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias'),
             estadoSug),
           listaSug))
-      : h('aside', { class: 'pila' },
-        h('section', { class: 'card pila', 'aria-labelledby': 'sec-como-sigue' },
-          h('h2', { id: 'sec-como-sigue' }, 'Cómo sigue'),
-          h('ol', { class: 'pila-sm', style: 'margin: 0; padding-left: 20px' },
-            h('li', null, 'El ticket queda ', h('strong', null, 'Abierto'), ' y lo ve todo tu equipo de ', S.nombre('localidades', u.localidadId), '.'),
-            h('li', null, 'Cuando alguien de Mesa de ayuda lo toma pasa a ', h('strong', null, 'En proceso'), ' y ves quién lo atiende.'),
-            h('li', null, 'Si hace falta, se eleva a otro grupo o persona; si depende de algo externo (por ejemplo, un dato de ustedes), queda ', h('strong', null, 'Bloqueado'), '.'),
-            h('li', null, 'Cuando se resuelve, queda ', h('strong', null, 'Cerrado'), '.')),
-          h('p', { class: 'chico suave' }, 'Cada vez que Mesa de ayuda lo actualiza te llega un aviso por correo (en la demo, en «Correos simulados»). ORMEN lo marcó como deseable.')));
+      : null;
 
     const encabezado = h('div', { class: 'cabecera' },
       h('div', { class: 'titulos' },
         h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
           b ? [h('a', { href: '#/borradores' }, 'Borradores'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Continuar')]
             : [h('a', { href: '#/tickets' }, 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Nuevo')]),
-        h('span', { class: 'antetitulo' }, esOperador ? 'Mesa de ayuda' : S.nombre('localidades', u.localidadId)),
-        tituloPagina,
-        subtituloPagina));
+        tituloPagina),
+      b ? h('span', { class: 'badge contorno grande' }, ui.icono('borrador', 'i-sm'), 'Borrador · guardado ', ui.tiempo(b.actualizadoEn)) : null);
 
     cambiarModo(modo);
-    avisoResuelto.hidden = modo !== 'resuelto';
     if (pre.usar && modo === 'resuelto') {
       inSolucion.value = pre.usar.texto;
       solucionCatalogoId = pre.usar.solucionCatalogoId || null;
@@ -316,9 +281,7 @@
 
     const contenido = [
       encabezado,
-      b ? ui.aviso(['Borrador guardado ', ui.tiempo(b.actualizadoEn), '. Sólo lo ves vos, no es visible para la localidad y no cuenta en estadísticas.'], null, 'borrador') : null,
-      avisoResuelto,
-      h('div', { class: esOperador ? 'dos-columnas-anchas' : 'dos-columnas' }, form, lateral),
+      esOperador ? h('div', { class: 'dos-columnas-anchas' }, form, lateral) : h('div', { class: 'columna-unica' }, form),
     ];
     return h('div', { class: 'pila' }, contenido);
   }
@@ -362,7 +325,6 @@
       return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Borrador no encontrado'), App.ui.vacio({
         icono: 'borrador',
         titulo: 'No encontramos el borrador',
-        texto: 'Puede que ya lo hayas convertido en ticket o descartado. Los borradores sólo los ve quien los creó.',
         accion: h('a', { class: 'btn btn-primario', href: '#/borradores' }, 'Ver mis borradores'),
       }));
     }

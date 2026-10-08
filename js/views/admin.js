@@ -24,7 +24,7 @@
   function marco(ctx, op) {
     ctx.titulo(op.titulo);
     return h('div', { class: 'pila' },
-      App.ui.cabecera({ antetitulo: 'Administración', titulo: op.titulo, subtitulo: op.subtitulo, acciones: op.acciones }),
+      App.ui.cabecera({ titulo: op.titulo, acciones: op.acciones }),
       h('nav', { class: 'subnav', 'aria-label': 'Secciones de administración', style: 'margin-bottom: 4px' },
         SECCIONES.map((s) => h('a', { href: '#/admin/' + s.clave, 'aria-current': s.clave === op.seccion ? 'page' : null }, s.texto))),
       op.contenido);
@@ -129,15 +129,13 @@
       const inUsuario = h('input', { id: 'f-usuario', class: 'control', type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'none', value: existente ? existente.usuario : '' });
       const inEmail = h('input', { id: 'f-email', class: 'control', type: 'email', autocomplete: 'off', value: existente ? existente.email : '' });
       const inCargo = h('input', { id: 'f-cargo', class: 'control', type: 'text', autocomplete: 'off', value: existente ? existente.cargo || '' : '', placeholder: 'Por ejemplo: Encargado, Mesa de ayuda' });
-      const ayudaRol = h('span');
       const selLocF = ui.select({
         id: 'f-localidad', vacio: 'Elegí la localidad', valor: existente ? existente.localidadId : '',
         opciones: S.localidades().filter((l) => l.activa !== false || (existente && existente.localidadId === l.id)).map((l) => ({ valor: l.id, texto: l.nombre })),
       });
-      const campoLoc = ui.campo({ nombre: 'localidadId', id: 'f-localidad', etiqueta: 'Localidad', requerido: true, control: selLocF, ayuda: 'El cliente ve todos los tickets de su localidad.' });
+      const campoLoc = ui.campo({ nombre: 'localidadId', id: 'f-localidad', etiqueta: 'Localidad', requerido: true, control: selLocF });
       function alCambiarRol(v) {
         campoLoc.hidden = v !== 'CLIENTE';
-        ayudaRol.textContent = D.ROLES[v] ? D.ROLES[v].descripcion + (v === 'CLIENTE' ? '' : ' Ve todas las localidades (supuesto de la demo).') : '';
       }
       const segRol = ui.segmentado({
         nombre: 'f-rol', valor: existente ? existente.rol : '',
@@ -148,7 +146,6 @@
       let usuarioTocado = !!existente;
       inUsuario.addEventListener('input', () => { usuarioTocado = true; });
       inNombre.addEventListener('input', () => { if (!usuarioTocado) inUsuario.value = sugerirUsuario(inNombre.value); });
-      const esYo = existente && existente.id === u.id;
 
       modalFormulario({
         titulo: existente ? 'Editar usuario' : 'Nuevo usuario',
@@ -156,14 +153,11 @@
         campos: [
           ui.campo({ nombre: 'nombre', id: 'f-nombre', etiqueta: 'Nombre y apellido', requerido: true, control: inNombre }),
           h('div', { class: 'grid-2' },
-            ui.campo({ nombre: 'usuario', id: 'f-usuario', etiqueta: 'Usuario', requerido: true, control: inUsuario, ayuda: 'Para ingresar. Sin tildes ni espacios.' }),
-            ui.campo({ nombre: 'email', id: 'f-email', etiqueta: 'Correo', requerido: true, control: inEmail, ayuda: 'Ahí llegan los avisos de sus tickets.' })),
-          ui.grupo({ nombre: 'rol', etiqueta: 'Rol', requerido: true, control: segRol, ayuda: esYo ? 'No podés quitarte el rol de administrador.' : ayudaRol }),
+            ui.campo({ nombre: 'usuario', id: 'f-usuario', etiqueta: 'Usuario', requerido: true, control: inUsuario }),
+            ui.campo({ nombre: 'email', id: 'f-email', etiqueta: 'Correo', requerido: true, control: inEmail })),
+          ui.grupo({ nombre: 'rol', etiqueta: 'Rol', requerido: true, control: segRol }),
           campoLoc,
           ui.campo({ nombre: 'cargo', id: 'f-cargo', etiqueta: 'Cargo', opcional: true, control: inCargo }),
-          h('p', { class: 'chico suave' }, existente
-            ? 'La contraseña no se cambia desde acá. En la demo todos ingresan con «demo».'
-            : 'En la demo todos los usuarios ingresan con la contraseña «demo». Cómo se entregan las contraseñas en el sistema real depende del alcance del módulo de usuarios.'),
         ],
         guardar: () => {
           const datos = {
@@ -223,11 +217,8 @@
     return marco(ctx, {
       seccion: 'usuarios',
       titulo: 'Usuarios',
-      subtitulo: 'Usuarios propios del sistema: Mesa de ayuda, gestión de ORMEN y clientes de cada localidad.',
       acciones: [h('button', { type: 'button', class: 'btn btn-primario', onClick: () => abrirFormulario(null) }, ui.icono('usuarioMas', 'i-sm'), 'Nuevo usuario')],
       contenido: [
-        ui.avisoPendiente('Alcance del módulo de usuarios',
-          'ORMEN acepta trabajar con una lista de usuarios predefinida, pero falta consultar con el tutor si ORT espera un módulo completo de alta, baja y modificación. La integración con los usuarios de ORMEN y el SSO quedan para más adelante.'),
         h('section', { class: 'card sin-padding', 'aria-label': 'Listado de usuarios' },
           h('div', { style: 'padding: 18px 20px 6px' },
             h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de usuarios' },
@@ -258,7 +249,7 @@
         titulo: existente ? 'Renombrar localidad' : 'Nueva localidad',
         tamano: 'angosto',
         textoGuardar: existente ? 'Guardar' : 'Crear localidad',
-        campos: [ui.campo({ nombre: 'nombre', id: 'l-nombre', etiqueta: 'Nombre', requerido: true, control: inNombre, ayuda: existente ? 'Los tickets y usuarios de la localidad no cambian.' : 'Después podés crear sus usuarios cliente.' })],
+        campos: [ui.campo({ nombre: 'nombre', id: 'l-nombre', etiqueta: 'Nombre', requerido: true, control: inNombre })],
         guardar: () => {
           const l = S.guardarLocalidad({ nombre: inNombre.value }, u, existente ? existente.id : null);
           ui.toast(existente ? 'Localidad renombrada.' : 'Localidad «' + l.nombre + '» creada.');
@@ -301,7 +292,6 @@
     return marco(ctx, {
       seccion: 'localidades',
       titulo: 'Localidades',
-      subtitulo: 'Bancas y agencias. Cada usuario cliente pertenece a una localidad y ve todos sus tickets, sin jerarquías: Pando no ve los de Lagomar.',
       acciones: [h('button', { type: 'button', class: 'btn btn-primario', onClick: () => abrir(null) }, ui.icono('mas', 'i-sm'), 'Nueva localidad')],
       contenido: h('section', { class: 'card sin-padding', 'aria-label': 'Localidades' }, h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
         h('caption', { class: 'sr-only' }, 'Localidades'),
@@ -342,8 +332,7 @@
         tamano: 'angosto',
         textoGuardar: item ? 'Guardar' : 'Agregar',
         campos: [
-          ui.campo({ nombre: 'nombre', id: 'c-nombre', etiqueta: 'Nombre', requerido: true, control: inNombre,
-            ayuda: item && item.ejemplo ? 'Al renombrarlo deja de figurar como ejemplo.' : item ? 'Los tickets que ya lo usan muestran el nombre nuevo.' : null }),
+          ui.campo({ nombre: 'nombre', id: 'c-nombre', etiqueta: 'Nombre', requerido: true, control: inNombre }),
         ],
         guardar: () => {
           S.guardarItemCatalogo(tipo, { nombre: inNombre.value, sistemaId }, u, item ? item.id : null);
@@ -369,19 +358,17 @@
       const n = usos[tipo].get(item.id) || 0;
       return h('li', { class: ['item-catalogo', inactivo && 'inactivo'], title: U.plural(n, 'ticket', 'tickets') },
         h('span', { class: 'nombre-item' }, item.nombre),
-        item.ejemplo ? h('span', { class: 'badge ejemplo' }, 'ejemplo') : null,
         inactivo ? h('span', { class: 'sr-only' }, '(inactivo)') : null,
         h('button', { type: 'button', 'aria-label': 'Renombrar «' + item.nombre + '»', onClick: () => abrir(tipo, item, item.sistemaId) }, ui.icono('editar', 'i-sm')),
         h('button', { type: 'button', 'aria-label': (inactivo ? 'Activar' : 'Desactivar') + ' «' + item.nombre + '»', title: inactivo ? 'Activar' : 'Desactivar', onClick: () => alternar(tipo, item) },
           ui.icono(inactivo ? 'reabrir' : 'x', 'i-sm')));
     }
 
-    function tarjetaLista(tipo, titulo, origen, extra) {
+    function tarjetaLista(tipo, titulo) {
       return h('section', { class: 'card pila', 'aria-labelledby': 'cat-' + tipo },
         h('div', { class: 'fila-entre' },
           h('h2', { id: 'cat-' + tipo }, titulo),
           h('button', { type: 'button', class: 'btn btn-neutro btn-sm', onClick: () => abrir(tipo, null) }, ui.icono('mas', 'i-sm'), 'Agregar')),
-        h('p', { class: 'chico suave' }, origen, extra ? [' ', extra] : null),
         h('ul', { class: 'lista-items' }, S.catalogo(tipo).map((x) => pastilla(tipo, x))));
     }
 
@@ -406,20 +393,17 @@
     return marco(ctx, {
       seccion: 'catalogos',
       titulo: 'Catálogos',
-      subtitulo: 'Las opciones para clasificar los tickets. Desactivar algo no cambia los tickets que ya lo usan: sólo deja de aparecer en los nuevos.',
       contenido: [
         h('section', { class: 'card pila', 'aria-labelledby': 'cat-sistemas' },
           h('div', { class: 'fila-entre' },
             h('h2', { id: 'cat-sistemas' }, 'Sistemas y subsistemas'),
             h('button', { type: 'button', class: 'btn btn-neutro btn-sm', onClick: () => abrir('sistemas', null) }, ui.icono('mas', 'i-sm'), 'Nuevo sistema')),
-          h('p', { class: 'chico suave' }, 'Los sistemas son los del sistema actual (Atención a Clientes v1.0z). De los subsistemas, sólo «Otros» figura en el sistema actual; los marcados como «ejemplo» son de muestra. ',
-            ui.pendiente('Faltan los subsistemas reales', 'Reemplazar los de ejemplo por los subsistemas reales de ORMEN.')),
           arbol),
         h('div', { class: 'grid-3' },
-          tarjetaLista('tiposProblema', 'Tipos de problema', 'Los del sistema actual. Los indica Mesa de ayuda al tratar el ticket.'),
-          tarjetaLista('criticidades', 'Criticidades', 'Valores de muestra.', ui.pendiente('A definir', 'ORMEN no definió los niveles de criticidad.')),
-          tarjetaLista('tiposSolicitud', 'Tipos de solicitud', 'Los del documento «Contexto a desarrollar».')),
-        tarjetaLista('gruposSoporte', 'Grupos de soporte', 'A quién se puede elevar un ticket, además de las personas de Mesa de ayuda.', ui.pendiente('Grupos de ejemplo', 'ORMEN todavía no definió los grupos reales.')),
+          tarjetaLista('tiposProblema', 'Tipos de problema'),
+          tarjetaLista('criticidades', 'Criticidades'),
+          tarjetaLista('tiposSolicitud', 'Tipos de solicitud')),
+        tarjetaLista('gruposSoporte', 'Grupos de soporte'),
       ],
     });
   };
@@ -480,7 +464,7 @@
       resumen,
       h('div', { class: 'pila' }, CAMPOS_PARAMETROS.map((c) => {
         const [min, max] = S.LIMITES_PARAMETROS[c.k];
-        return ui.campo({ nombre: c.k, id: 'p-' + c.k, etiqueta: c.etiqueta, control: entradas[c.k], ayuda: c.origen + ' Entre ' + min + ' y ' + max + '.' });
+        return ui.campo({ nombre: c.k, id: 'p-' + c.k, etiqueta: c.etiqueta, control: entradas[c.k] });
       })),
       h('div', { class: 'fila' },
         h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('check', 'i-sm'), 'Guardar'),
@@ -510,15 +494,11 @@
     return marco(ctx, {
       seccion: 'parametros',
       titulo: 'Parámetros de sugerencias',
-      subtitulo: 'Cuántos puntos suma cada criterio al sugerir soluciones. Las sugerencias se ordenan de mayor a menor puntaje.',
       contenido: [
-        ui.avisoPendiente('Puntos provisorios',
-          'ORMEN explicó cómo calcula hoy las sugerencias (mismo sistema y subsistema, más las palabras clave del catálogo que aparecen en la descripción) pero no cuántos puntos vale cada criterio. Estos valores son de la demo.'),
         h('div', { class: 'dos-columnas-anchas' },
           form,
           h('aside', { class: 'pila' }, h('section', { class: 'card pila', 'aria-labelledby': 'sec-probar' },
             h('h2', { id: 'sec-probar' }, 'Probar con una descripción'),
-            h('p', { class: 'chico suave' }, 'Usa los valores del formulario, aunque todavía no los hayas guardado.'),
             ui.campo({ nombre: 'prueba', id: 'p-prueba', etiqueta: 'Descripción del problema', control: inPrueba }),
             ui.campo({ nombre: 'sis', id: 'p-sis', etiqueta: 'Sistema', opcional: true, control: selSis }),
             estado,

@@ -67,7 +67,6 @@
         lista.append(h('div', { class: 'card' }, ui.vacio({
           icono: 'correo',
           titulo: todos.length ? 'No hay correos con estos filtros' : 'Todavía no hay correos',
-          texto: esCliente ? 'Cuando Mesa de ayuda responda o cambie el estado de un ticket que creaste, el aviso aparece acá.' : null,
         })));
         return;
       }
@@ -88,16 +87,7 @@
 
     ctx.titulo(esCliente ? 'Mis avisos por correo' : 'Correos simulados');
     return h('div', { class: 'pila' },
-      ui.cabecera({
-        antetitulo: 'Demo',
-        titulo: esCliente ? 'Mis avisos por correo' : 'Correos simulados',
-        subtitulo: esCliente
-          ? 'Los avisos que te mandaría el sistema cuando Mesa de ayuda actualiza un ticket que creaste. En la demo no se envían.'
-          : 'Avisos al creador del ticket cuando Mesa de ayuda lo actualiza (comentario público, cambio de estado, cierre o reapertura). En la demo no se envían: quedan acá.',
-      }),
-      ui.aviso('ORMEN marcó el aviso por correo como deseable, no obligatorio. En la demo el correo sólo lleva información pública, nunca comentarios privados.', null, 'correo'),
-      esCliente ? null : ui.avisoPendiente('A definir',
-        'Si el ticket lo cargó Mesa de ayuda en nombre de la localidad, todavía no está definido a quién avisar: en la demo no se envía correo. WhatsApp y Slack estaban en las notas originales, pero ORMEN después sólo habló de correo.'),
+      ui.cabecera({ titulo: esCliente ? 'Mis avisos por correo' : 'Correos simulados' }),
       h('section', { class: 'card compacta', 'aria-label': 'Filtros' },
         h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de correos', style: 'margin-bottom: 0' },
           ui.campo({ nombre: 'q', id: 'c-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),

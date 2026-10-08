@@ -36,7 +36,7 @@
     if (!C.ORDENES[q.orden]) q.orden = DEFECTOS.orden;
 
     // ---- controles ----
-    const inBuscar = h('input', { id: 'f-buscar', class: 'control', type: 'search', placeholder: 'Número, título o descripción', value: q.q || '' });
+    const inBuscar = h('input', { id: 'f-buscar', class: 'control', type: 'search', placeholder: 'Buscar por número o texto', 'aria-label': 'Buscar tickets', value: q.q || '' });
     const opcionesAtiende = [{ valor: 'sin', texto: 'Sin asignar' }];
     if (u.rol === 'OPERADOR') opcionesAtiende.push({ valor: u.id, texto: 'Yo (' + u.nombre + ')' });
     S.operadores().filter((o) => o.id !== u.id).forEach((o) => opcionesAtiende.push({ valor: o.id, texto: o.nombre + (o.activo === false ? ' (usuario inactivo)' : '') }));
@@ -51,11 +51,21 @@
     };
     const ETIQUETAS = { loc: 'Localidad', sis: 'Sistema', cri: 'Criticidad', atiende: 'Atiende', tipo: 'Tipo de solicitud', orden: 'Orden' };
 
-    const filtros = h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de tickets' },
-      ui.campo({ nombre: 'q', id: 'f-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),
+    // Filtros secundarios: se despliegan con el botón "Filtros".
+    const filtros = h('div', { class: 'filtros', id: 'panel-filtros', role: 'search', 'aria-label': 'Filtros de tickets' },
       Object.keys(controles).filter((k) => controles[k]).map((k) => ui.campo({ nombre: k, id: controles[k].id, etiqueta: ETIQUETAS[k], control: controles[k] })));
+    const hayFiltros = () => ['loc', 'sis', 'cri', 'atiende', 'tipo'].some((k) => q[k] && controles[k]);
+    filtros.hidden = !hayFiltros();
+    const cuentaFiltros = h('span', { class: 'contador' });
+    const btnFiltros = h('button', { type: 'button', class: 'btn btn-neutro', 'aria-controls': 'panel-filtros', 'aria-expanded': String(!filtros.hidden), onClick: () => {
+      filtros.hidden = !filtros.hidden;
+      btnFiltros.setAttribute('aria-expanded', String(!filtros.hidden));
+    } }, ui.icono('filtro', 'i-sm'), 'Filtros', cuentaFiltros);
+    const barraLista = h('div', { class: 'barra-lista' },
+      h('div', { class: 'buscar-lista' }, ui.icono('buscar'), inBuscar),
+      btnFiltros);
 
-    const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'Estado' });
+    const chips = h('div', { class: 'chips pestanas-estado', role: 'group', 'aria-label': 'Estado' });
     const activos = h('div', { class: 'fila-sm' });
     const resultados = h('div');
     const textoTotal = h('p', { class: 'chico suave', 'aria-live': 'polite' });
@@ -104,6 +114,9 @@
       });
 
       // filtros activos
+      const nFiltros = ['loc', 'sis', 'cri', 'atiende', 'tipo'].filter((k) => q[k] && controles[k]).length;
+      cuentaFiltros.textContent = nFiltros || '';
+      cuentaFiltros.hidden = !nFiltros;
       U.vaciar(activos);
       const quitables = [];
       if (q.q) quitables.push(['q', 'Búsqueda: «' + q.q + '»']);
@@ -132,8 +145,7 @@
       if (!lista.length) {
         resultados.append(ui.vacio({
           icono: 'buscar',
-          titulo: 'No hay tickets con estos filtros',
-          texto: todos.length ? 'Probá con otro estado o quitá algún filtro.' : 'Todavía no hay tickets registrados.',
+          titulo: todos.length ? 'No hay tickets con estos filtros' : 'Todavía no hay tickets',
         }));
         return;
       }
@@ -152,16 +164,14 @@
     ctx.titulo(esCliente ? 'Tickets de ' + loc : 'Tickets');
     return h('div', { class: 'pila' },
       ui.cabecera({
-        antetitulo: esCliente ? loc : 'Todas las localidades',
         titulo: esCliente ? 'Tickets de ' + loc : 'Tickets',
-        subtitulo: esCliente ? 'Todos los tickets de tu localidad, también los que cargó Mesa de ayuda.' : 'Tickets de todas las bancas y agencias.',
-        acciones: App.auth.puede('tickets.crear', u) ? [h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket')] : null,
+        acciones: App.auth.puede('tickets.crear', u) ? [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket')] : null,
       }),
+      h('div', { class: 'fila-entre' }, chips, barraLista),
+      filtros,
+      activos,
       h('section', { class: 'card sin-padding', 'aria-label': 'Listado de tickets' },
-        h('div', { style: 'padding: 18px 20px 6px' },
-          filtros,
-          h('div', { class: 'fila-entre', style: 'margin-bottom: 12px' }, chips, textoTotal),
-          activos),
+        h('div', { class: 'card-cabeza' }, textoTotal),
         resultados));
   };
 })(window.App = window.App || {});

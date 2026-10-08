@@ -256,15 +256,9 @@
     return h('span', { class: 'badge sugerencia' }, icono('bombilla', 'i-sm'), 'Sugerencia de funcionalidad');
   }
 
-  /** Marca para lo que ORMEN todavía no definió o el equipo tiene que confirmar. */
-  function pendiente(texto, detalle) {
-    return h('span', { class: 'pendiente-def', title: detalle || null }, icono('pregunta', 'i-sm'), texto || 'Pendiente con ORMEN');
-  }
-
-  function avisoPendiente(titulo, texto, extra) {
-    return h('div', { class: 'aviso dorado' }, icono('pregunta'),
-      h('div', { class: 'pila-sm crecer' }, h('div', null, h('strong', null, titulo)), texto && h('div', null, texto), extra));
-  }
+  // Las marcas de pendientes con ORMEN no se muestran en la interfaz.
+  function pendiente() { return null; }
+  function avisoPendiente() { return null; }
 
   function aviso(texto, tipo, ic) {
     return h('div', { class: ['aviso', tipo] }, icono(ic || (tipo === 'rojo' ? 'alerta' : tipo === 'verde' ? 'checkCirculo' : 'info')), h('div', { class: 'crecer' }, texto));
@@ -283,7 +277,6 @@
     return h('div', { class: 'vacio' },
       h('div', { class: 'circulo' }, icono(op.icono || 'bandeja', 'i-lg')),
       h('h3', null, op.titulo),
-      op.texto && h('p', null, op.texto),
       op.accion);
   }
 
@@ -300,9 +293,7 @@
           i > 0 && icono('derecha', 'i-sm'),
           m.href ? h('a', { href: m.href }, m.texto) : h('span', { 'aria-current': 'page' }, m.texto),
         ])),
-        op.antetitulo && h('span', { class: ['antetitulo', op.antetituloDorado && 'dorado'] }, op.antetitulo),
-        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, op.titulo),
-        op.subtitulo && h('p', { class: 'subtitulo' }, op.subtitulo)),
+        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, op.titulo)),
       op.acciones && h('div', { class: 'acciones' }, op.acciones));
   }
 
@@ -312,29 +303,26 @@
     return [texto, requerido && h('span', { class: 'requerido', 'aria-hidden': 'true' }, '*'), opcional && h('span', { class: 'opcional' }, '(opcional)')];
   }
 
-  /** campo({ nombre, id, etiqueta, requerido, opcional, ayuda, control, extraEtiqueta, clase }) */
+  /** campo({ nombre, id, etiqueta, requerido, opcional, control, extraEtiqueta, clase }) */
   function campo(op) {
     const id = op.id || op.nombre;
-    const idAyuda = op.ayuda ? id + '-ayuda' : null;
     const idError = id + '-error';
     if (op.control && op.control.setAttribute) {
-      op.control.setAttribute('aria-describedby', [idAyuda, idError].filter(Boolean).join(' '));
+      op.control.setAttribute('aria-describedby', idError);
       if (op.requerido) op.control.setAttribute('aria-required', 'true');
     }
     return h('div', { class: ['campo', op.clase], dataset: { campo: op.nombre || id } },
       h('label', { for: id }, etiqueta(op.etiqueta, op.requerido, op.opcional), op.extraEtiqueta),
       op.control,
-      op.ayuda && h('div', { class: 'ayuda', id: idAyuda }, op.ayuda),
       h('div', { class: 'error-campo', id: idError, hidden: true }));
   }
 
   /** Grupo de opciones (radios) con fieldset y legend. */
   function grupo(op) {
     const idError = op.nombre + '-error';
-    return h('fieldset', { class: ['campo', op.clase], dataset: { campo: op.nombre }, 'aria-describedby': [op.ayuda ? op.nombre + '-ayuda' : null, idError].filter(Boolean).join(' ') },
+    return h('fieldset', { class: ['campo', op.clase], dataset: { campo: op.nombre }, 'aria-describedby': idError },
       h('legend', null, etiqueta(op.etiqueta, op.requerido, op.opcional), op.extraEtiqueta),
       op.control,
-      op.ayuda && h('div', { class: 'ayuda', id: op.nombre + '-ayuda' }, op.ayuda),
       h('div', { class: 'error-campo', id: idError, hidden: true }));
   }
 
@@ -512,7 +500,7 @@
     const miniaturas = h('div', { class: 'miniaturas' });
     const zona = h('div', { class: 'zona-imagenes', tabindex: '0', role: 'group', 'aria-label': (opciones.etiqueta || 'Imágenes') + '. Podés pegar una imagen con Control más V.' },
       icono('imagen'),
-      h('span', { class: 'crecer' }, opciones.texto || 'Arrastrá imágenes acá o pegalas con Ctrl+V' + (opciones.pegarEn && opciones.pegarEn.length ? ', también dentro del texto.' : '.')),
+      h('span', { class: 'crecer' }, opciones.texto || 'Arrastrá o pegá imágenes'),
       h('button', { type: 'button', class: 'btn btn-neutro btn-sm', onClick: () => input.click() }, icono('clip', 'i-sm'), 'Adjuntar imagen'),
       input,
       miniaturas);

@@ -25,6 +25,15 @@
       contenido);
   }
 
+  /** Saludo con la fecha; acción opcional a la derecha. */
+  function saludo(u, accion) {
+    return h('div', { class: 'cabecera saludo' },
+      h('div', { class: 'titulos' },
+        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Hola, ' + primerNombre(u)),
+        h('span', { class: 'suave' }, hoyLargo())),
+      accion ? h('div', { class: 'acciones' }, accion) : null);
+  }
+
   function verTodos(href, texto) {
     return h('a', { href, class: 'chico fuerte', style: 'color: var(--azul-texto)' }, texto || 'Ver todos', ' ', App.ui.icono('flechaDer', 'i-sm'));
   }
@@ -42,34 +51,22 @@
     const desde = Date.now() - 30 * U.DIA;
     const cerrados = tickets.filter((t) => t.estado === 'CERRADO').sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
     const cerrados30 = cerrados.filter((t) => new Date(t.cerradoEn).getTime() >= desde).length;
-    const bloqueados = enCurso.filter((t) => t.estado === 'BLOQUEADO');
     const elevados = enCurso.filter((t) => t.elevadoA).length;
 
     return h('div', { class: 'pila-lg' },
       ui.cabecera({
-        antetitulo: loc,
         titulo: 'Hola, ' + primerNombre(u),
-        subtitulo: 'Acá ves todos los tickets de ' + loc + ', también los que Mesa de ayuda cargó por ustedes.',
-        acciones: [
-          h('a', { class: 'btn btn-neutro', href: '#/tickets' }, ui.icono('lista', 'i-sm'), 'Ver todos los tickets'),
-          h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear un ticket'),
-        ],
+        acciones: [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear un ticket')],
       }),
-      bloqueados.length ? ui.aviso([
-        h('strong', null, bloqueados.length === 1 ? 'Hay un ticket Bloqueado' : 'Hay ' + bloqueados.length + ' tickets Bloqueados'),
-        ', es decir, en espera de un factor externo (por ejemplo, una respuesta de ustedes): ',
-        bloqueados.map((t, i) => [i ? ', ' : '', App.comun.enlaceTicket(t, '#' + t.numero + ' ' + t.titulo)]),
-        '.',
-      ], null, 'pausa') : null,
       h('div', { class: 'mosaicos' },
-        mosaico({ etiqueta: 'Abiertos', icono: 'circulo', valor: cuenta('ABIERTO'), detalle: 'Todavía no atendidos', href: '#/tickets?estado=ABIERTO' }),
-        mosaico({ etiqueta: 'En proceso', icono: 'reloj', valor: cuenta('EN_PROCESO'), detalle: elevados ? U.plural(elevados, 'elevado a otro nivel', 'elevados a otro nivel') : 'Mesa de ayuda los está atendiendo', href: '#/tickets?estado=EN_PROCESO' }),
-        mosaico({ etiqueta: 'Bloqueados', icono: 'pausa', valor: cuenta('BLOQUEADO'), detalle: 'Por un factor externo', href: '#/tickets?estado=BLOQUEADO' }),
-        mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados30, detalle: 'En los últimos 30 días', href: '#/tickets?estado=CERRADO' })),
+        mosaico({ etiqueta: 'Abiertos', icono: 'circulo', valor: cuenta('ABIERTO'), href: '#/tickets?estado=ABIERTO' }),
+        mosaico({ etiqueta: 'En proceso', icono: 'reloj', valor: cuenta('EN_PROCESO'), tono: 'dorado', detalle: elevados ? U.plural(elevados, 'elevado', 'elevados') : null, href: '#/tickets?estado=EN_PROCESO' }),
+        mosaico({ etiqueta: 'Bloqueados', icono: 'pausa', valor: cuenta('BLOQUEADO'), tono: 'rojo', href: '#/tickets?estado=BLOQUEADO' }),
+        mosaico({ etiqueta: 'Cerrados · 30 días', icono: 'check', valor: cerrados30, tono: 'verde', href: '#/tickets?estado=CERRADO' })),
       tarjeta('Tickets en curso',
         enCurso.length
           ? App.comun.tablaTickets(enCurso.slice(0, 8), ['numero', 'ticket', 'creador', 'estado', 'actualizado'], { caption: 'Tickets en curso de ' + loc })
-          : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets en curso', texto: 'Cuando creen un ticket va a aparecer acá hasta que se cierre.' }),
+          : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets en curso' }),
         enCurso.length > 8 ? verTodos('#/tickets', 'Ver los ' + enCurso.length) : null),
       tarjeta('Cerrados recientemente',
         cerrados.length
@@ -99,7 +96,7 @@
       } catch (e) { ui.mostrarError(e); }
     }
 
-    const buscador = h('input', { type: 'search', id: 'buscar-solucion', placeholder: 'Describí el problema para buscar una solución (por ejemplo: la impresora no imprime)', 'aria-label': 'Describí el problema para buscar una solución' });
+    const buscador = h('input', { type: 'search', id: 'buscar-solucion', placeholder: 'Buscar una solución: «la impresora no imprime»', 'aria-label': 'Describí el problema para buscar una solución' });
     const formBuscar = h('form', { class: 'buscador-rapido', role: 'search' },
       ui.icono('buscar'),
       buscador,
@@ -110,36 +107,34 @@
     });
 
     return h('div', { class: 'pila-lg' },
-      ui.cabecera({ antetitulo: 'Mesa de ayuda', titulo: 'Hola, ' + primerNombre(u), subtitulo: hoyLargo() }),
+      saludo(u),
       h('div', { class: 'puertas' },
         h('a', { class: 'puerta azul', href: '#/tickets/nuevo' },
-          h('div', { class: 'cabeza' }, h('span', { class: 'icono-caja' }, ui.icono('ticket', 'i-lg')), h('span', { class: 'eyebrow' }, 'Atención')),
-          h('h2', null, 'Quiero crear un ticket'),
-          h('p', null, 'Cargá el problema mientras hablás con la agencia. A medida que escribís aparecen soluciones parecidas.'),
-          h('div', { class: 'pie-puerta' }, h('span'), h('span', { class: 'ir' }, 'Crear ticket', ui.icono('flechaDer', 'i-sm')))),
+          h('span', { class: 'icono-caja' }, ui.icono('ticket')),
+          h('span', { class: 'textos' }, h('span', { class: 'eyebrow' }, 'Queda en proceso'), h('h2', null, 'Crear ticket')),
+          h('span', { class: 'ir', 'aria-hidden': 'true' }, ui.icono('flechaDer'))),
         h('a', { class: 'puerta dorada', href: '#/tickets/nuevo?modo=resuelto' },
-          h('div', { class: 'cabeza' }, h('span', { class: 'icono-caja' }, ui.icono('checkCirculo', 'i-lg')), h('span', { class: 'eyebrow' }, 'Ya resuelto')),
-          h('h2', null, 'Ya lo resolví'),
-          h('p', null, 'Registrá un ticket que resolviste durante la llamada, con la solución aplicada.'),
-          h('div', { class: 'pie-puerta' }, h('span'), h('span', { class: 'ir' }, 'Registrar', ui.icono('flechaDer', 'i-sm'))))),
+          h('span', { class: 'icono-caja' }, ui.icono('checkCirculo')),
+          h('span', { class: 'textos' }, h('span', { class: 'eyebrow' }, 'Queda cerrado'), h('h2', null, 'Ya lo resolví')),
+          h('span', { class: 'ir', 'aria-hidden': 'true' }, ui.icono('flechaDer')))),
       formBuscar,
       h('div', { class: 'mosaicos' },
-        mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar.length, detalle: 'Tickets en curso que nadie tomó', href: '#/tickets?atiende=sin' }),
-        mosaico({ etiqueta: 'Mis tickets en curso', icono: 'usuario', valor: mios.length, detalle: U.plural(misBloqueados, 'bloqueado', 'bloqueados'), href: '#/tickets?atiende=' + u.id }),
-        mosaico({ etiqueta: 'Elevados en curso', icono: 'elevar', valor: elevados, detalle: 'De todo el equipo', href: '#/tickets?estado=elevados' }),
-        mosaico({ etiqueta: 'Mis borradores', icono: 'borrador', valor: borradores.length, detalle: 'Sólo los ves vos', href: '#/borradores' })),
+        mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar.length, tono: 'dorado', href: '#/tickets?atiende=sin' }),
+        mosaico({ etiqueta: 'Mis tickets', icono: 'usuario', valor: mios.length, detalle: misBloqueados ? U.plural(misBloqueados, 'bloqueado', 'bloqueados') : null, href: '#/tickets?atiende=' + u.id }),
+        mosaico({ etiqueta: 'Elevados', icono: 'elevar', valor: elevados, tono: 'naranja', href: '#/tickets?estado=elevados' }),
+        mosaico({ etiqueta: 'Mis borradores', icono: 'borrador', valor: borradores.length, tono: 'gris', href: '#/borradores' })),
       tarjeta('Sin asignar',
         sinAsignar.length
           ? App.comun.tablaTickets(sinAsignar.slice(0, 6), ['numero', 'ticket', 'localidad', 'criticidad', 'creado', 'accion'], {
             caption: 'Tickets sin asignar',
             accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
           })
-          : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets sin asignar', texto: 'Todos los tickets en curso tienen a alguien de Mesa de ayuda.' }),
+          : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets sin asignar' }),
         sinAsignar.length > 6 ? verTodos('#/tickets?atiende=sin', 'Ver los ' + sinAsignar.length) : null),
       tarjeta('Mis tickets en curso',
         mios.length
           ? App.comun.tablaTickets(mios.slice(0, 8), ['numero', 'ticket', 'localidad', 'estado', 'actualizado'], { caption: 'Mis tickets en curso' })
-          : ui.vacio({ titulo: 'No tenés tickets en curso', texto: 'Tomá uno de la lista de sin asignar o creá un ticket nuevo.' }),
+          : ui.vacio({ titulo: 'No tenés tickets en curso' }),
         mios.length > 8 ? verTodos('#/tickets?atiende=' + u.id, 'Ver los ' + mios.length) : null));
   }
 
@@ -174,26 +169,21 @@
         return h('a', { class: 'card compacta tarjeta-solucion', href: '#/soluciones/' + s.id },
           h('div', { class: 'fila-entre' }, h('h3', null, s.titulo), ui.badgeSolucion(s.estado)),
           h('div', { class: 'clasif' }, ui.clasificacion(s.sistemaId, s.subsistemaId)),
-          h('div', { class: 'chico suave' }, 'Propuesta por ', autor ? autor.nombre : '—', ' · ', U.relativo(s.creadaEn), origen ? ' · desde el ticket #' + origen.numero : ' · sin ticket de origen'));
+          h('div', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.relativo(s.creadaEn), origen ? ' · ticket #' + origen.numero : ''));
       }))
-      : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay borradores de solución por revisar' });
+      : ui.vacio({ icono: 'checkCirculo', titulo: 'Nada por revisar' });
 
     return h('div', { class: 'pila-lg' },
-      ui.cabecera({
-        antetitulo: 'Gestión de ORMEN',
-        titulo: 'Hola, ' + primerNombre(u),
-        subtitulo: hoyLargo(),
-        acciones: [h('a', { class: 'btn btn-neutro', href: '#/estadisticas' }, ui.icono('grafico', 'i-sm'), 'Estadísticas')],
-      }),
+      saludo(u, h('a', { class: 'btn btn-neutro', href: '#/estadisticas' }, ui.icono('grafico', 'i-sm'), 'Estadísticas')),
       h('div', { class: 'mosaicos' },
-        mosaico({ etiqueta: 'Tickets en curso', icono: 'lista', valor: enCurso.length, detalle: 'Abiertos, en proceso y bloqueados', href: '#/tickets' }),
-        mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar, detalle: 'En curso, sin operador', href: '#/tickets?atiende=sin' }),
-        mosaico({ etiqueta: 'Elevados en curso', icono: 'elevar', valor: elevados.length, detalle: 'Derivados a otro grupo o persona', href: '#/tickets?estado=elevados' }),
-        mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados30, detalle: 'En los últimos 30 días', href: '#/tickets?estado=CERRADO' }),
-        mosaico({ etiqueta: 'Soluciones por aprobar', icono: 'libro', valor: porAprobar.length, detalle: 'Borradores de Mesa de ayuda', href: '#/soluciones?estado=PENDIENTE' })),
+        mosaico({ etiqueta: 'En curso', icono: 'lista', valor: enCurso.length, href: '#/tickets' }),
+        mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar, tono: 'dorado', href: '#/tickets?atiende=sin' }),
+        mosaico({ etiqueta: 'Elevados', icono: 'elevar', valor: elevados.length, tono: 'naranja', href: '#/tickets?estado=elevados' }),
+        mosaico({ etiqueta: 'Cerrados · 30 días', icono: 'check', valor: cerrados30, tono: 'verde', href: '#/tickets?estado=CERRADO' }),
+        mosaico({ etiqueta: 'Por aprobar', icono: 'libro', valor: porAprobar.length, tono: 'tinta', href: '#/soluciones?estado=PENDIENTE' })),
       h('div', { class: 'dos-columnas' },
         h('div', { class: 'pila-lg' },
-          tarjeta('Borradores de solución por revisar', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
+          tarjeta('Soluciones por aprobar', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
           tarjeta('Tickets elevados en curso',
             elevados.length
               ? App.comun.tablaTickets(elevados.slice(0, 6), ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'actualizado'], { caption: 'Tickets elevados en curso' })
@@ -202,21 +192,18 @@
         h('div', { class: 'pila-lg' },
           App.charts.tarjeta({
             titulo: 'Tickets registrados por mes',
-            descripcion: 'Últimos 6 meses, todas las localidades',
+            descripcion: 'Últimos 6 meses',
             grafico: App.charts.columnas({ titulo: 'Tickets registrados por mes', datos: meses }),
             tabla: { columnas: ['Mes', 'Tickets'], filas: meses.map((m) => [m.etiquetaLarga, U.formatoNumero(m.valor)]) },
             pie: verTodos('#/estadisticas', 'Ver todas las estadísticas'),
           }),
-          tarjeta('Administración', h('div', { class: 'pila-sm' }, [
-            ['#/admin/usuarios', 'usuarios', 'Usuarios', 'Altas, roles y localidad de cada usuario'],
-            ['#/admin/localidades', 'pin', 'Localidades', 'Bancas y agencias que usan el sistema'],
-            ['#/admin/catalogos', 'capas', 'Catálogos', 'Sistemas, subsistemas, tipos y criticidades'],
-            ['#/admin/parametros', 'ajustes', 'Parámetros de sugerencias', 'Puntos de cada criterio (provisorios)'],
-            ['#/auditoria', 'escudo', 'Auditoría', 'Quién hizo qué y cuándo'],
-          ].map(([href, ic, t, d]) => h('a', { href, class: 'fila', style: 'flex-wrap: nowrap; padding: 8px 4px; color: var(--texto)' },
-            h('span', { class: 'avatar sm', style: 'background: var(--azul-claro); color: var(--azul-texto)' }, ui.icono(ic, 'i-sm')),
-            h('span', { class: 'crecer' }, h('span', { class: 'fuerte', style: 'display: block' }, t), h('span', { class: 'chico suave' }, d)),
-            ui.icono('derecha', 'i-sm'))))))));
+          tarjeta('Administración', h('div', { class: 'accesos' }, [
+            ['#/admin/usuarios', 'usuarios', 'Usuarios'],
+            ['#/admin/localidades', 'pin', 'Localidades'],
+            ['#/admin/catalogos', 'capas', 'Catálogos'],
+            ['#/admin/parametros', 'ajustes', 'Sugerencias'],
+            ['#/auditoria', 'escudo', 'Auditoría'],
+          ].map(([href, ic, t]) => h('a', { href, class: 'acceso' }, ui.icono(ic), h('span', null, t))))))));
   }
 
   App.vistas.inicio = function (ctx) {

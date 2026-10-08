@@ -5,7 +5,6 @@ Demo de frontend del sistema de tickets de Mesa de ayuda de ORMEN (Proyecto Inte
 - Sin dependencias en el navegador: HTML, CSS y JavaScript propios. No usa frameworks, CDN ni paso de compilación.
 - Abierta con doble clic o con un servidor local, los datos viven en el navegador de cada persona (`localStorage`).
 - Publicada en Vercel con un store de **Vercel Blob** conectado, la base es **compartida**: todas las personas ven los mismos tickets (ver [Base compartida en Vercel](#base-compartida-en-vercel)). Es la única pieza de servidor: `api/db.js`.
-- Lo confirmado por ORMEN, lo pendiente y los supuestos del equipo están en la página **Notas de la demo** (`#/notas`, también accesible sin ingresar). En las pantallas, lo pendiente lleva una marca dorada.
 
 ## Cómo abrirla
 
@@ -87,7 +86,6 @@ Cómo funciona:
 | Cálculo de las sugerencias de solución | `js/sugerencias.js` |
 | Pantallas (una por archivo) | `js/views/` |
 | Rutas y qué rol ve cada pantalla | `js/app.js` |
-| Confirmado, pendiente y supuestos | `js/views/notas.js` |
 
 Después de cambiar `catalogos.js` o `semilla.js`, subí el número de `VERSION` en `js/data/semilla.js`: así cada navegador descarta los datos viejos y genera los nuevos. Otra opción es usar *Restablecer datos de la demo*.
 

@@ -128,13 +128,7 @@
     pintar();
 
     return h('div', { class: 'pila' },
-      ui.cabecera({
-        antetitulo: 'Gestión de ORMEN',
-        titulo: 'Auditoría',
-        subtitulo: 'Quién hizo qué y cuándo: ingresos, cambios en tickets, soluciones, usuarios y catálogos, y accesos denegados.',
-      }),
-      ui.avisoPendiente('Definición pendiente con ORMEN',
-        'Falta confirmar si la auditoría es un registro propio del sistema o si se integra con la que ya tiene ORMEN. En la demo es un registro propio con usuario, fecha, operación y ticket afectado.'),
+      ui.cabecera({ titulo: 'Auditoría' }),
       h('section', { class: 'card sin-padding', 'aria-label': 'Registro de auditoría' },
         h('div', { style: 'padding: 18px 20px 6px' },
           h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de auditoría' },

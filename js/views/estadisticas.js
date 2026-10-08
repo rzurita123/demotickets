@@ -120,7 +120,7 @@
       U.vaciar(ctrl.sub);
       const subs = q.sis ? S.subsistemasDe(q.sis) : [];
       ctrl.sub.append(h('option', { value: '' }, q.sis ? 'Todos' : 'Elegí primero el sistema'));
-      subs.forEach((x) => ctrl.sub.append(h('option', { value: x.id }, x.nombre + (x.ejemplo ? ' (ejemplo)' : ''))));
+      subs.forEach((x) => ctrl.sub.append(h('option', { value: x.id }, x.nombre)));
       ctrl.sub.disabled = !q.sis;
       ctrl.sub.value = q.sub && subs.some((x) => x.id === q.sub) ? q.sub : '';
     }
@@ -252,7 +252,7 @@
       const titulo = T.grano === 'dia' ? 'Tickets registrados por día' : 'Tickets registrados por mes';
       return App.charts.tarjeta({
         titulo,
-        descripcion: periodo.texto + (esCliente ? ' · ' + loc : '') + '. Hacé clic en una columna para ver sólo ese ' + (T.grano === 'dia' ? 'día' : 'mes') + '.',
+        descripcion: periodo.texto,
         grafico: App.charts.columnas({ titulo, datos, seleccion: q.tramo || null, alSeleccionar: (v) => cambiar('tramo', v) }),
         tabla: { columnas: [T.grano === 'dia' ? 'Día' : 'Mes', 'Tickets'], filas: datos.map((d) => [d.etiquetaLarga, U.formatoNumero(d.valor)]) },
         vacio: lista.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets registrados en este período.'),
@@ -325,21 +325,17 @@
       const filtrados = filtrar(enPeriodo);
       const sub = (excepto) => filtrar(enPeriodo, excepto);
 
-      const subsistemasEjemplo = ui.pendiente('Subsistemas de ejemplo', 'Faltan los subsistemas reales de ORMEN; en la demo sólo «Otros» es real.');
       const tarjetas = [
         tarjetaBarras({
           clave: 'estado', titulo: 'Estado actual', columna: 'Estado',
-          descripcion: 'Seguimiento: cómo están hoy los tickets del período.',
           datos: contar('estado', sub(['estado']), { categorias: D.ESTADOS_REGISTRADOS }),
         }),
         tarjetaBarras({
           clave: 'tipo', titulo: 'Por tipo de solicitud', columna: 'Tipo de solicitud',
-          descripcion: 'Solicitud de atención o sugerencia de funcionalidad.',
           datos: contar('tipo', sub(['tipo']), { categorias: S.catalogo('tiposSolicitud').map((x) => x.id) }),
         }),
         tarjetaBarras({
           clave: 'sis', titulo: 'Por sistema', columna: 'Sistema',
-          descripcion: 'Sistema o servicio afectado.',
           datos: contar('sis', sub(['sis'])),
         }),
         (() => {
@@ -349,7 +345,7 @@
             clave: 'sub',
             titulo: q.sis ? 'Subsistemas de ' + S.nombre('sistemas', q.sis) : 'Por subsistema',
             columna: 'Subsistema',
-            descripcion: [q.sis ? 'Todos los subsistemas del sistema elegido. ' : 'Los 10 con más tickets. Elegí un sistema para ver todos los suyos. ', subsistemasEjemplo],
+            descripcion: q.sis ? null : 'Top 10',
             datos,
             total: lista.length,
             rotulosLargos: !q.sis,
@@ -361,22 +357,18 @@
         tarjetas.push(
           tarjetaBarras({
             clave: 'tp', titulo: 'Por tipo de problema', columna: 'Tipo de problema',
-            descripcion: 'Lo indica Mesa de ayuda al tratar el ticket.',
             datos: contar('tp', sub(['tp']), { categorias: S.catalogo('tiposProblema').map((x) => x.id) }),
           }),
           tarjetaBarras({
-            clave: 'op', titulo: 'Por operador de Mesa de ayuda', columna: 'Atiende',
-            descripcion: 'Quién atiende cada ticket.',
+            clave: 'op', titulo: 'Por operador', columna: 'Atiende',
             datos: contar('op', sub(['op'])),
           }),
           tarjetaBarras({
             clave: 'loc', titulo: 'Por localidad', columna: 'Localidad',
-            descripcion: 'Banca o agencia del ticket.',
             datos: contar('loc', sub(['loc'])),
           }),
           tarjetaBarras({
             clave: 'sol', titulo: 'Soluciones del catálogo más aplicadas', columna: 'Solución', columnaPorcentaje: '% de estos cierres',
-            descripcion: 'Tickets cerrados con una solución del catálogo.',
             datos: contar('sol', cerradosCatalogo, { limite: 8 }),
             total: cerradosCatalogo.length,
             rotulosLargos: true,
@@ -396,11 +388,7 @@
     ctx.titulo(esCliente ? 'Estadísticas de ' + loc : 'Estadísticas');
     return h('div', { class: 'pila-lg' },
       ui.cabecera({
-        antetitulo: esCliente ? loc : 'Gestión de ORMEN',
         titulo: esCliente ? 'Estadísticas de ' + loc : 'Estadísticas',
-        subtitulo: (esCliente
-          ? 'Los tickets de tu localidad, también los que cargó Mesa de ayuda.'
-          : 'Tickets de todas las localidades.') + ' Los borradores no cuentan. Hacé clic en una barra para filtrar el resto de la página.',
       }),
       h('section', { class: 'card pila-sm', 'aria-label': 'Filtros' }, filtros, activos),
       cuerpo);

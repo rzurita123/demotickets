@@ -19,9 +19,6 @@
     { estado: 'RECHAZADA', texto: 'Rechazadas' },
   ];
 
-  function avisoRechazadas() {
-    return App.ui.avisoPendiente('¿Qué pasa con una solución rechazada?', 'ORMEN todavía no definió si se corrige y se vuelve a proponer, si se archiva o si se borra. En la demo queda guardada con el motivo y no se sugiere.');
-  }
 
   function origenTexto(s) {
     const S = App.store;
@@ -85,12 +82,6 @@
         pestanas.append(h('button', { type: 'button', role: 'tab', 'aria-selected': String(q.estado === p.estado), 'aria-controls': 'panel-soluciones', onClick: () => cambiar('estado', p.estado) }, p.texto + ' (' + n + ')'));
       });
       U.vaciar(resultados);
-      if (q.estado === 'PENDIENTE') {
-        resultados.append(ui.aviso(esAdmin
-          ? 'Borradores que propuso Mesa de ayuda desde un ticket cerrado (o cargándolos a mano). Revisalos, editalos si hace falta y aprobalos: recién ahí se sugieren.'
-          : 'Borradores que esperan la revisión de un administrador. Mientras tanto no se sugieren.', null, 'borrador'));
-      }
-      if (q.estado === 'RECHAZADA') resultados.append(avisoRechazadas());
       const orden = q.orden || 'usos';
       const lista = filtrar().sort((a, b) =>
         orden === 'titulo' ? a.titulo.localeCompare(b.titulo, 'es')
@@ -100,7 +91,6 @@
         resultados.append(h('div', { class: 'card' }, ui.vacio({
           icono: 'libro',
           titulo: q.estado === 'PENDIENTE' ? 'No hay borradores por revisar' : q.estado === 'RECHAZADA' ? 'No hay soluciones rechazadas' : 'No hay soluciones con estos filtros',
-          texto: q.q || q.sis || q.origen ? 'Probá quitando algún filtro.' : null,
         })));
         return;
       }
@@ -124,11 +114,9 @@
 
     return h('div', { class: 'pila' },
       ui.cabecera({
-        antetitulo: 'Para Mesa de ayuda',
         titulo: 'Soluciones',
-        subtitulo: 'Base de conocimiento: soluciones depuradas, reutilizables y aprobadas por un administrador, que el sistema sugiere al cargar un ticket. Un ticket cerrado no es por sí solo una solución: desde el ticket se propone un borrador, que el administrador revisa y aprueba.',
         acciones: [
-          h('a', { class: 'btn btn-neutro', href: '#/soluciones/buscar' }, ui.icono('buscar', 'i-sm'), 'Buscar por descripción'),
+          h('a', { class: 'btn btn-neutro', href: '#/soluciones/buscar' }, ui.icono('buscar', 'i-sm'), 'Buscar por problema'),
           h('a', { class: 'btn btn-primario', href: '#/soluciones/nueva' }, ui.icono('mas', 'i-sm'), esAdmin ? 'Cargar solución' : 'Proponer solución'),
         ],
       }),
@@ -173,8 +161,7 @@
     function rechazar() {
       const motivo = h('textarea', { id: 'rechazo-motivo', class: 'control', rows: '3', placeholder: 'Por ejemplo: es demasiado general, conviene una solución por síntoma.' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        ui.campo({ nombre: 'motivo', id: 'rechazo-motivo', etiqueta: 'Motivo del rechazo', requerido: true, control: motivo, ayuda: 'Lo ve quien la propuso.' }),
-        avisoRechazadas());
+        ui.campo({ nombre: 'motivo', id: 'rechazo-motivo', etiqueta: 'Motivo del rechazo', requerido: true, control: motivo }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         titulo: 'Rechazar la solución',
@@ -205,13 +192,12 @@
         ui.galeria(s.adjuntos, { grande: true })),
       h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-claves' },
         h('h2', { id: 'sec-claves' }, 'Palabras clave'),
-        h('p', { class: 'chico suave' }, 'Cuando aparecen en la descripción de un ticket, suman puntos para sugerir esta solución.'),
         h('div', { class: 'chips' }, s.palabrasClave.map((p) => h('span', { class: 'palabra-clave' }, p)))),
       h('section', { class: 'card sin-padding', 'aria-labelledby': 'sec-usos' },
         h('div', { class: 'card-titulo', style: 'padding: 18px 22px 0' }, h('h2', { id: 'sec-usos' }, 'Tickets que la usaron'), h('span', { class: 'suave' }, U.plural(usos.length, 'ticket', 'tickets'))),
         usos.length
           ? App.comun.tablaTickets(usos.slice(0, 10), ['numero', 'ticket', 'localidad', 'cerrado'], { caption: 'Tickets cerrados con esta solución' })
-          : h('p', { class: 'chico suave', style: 'padding: 0 22px 18px' }, s.estado === 'APROBADA' ? 'Todavía ningún ticket se cerró con esta solución.' : 'Se va a poder usar cuando esté aprobada.')));
+          : h('p', { class: 'chico suave', style: 'padding: 0 22px 18px' }, 'Sin usos todavía.')));
 
     // Lateral
     const lateral = h('aside', { class: 'pila' });
@@ -219,14 +205,14 @@
       lateral.append(esAdmin
         ? h('section', { class: 'card acento-dorado pila', 'aria-labelledby': 'sec-revision' },
           h('h2', { id: 'sec-revision' }, 'Revisión'),
-          h('p', { class: 'chico' }, 'Borrador de ', h('strong', null, autor ? autor.nombre : '—'), ' ', U.relativo(s.creadaEn), '. Revisá que sea general y reutilizable; podés editarlo antes de aprobar. Una vez aprobada, el sistema la empieza a sugerir.'),
+          h('p', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.relativo(s.creadaEn)),
           h('div', { class: 'acciones-ticket' },
             h('button', { type: 'button', class: 'btn btn-exito', onClick: aprobar }, ui.icono('checkCirculo', 'i-sm'), 'Aprobar'),
             h('a', { class: 'btn btn-neutro', href: '#/soluciones/' + s.id + '/editar?aprobar=1' }, ui.icono('editar', 'i-sm'), 'Editar y aprobar'),
             h('button', { type: 'button', class: 'btn btn-peligro', onClick: rechazar }, ui.icono('xCirculo', 'i-sm'), 'Rechazar')))
-        : ui.aviso('Borrador por revisar: un administrador lo tiene que revisar y aprobar. Mientras tanto no se sugiere.', null, 'borrador'));
+        : ui.aviso('Esperando aprobación.', null, 'borrador'));
     } else if (s.estado === 'RECHAZADA') {
-      lateral.append(ui.aviso([h('strong', null, 'Rechazada'), ' por ', revisor ? revisor.nombre : '—', ' el ', U.fecha(s.revisadaEn), '. Motivo: ', s.motivoRechazo || '—'], 'rojo'), avisoRechazadas());
+      lateral.append(ui.aviso([h('strong', null, 'Rechazada'), ' por ', revisor ? revisor.nombre : '—', ' el ', U.fecha(s.revisadaEn), '. Motivo: ', s.motivoRechazo || '—'], 'rojo'));
     } else if (esAdmin) {
       lateral.append(h('a', { class: 'btn btn-neutro', href: '#/soluciones/' + s.id + '/editar' }, ui.icono('editar', 'i-sm'), 'Editar la solución'));
     }
@@ -255,7 +241,6 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         migas: [{ href: '#/soluciones' + (s.estado !== 'APROBADA' ? '?estado=' + s.estado : ''), texto: 'Soluciones' }, { texto: U.truncar(s.titulo, 40) }],
-        antetitulo: ui.clasificacion(s.sistemaId, s.subsistemaId),
         titulo: s.titulo,
       }),
       h('div', { class: 'dos-columnas' }, principal, lateral));
@@ -281,7 +266,7 @@
       U.vaciar(selSub);
       const subs = selSis.value ? S.subsistemasDe(selSis.value, true) : [];
       selSub.append(h('option', { value: '' }, selSis.value ? 'Todos los subsistemas' : 'Elegí primero el sistema'));
-      subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre + (x.ejemplo ? ' (ejemplo)' : ''))));
+      subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre)));
       selSub.disabled = !selSis.value;
       selSub.value = valor && subs.some((x) => x.id === valor) ? valor : '';
     }
@@ -299,14 +284,14 @@
       U.vaciar(resultadoPrueba);
       const texto = inPrueba.value.trim();
       const lista = palabras.valor();
-      if (!texto) { resultadoPrueba.append(h('p', { class: 'chico suave' }, 'Escribí una descripción de ejemplo para ver qué palabras clave coinciden.')); return; }
+      if (!texto) { resultadoPrueba.append(h('p', { class: 'chico suave' }, 'Escribí un problema de ejemplo.')); return; }
       const coinciden = App.sugerencias.palabrasClaveEn(texto, lista);
       const p = S.datos.parametros;
       resultadoPrueba.append(
         h('div', { class: 'chips' }, lista.length ? lista.map((x) => h('span', { class: ['palabra-clave', coinciden.includes(x) && 'coincide'] }, coinciden.includes(x) ? ui.icono('check', 'i-sm') : null, x)) : h('span', { class: 'chico suave' }, 'Todavía no hay palabras clave.')),
         h('p', { class: 'chico' }, coinciden.length
-          ? U.plural(coinciden.length, 'palabra clave coincide', 'palabras clave coinciden') + ': suman ' + coinciden.length * p.pesoPalabraClave + ' pts (más los puntos por sistema y subsistema).'
-          : 'Ninguna palabra clave coincide con este texto.'));
+          ? '+' + coinciden.length * p.pesoPalabraClave + ' pts por ' + U.plural(coinciden.length, 'palabra clave', 'palabras clave') + '.'
+          : 'Ninguna palabra clave coincide.'));
     }
     inPrueba.addEventListener('input', U.debounce(probar, 200));
     probar();
@@ -314,13 +299,13 @@
     const form = h('form', { class: 'pila-lg', novalidate: true },
       resumen,
       h('section', { class: 'card pila' },
-        ui.campo({ nombre: 'titulo', id: 'sol-titulo', etiqueta: 'Título', requerido: true, control: inTitulo, ayuda: 'Que describa el síntoma, por ejemplo: «La impresora de la terminal no imprime».' }),
+        ui.campo({ nombre: 'titulo', id: 'sol-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
         h('div', { class: 'grid-2' },
           ui.campo({ nombre: 'sistemaId', id: 'sol-sistema', etiqueta: 'Sistema o servicio', opcional: true, control: selSis }),
           ui.campo({ nombre: 'subsistemaId', id: 'sol-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub })),
-        ui.campo({ nombre: 'descripcion', id: 'sol-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc, ayuda: 'Podés pegar capturas dentro del texto.' }),
+        ui.campo({ nombre: 'descripcion', id: 'sol-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc }),
         h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el),
-        ui.campo({ nombre: 'palabrasClave', id: 'sol-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el, ayuda: 'Palabras o frases que suelen aparecer en la descripción del problema. Separalas con Enter o coma.' })),
+        ui.campo({ nombre: 'palabrasClave', id: 'sol-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el })),
       h('div', { class: 'fila' },
         h('button', { type: 'submit', class: 'btn btn-primario btn-lg' }, ui.icono(aprobarAlGuardar ? 'checkCirculo' : 'check', 'i-sm'),
           aprobarAlGuardar ? 'Guardar y aprobar' : existente ? 'Guardar cambios' : esAdmin ? 'Cargar en el catálogo' : 'Proponer solución'),
@@ -352,11 +337,8 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         migas: [{ href: '#/soluciones', texto: 'Soluciones' }, { texto: titulo }],
-        antetitulo: 'Catálogo de soluciones',
         titulo,
-        subtitulo: existente ? existente.titulo : 'Una solución general, que no viene de un ticket puntual (ORMEN confirmó que se pueden cargar).',
       }),
-      !esAdmin ? ui.aviso('Como operador, la solución queda como borrador hasta que un administrador la revise y apruebe (supuesto: el mismo circuito que los borradores que vienen de un ticket).', null, 'borrador') : null,
       h('div', { class: 'dos-columnas' }, form,
         h('aside', { class: 'pila' }, h('section', { class: 'card pila', 'aria-labelledby': 'sec-probar' },
           h('h2', { id: 'sec-probar' }, 'Probar las palabras clave'),
@@ -430,18 +412,15 @@
         ui.campo({ nombre: 'sis', id: 'b-sis', etiqueta: 'Sistema', opcional: true, control: selSis }),
         ui.campo({ nombre: 'sub', id: 'b-sub', etiqueta: 'Subsistema', opcional: true, control: selSub }),
         ui.campo({ nombre: 'loc', id: 'b-loc', etiqueta: 'Localidad', opcional: true, control: selLoc })),
-      h('div', { class: 'fila-entre' },
-        h('p', { class: 'chico suave' }, 'Busca en el catálogo y en tickets cerrados. Puntaje: mismo sistema y subsistema + palabras clave; en tickets anteriores, palabras en común y misma localidad. ', ui.pendiente('Puntos provisorios', 'ORMEN no definió cuántos puntos vale cada criterio.')),
-        h('button', { type: 'submit', class: 'btn btn-oscuro' }, ui.icono('buscar', 'i-sm'), 'Buscar')));
+      h('div', { class: 'fila', style: 'justify-content: flex-end' },
+        h('button', { type: 'submit', class: 'btn btn-oscuro btn-lg' }, ui.icono('buscar', 'i-sm'), 'Buscar')));
     form.addEventListener('submit', (e) => { e.preventDefault(); buscar(); });
     buscar();
 
     return h('div', { class: 'pila' },
       ui.cabecera({
         migas: [{ href: '#/soluciones', texto: 'Soluciones' }, { texto: 'Buscar' }],
-        antetitulo: 'Soluciones',
         titulo: 'Buscar una solución',
-        subtitulo: 'Describí el problema con tus palabras: el sistema busca casos y soluciones parecidas.',
       }),
       form,
       estado,

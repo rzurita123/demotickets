@@ -16,8 +16,22 @@
   function opcionesVisibilidad(nombre) {
     const ui = App.ui;
     return h('div', { class: 'visibilidad-opciones' },
-      h('label', null, h('input', { type: 'radio', name: nombre, value: 'PUBLICO' }), h('span', { class: 'pub' }, ui.icono('ojo', 'i-sm'), 'Público · lo ve la localidad')),
+      h('label', null, h('input', { type: 'radio', name: nombre, value: 'PUBLICO' }), h('span', { class: 'pub' }, ui.icono('ojo', 'i-sm'), 'Público')),
       h('label', null, h('input', { type: 'radio', name: nombre, value: 'PRIVADO' }), h('span', { class: 'priv' }, ui.icono('candado', 'i-sm'), 'Privado · sólo ORMEN')));
+  }
+
+  /** Flujo del ticket: Abierto → En proceso (o Bloqueado) → Cerrado. */
+  function flujoEstado(estado) {
+    const pasos = [
+      { clave: 'ABIERTO', texto: 'Abierto' },
+      { clave: 'EN_PROCESO', texto: estado === 'BLOQUEADO' ? 'Bloqueado' : 'En proceso' },
+      { clave: 'CERRADO', texto: 'Cerrado' },
+    ];
+    const actual = estado === 'BLOQUEADO' ? 1 : pasos.findIndex((p) => p.clave === estado);
+    return h('ol', { class: ['flujo', estado === 'BLOQUEADO' && 'bloqueado'], 'aria-label': 'Estado del ticket' },
+      pasos.map((p, i) => h('li', { class: [i < actual && 'hecho', i === actual && 'actual'], 'aria-current': i === actual ? 'step' : null },
+        h('span', { class: 'punto' }, i < actual || (i === actual && estado === 'CERRADO') ? App.ui.icono('check', 'i-sm') : String(i + 1)),
+        h('span', null, p.texto))));
   }
 
   function sinAcceso(ctx, r) {
@@ -29,9 +43,6 @@
     return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Ticket no disponible'), App.ui.vacio({
       icono: 'candado',
       titulo: esCliente ? 'No encontramos el ticket #' + ctx.params.numero + ' o no tenés acceso' : 'No existe el ticket #' + ctx.params.numero,
-      texto: esCliente
-        ? 'Sólo podés ver los tickets de ' + S.nombre('localidades', u.localidadId) + '. Por seguridad no se indica si el ticket existe; el intento queda registrado en la auditoría.'
-        : 'Revisá el número o buscalo en el listado.',
       accion: h('a', { class: 'btn btn-primario', href: '#/tickets' }, esCliente ? 'Ver los tickets de ' + S.nombre('localidades', u.localidadId) : 'Ir al listado'),
     }));
   }
@@ -93,18 +104,18 @@
       h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
         h('a', { href: '#/tickets' }, esCliente ? 'Tickets de ' + loc : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, '#' + t.numero)),
       h('div', { class: 'fila-sm' },
-        ui.badgeEstado(t.estado, true),
         ui.badgeElevado(t, verRecorrido),
         ui.badgeOrigenSolucion(solucionOriginada, true),
         ui.badgeCriticidad(t.criticidadId, true),
         ui.badgeTipoSolicitud(t.tipoSolicitudId),
         t.registroDirecto ? h('span', { class: 'badge contorno' }, ui.icono('checkCirculo', 'i-sm'), 'Registrado ya resuelto') : null),
-      h('h1', { id: 'titulo-pagina', tabindex: '-1' }, h('span', { class: 'numero' }, '#' + t.numero), ' ', t.titulo),
+      h('div', { class: 'ticket-titular' },
+        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, h('span', { class: 'numero' }, '#' + t.numero), ' ', t.titulo),
+        flujoEstado(t.estado)),
       h('div', { class: 'meta' },
-        h('span', null, 'Localidad: ', h('strong', null, loc)),
-        h('span', null, 'Creado por: ', h('strong', null, creador ? creador.nombre : '—'), creador && !creadorCliente ? ' (Mesa de ayuda, en nombre de la localidad)' : ''),
-        h('span', null, 'Fecha: ', h('strong', null, U.fechaHora(t.creadoEn))),
-        h('span', null, 'Atiende: ', h('strong', null, textoAtiende))));
+        h('span', null, ui.icono('pin', 'i-sm'), h('strong', null, loc)),
+        h('span', null, ui.icono('usuario', 'i-sm'), textoAtiende),
+        h('span', null, ui.icono('reloj', 'i-sm'), U.fechaHora(t.creadoEn))));
 
     // --------------------------------------------------------- Descripción ---
     const descripcion = h('section', { class: 'card pila', 'aria-labelledby': 'sec-desc' },
@@ -122,19 +133,16 @@
       solucion = h('section', { class: 'solucion-ticket', 'aria-labelledby': 'sec-sol' },
         h('div', { class: 'fila-entre' },
           h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Solución aplicada'),
-          h('span', { class: 'badge contorno', title: 'Supuesto de la demo: la localidad recibe el mensaje público, no la solución.' }, ui.icono('candado', 'i-sm'), 'La ve ORMEN')),
+          h('span', { class: 'badge contorno' }, ui.icono('candado', 'i-sm'), 'Sólo ORMEN')),
         h('div', { class: 'bloque-texto' }, t.solucion.texto),
         ui.galeria(t.solucion.adjuntos),
-        cat ? h('p', { class: 'chico' }, ui.icono('libro', 'i-sm'), ' Basada en la solución del catálogo ', h('a', { href: '#/soluciones/' + cat.id }, '«' + cat.titulo + '»'), '.') : null,
-        h('p', { class: 'chico suave' }, 'Registrada por ', autor ? autor.nombre : '—', ' · ', U.fechaHora(t.solucion.fecha)),
-        propuesta ? h('div', { class: 'fila-sm' },
-          h('span', { class: 'chico' }, propuesta.estado === 'APROBADA' ? 'De este ticket surgió la solución' : 'Propuesta como solución:'),
-          propuesta.estado === 'APROBADA' ? h('a', { class: 'chico fuerte', href: '#/soluciones/' + propuesta.id }, '«' + propuesta.titulo + '»') : [ui.badgeSolucion(propuesta.estado), h('a', { class: 'chico', href: '#/soluciones/' + propuesta.id }, 'Ver')]) : null,
-        puedeProponer ? h('div', { class: 'fila-entre' },
-          h('span', { class: 'chico suave' }, propuesta ? 'La propuesta anterior fue rechazada. Podés volver a proponerla.' : '¿Sirve para otros casos? Proponela como solución reutilizable.'),
-          h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => abrirProponer() }, ui.icono('libro', 'i-sm'), 'Proponer como solución')) : null);
+        cat ? h('p', { class: 'chico' }, ui.icono('libro', 'i-sm'), ' Catálogo: ', h('a', { href: '#/soluciones/' + cat.id }, '«' + cat.titulo + '»')) : null,
+        h('div', { class: 'fila-entre' },
+          h('span', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.fechaHora(t.solucion.fecha)),
+          propuesta ? h('a', { class: 'fila-sm chico fuerte', href: '#/soluciones/' + propuesta.id }, ui.badgeSolucion(propuesta.estado), '«' + propuesta.titulo + '»') : null,
+          puedeProponer ? h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => abrirProponer() }, ui.icono('libro', 'i-sm'), 'Proponer como solución') : null));
     } else if (cerrado && esCliente) {
-      solucion = ui.aviso(['Ticket cerrado el ', U.fechaHora(t.cerradoEn), '. Si el problema vuelve a aparecer, avisá a Mesa de ayuda: para agregar información hay que reabrirlo.'], 'verde');
+      solucion = ui.aviso(['Cerrado el ', U.fechaHora(t.cerradoEn), '.'], 'verde');
     }
 
     // ----------------------------------------------------------- Actividad ---
@@ -204,21 +212,20 @@
 
     // Para responder o comentar
     function composer() {
-      if (esAdmin) return h('p', { class: 'chico suave composer' }, 'Como administrador consultás el ticket; el tratamiento lo hace Mesa de ayuda (supuesto de la demo).');
+      if (esAdmin) return null;
       if (cerrado) {
-        return h('div', { class: 'composer' }, ui.aviso(esOperador
-          ? ['El ticket está cerrado. Para agregar comentarios hay que reabrirlo. ', h('button', { type: 'button', class: 'enlace-boton', onClick: abrirReabrir }, 'Reabrir ticket')]
-          : 'El ticket está cerrado. Si el problema vuelve a aparecer, avisá a Mesa de ayuda: para agregar información hay que reabrirlo.'));
+        return esOperador
+          ? h('div', { class: 'composer' }, h('button', { type: 'button', class: 'btn btn-neutro', style: 'align-self: flex-start', onClick: abrirReabrir }, ui.icono('reabrir', 'i-sm'), 'Reabrir para comentar'))
+          : null;
       }
       const texto = h('textarea', { id: 'composer-texto', class: 'control', rows: '3', placeholder: esOperador ? 'Acción realizada o respuesta para la localidad…' : 'Tu mensaje para Mesa de ayuda…' });
-      const imgs = ui.selectorImagenes({ pegarEn: [texto], max: 4, etiqueta: 'Imágenes del comentario', texto: 'Podés adjuntar, arrastrar o pegar imágenes.' });
+      const imgs = ui.selectorImagenes({ pegarEn: [texto], max: 4, etiqueta: 'Imágenes del comentario' });
       const form = h('form', { class: 'composer', novalidate: true },
         ui.campo({ nombre: 'texto', id: 'composer-texto', etiqueta: esOperador ? 'Agregar comentario' : 'Responder', control: texto }),
-        esOperador ? ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién lo ve?', requerido: true, control: opcionesVisibilidad('visibilidad'), ayuda: 'Cada comentario se marca como público o privado.' }) : null,
         imgs.el,
         h('div', { class: 'fila-entre' },
-          h('span', { class: 'chico suave' }, esCliente ? 'Lo ven Mesa de ayuda y las personas de ' + loc + '.' : ''),
-          h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('enviar', 'i-sm'), esOperador ? 'Agregar comentario' : 'Enviar')));
+          esOperador ? ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién lo ve?', requerido: true, control: opcionesVisibilidad('visibilidad') }) : h('span'),
+          h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('enviar', 'i-sm'), esOperador ? 'Comentar' : 'Enviar')));
       form.addEventListener('input', () => ctx.marcarSucio(!!texto.value.trim()));
       form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -238,7 +245,7 @@
     }
 
     const cardActividad = h('section', { class: 'card', 'aria-labelledby': 'sec-act' },
-      h('div', { class: 'card-titulo' }, h('h2', { id: 'sec-act' }, 'Actividad'), esCliente ? h('span', { class: 'chico suave' }, 'Respuestas públicas de Mesa de ayuda') : null),
+      h('div', { class: 'card-titulo' }, h('h2', { id: 'sec-act' }, 'Actividad')),
       pestanas, listaAct, composer());
 
     // ------------------------------------------------------------ Ventanas ---
@@ -247,17 +254,15 @@
         h('option', { value: '' }, 'Elegí un grupo o una persona…'),
         h('optgroup', { label: 'Grupos de soporte' }, S.catalogo('gruposSoporte', true)
           .filter((g) => !(t.elevadoA && t.elevadoA.tipo === 'grupo' && t.elevadoA.id === g.id))
-          .map((g) => h('option', { value: 'grupo:' + g.id }, g.nombre + (g.ejemplo ? ' (ejemplo)' : '')))),
+          .map((g) => h('option', { value: 'grupo:' + g.id }, g.nombre))),
         h('optgroup', { label: 'Personas de Mesa de ayuda' }, S.operadores(true)
           .filter((o) => o.id !== t.operadorId)
           .map((o) => h('option', { value: 'usuario:' + o.id }, o.nombre))));
       const motivo = h('textarea', { id: 'elevar-motivo', class: 'control', rows: '3', placeholder: 'Por ejemplo: se reinició el router y sigue sin conexión; hay que revisar el enlace.' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        h('p', null, 'El ticket sigue ', h('strong', null, 'En proceso'), ' y queda marcado como elevado. Se puede volver a elevar a otro grupo o persona: todo queda en el recorrido.'),
         t.elevadoA ? ui.aviso(['Hoy está elevado a ', h('strong', null, S.nombreDestino(t.elevadoA)), '.']) : null,
-        ui.campo({ nombre: 'destino', id: 'elevar-destino', etiqueta: '¿A quién se eleva?', requerido: true, control: sel,
-          ayuda: 'Si elegís una persona, pasa a atenderlo ella.', extraEtiqueta: ui.pendiente('Grupos de ejemplo', 'ORMEN todavía no definió los grupos reales. Se editan en Administración › Catálogos.') }),
-        ui.campo({ nombre: 'motivo', id: 'elevar-motivo', etiqueta: 'Motivo', requerido: true, control: motivo, ayuda: 'Queda como nota privada (sólo ORMEN). A la localidad le llega un aviso de que se derivó.' }));
+        ui.campo({ nombre: 'destino', id: 'elevar-destino', etiqueta: '¿A quién se eleva?', requerido: true, control: sel }),
+        ui.campo({ nombre: 'motivo', id: 'elevar-motivo', etiqueta: 'Motivo (privado)', requerido: true, control: motivo }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -274,9 +279,8 @@
     function abrirBloquear() {
       const texto = h('textarea', { id: 'bloqueo-texto', class: 'control', rows: '3', placeholder: 'Por ejemplo: esperamos que la agencia confirme el número de terminal.' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        h('p', null, h('strong', null, 'Bloqueado: '), D.ESTADOS.BLOQUEADO.descripcion, ' Lo seguís atendiendo vos; cuando se destrabe, desbloquealo.'),
         ui.campo({ nombre: 'texto', id: 'bloqueo-texto', etiqueta: '¿Qué lo detiene?', requerido: true, control: texto }),
-        ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién ve el motivo?', requerido: true, control: opcionesVisibilidad('vis-bloqueo'), ayuda: 'Si es algo que tiene que hacer la agencia, conviene que sea público.' }));
+        ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién ve el motivo?', requerido: true, control: opcionesVisibilidad('vis-bloqueo') }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -293,8 +297,8 @@
     function abrirDesbloquear() {
       const texto = h('textarea', { id: 'desbloqueo-texto', class: 'control', rows: '2', placeholder: 'Por ejemplo: la agencia confirmó el dato.' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        h('p', null, 'El ticket vuelve a ', h('strong', null, 'En proceso'), '.'),
-        ui.campo({ nombre: 'texto', id: 'desbloqueo-texto', etiqueta: 'Qué cambió', opcional: true, control: texto, ayuda: 'Queda como nota privada.' }));
+        flujoEstado('EN_PROCESO'),
+        ui.campo({ nombre: 'texto', id: 'desbloqueo-texto', etiqueta: 'Qué cambió (privado)', opcional: true, control: texto }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -311,7 +315,7 @@
     async function liberar() {
       const ok = await ui.confirmar({
         titulo: 'Devolver a la cola',
-        mensaje: 'El ticket vuelve a Abierto y sin asignar, para que lo tome otra persona de Mesa de ayuda.',
+        mensaje: 'Vuelve a Abierto y sin asignar.',
         textoConfirmar: 'Devolver a la cola',
       });
       if (ok) ejecutar(() => S.liberar(t.id, u), 'Ticket #' + t.numero + ' devuelto a la cola.');
@@ -322,12 +326,11 @@
       const inDesc = h('textarea', { id: 'prop-descripcion', class: 'control', rows: '7', value: t.solucion ? t.solucion.texto : '' });
       const pal = ui.entradaPalabras({ id: 'prop-palabras' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        h('p', null, 'Se crea un ', h('strong', null, 'borrador de solución'), ', independiente del ticket. Un administrador lo revisa, lo puede editar y lo aprueba; recién ahí se sugiere. El ticket queda como está.'),
         h('ol', { class: 'pasos-flujo', 'aria-label': 'Flujo' },
           h('li', { class: 'hecho' }, 'Ticket cerrado'), h('li', { class: 'actual' }, 'Borrador de solución'), h('li', null, 'Revisión del administrador'), h('li', null, 'Solución aprobada')),
-        ui.campo({ nombre: 'propuestaTitulo', id: 'prop-titulo', etiqueta: 'Título', requerido: true, control: inTit, ayuda: 'Que describa el síntoma, para que otros lo encuentren.' }),
-        ui.campo({ nombre: 'propuestaDescripcion', id: 'prop-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc, ayuda: 'Parte de la solución aplicada en el ticket. Conviene dejarla general, sin datos de esta agencia.' }),
-        ui.campo({ nombre: 'propuestaPalabras', id: 'prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el, ayuda: 'Se usan para sugerirla cuando aparecen en la descripción de un ticket.' }));
+        ui.campo({ nombre: 'propuestaTitulo', id: 'prop-titulo', etiqueta: 'Título', requerido: true, control: inTit }),
+        ui.campo({ nombre: 'propuestaDescripcion', id: 'prop-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc }),
+        ui.campo({ nombre: 'propuestaPalabras', id: 'prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -337,7 +340,7 @@
         enfocar: '#prop-titulo',
         acciones: [
           { texto: 'Cancelar' },
-          { texto: 'Crear borrador de solución', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: inDesc.value, palabrasClave: pal.valor() }), 'Borrador de solución creado. Queda esperando la revisión de un administrador.') },
+          { texto: 'Crear borrador de solución', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: inDesc.value, palabrasClave: pal.valor() }), 'Borrador de solución creado.') },
         ],
       });
     }
@@ -350,17 +353,15 @@
       const selTp = ui.select({ id: 'cierre-tipo', valor: t.tipoProblemaId || 'tp-nodef', opciones: S.catalogo('tiposProblema', true).map((x) => ({ valor: x.id, texto: x.nombre })) });
       const mensaje = h('textarea', { id: 'cierre-mensaje', class: 'control', rows: '2', placeholder: 'Por ejemplo: quedó resuelto, cualquier cosa nos avisás.' });
       const chk = h('input', { type: 'checkbox', id: 'cierre-proponer' });
-      const ayudaChk = h('span', { class: 'chico suave' });
       const inTit = h('input', { id: 'cierre-prop-titulo', class: 'control', type: 'text', maxlength: '120', value: t.titulo });
       const pal = ui.entradaPalabras({ id: 'cierre-prop-palabras' });
       const bloque = h('div', { class: 'pila', hidden: true },
         ui.campo({ nombre: 'propuestaTitulo', id: 'cierre-prop-titulo', etiqueta: 'Título para el catálogo', requerido: true, control: inTit }),
-        ui.campo({ nombre: 'propuestaPalabras', id: 'cierre-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el, ayuda: 'Se usan para sugerirla cuando aparecen en la descripción de un ticket.' }));
+        ui.campo({ nombre: 'propuestaPalabras', id: 'cierre-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el }));
       chk.addEventListener('change', () => { bloque.hidden = !chk.checked; });
       function pintarBasada() {
         U.vaciar(basada);
         chk.disabled = !!catId;
-        ayudaChk.textContent = catId ? 'La solución ya viene del catálogo.' : 'Se crea un borrador de solución: un administrador lo revisa y lo aprueba.';
         if (catId) {
           chk.checked = false;
           bloque.hidden = true;
@@ -382,11 +383,12 @@
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         opcionesSug,
         basada,
-        ui.campo({ nombre: 'solucionTexto', id: 'cierre-texto', etiqueta: 'Solución aplicada', requerido: true, control: texto, ayuda: 'Todo ticket cerrado tiene su solución. La ve ORMEN; a la localidad le llega el mensaje público.' }),
+        ui.campo({ nombre: 'solucionTexto', id: 'cierre-texto', etiqueta: 'Solución aplicada (privada)', requerido: true, control: texto }),
         imgs.el,
-        ui.campo({ nombre: 'tipoProblemaId', id: 'cierre-tipo', etiqueta: 'Tipo de problema', control: selTp }),
-        ui.campo({ nombre: 'mensajePublico', id: 'cierre-mensaje', etiqueta: 'Mensaje para la localidad', opcional: true, control: mensaje, ayuda: 'Se publica como comentario público.' + (creadorCliente ? ' Además se avisa por correo a ' + creador.nombre + '.' : '') }),
-        h('label', { class: 'check', for: 'cierre-proponer' }, chk, h('span', null, h('strong', null, 'Proponer como solución reutilizable'), h('br'), ayudaChk)),
+        h('div', { class: 'grid-2' },
+          ui.campo({ nombre: 'tipoProblemaId', id: 'cierre-tipo', etiqueta: 'Tipo de problema', control: selTp }),
+          ui.campo({ nombre: 'mensajePublico', id: 'cierre-mensaje', etiqueta: 'Mensaje para la localidad', opcional: true, control: mensaje })),
+        h('label', { class: 'check', for: 'cierre-proponer' }, chk, h('strong', null, 'Proponer como solución reutilizable')),
         bloque);
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
@@ -419,7 +421,7 @@
         U.vaciar(selSub);
         const subs = S.subsistemasDe(selSis.value);
         selSub.append(h('option', { value: '' }, 'Sin subsistema'));
-        subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre + (x.ejemplo ? ' (ejemplo)' : ''))));
+        subs.forEach((x) => selSub.append(h('option', { value: x.id }, x.nombre)));
         selSub.value = valor && subs.some((x) => x.id === valor) ? valor : '';
       }
       cargar(t.subsistemaId);
@@ -434,8 +436,7 @@
         h('div', { class: 'grid-2' },
           ui.campo({ nombre: 'tipoSolicitudId', id: 'cl-tipo', etiqueta: 'Tipo de solicitud', control: selTipo }),
           ui.campo({ nombre: 'criticidadId', id: 'cl-cri', etiqueta: 'Criticidad', control: selCri })),
-        ui.campo({ nombre: 'tipoProblemaId', id: 'cl-tp', etiqueta: 'Tipo de problema', control: selTp }),
-        h('p', { class: 'chico suave' }, 'El cambio queda en la actividad del ticket y en la auditoría.'));
+        ui.campo({ nombre: 'tipoProblemaId', id: 'cl-tp', etiqueta: 'Tipo de problema', control: selTp }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -451,8 +452,8 @@
     function abrirReabrir() {
       const motivo = h('textarea', { id: 'reabrir-motivo', class: 'control', rows: '3', placeholder: 'Por ejemplo: la agencia avisa que el problema volvió a aparecer.' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
-        h('p', null, 'El ticket vuelve a ', h('strong', null, 'En proceso'), ' y lo atendés vos, para poder agregarle comentarios. Cuando termines, cerralo de nuevo con su solución.'),
-        ui.campo({ nombre: 'motivo', id: 'reabrir-motivo', etiqueta: 'Motivo', opcional: true, control: motivo, ayuda: 'Queda como nota privada (sólo ORMEN).' }));
+        flujoEstado('EN_PROCESO'),
+        ui.campo({ nombre: 'motivo', id: 'reabrir-motivo', etiqueta: 'Motivo (privado)', opcional: true, control: motivo }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -473,7 +474,7 @@
       const items = [];
       if (t.operadorId !== u.id) {
         items.push(h('button', { type: 'button', class: 'btn btn-primario', onClick: () => ejecutar(() => S.asignar(t.id, u, u.id), 'Tomaste el ticket #' + t.numero + (t.estado === 'ABIERTO' ? ': pasó a En proceso.' : '.') + (t.estado === 'ABIERTO' ? avisoCorreo() : '')) },
-          ui.icono('asignar', 'i-sm'), t.estado === 'ABIERTO' ? 'Tomar el ticket (pasa a En proceso)' : 'Tomar el ticket'));
+          ui.icono('asignar', 'i-sm'), 'Tomar el ticket'));
       }
       const otros = S.operadores(true).filter((o) => o.id !== t.operadorId && o.id !== u.id);
       if (otros.length) {
@@ -489,26 +490,22 @@
       items.push(h('hr', { class: 'separador' }));
       if (t.estado === 'EN_PROCESO') {
         items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirElevar }, ui.icono('elevar', 'i-sm'), t.elevadoA ? 'Elevar a otro grupo o persona' : 'Elevar'));
-        items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirBloquear }, ui.icono('pausa', 'i-sm'), 'Bloquear (factor externo)'));
+        items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirBloquear }, ui.icono('pausa', 'i-sm'), 'Bloquear'));
         items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: liberar }, ui.icono('bandeja', 'i-sm'), 'Devolver a la cola'));
       } else if (t.estado === 'BLOQUEADO') {
         items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirDesbloquear }, ui.icono('reabrir', 'i-sm'), 'Desbloquear'));
-      } else {
-        items.push(h('p', { class: 'chico suave' }, 'Para elevarlo o bloquearlo, primero tomalo. Si ya sabés la solución, podés cerrarlo directamente.'));
       }
-      items.push(h('button', { type: 'button', class: 'btn btn-exito', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con solución'));
+      items.push(h('button', { type: 'button', class: 'btn btn-exito btn-lg', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con solución'));
       items.push(h('hr', { class: 'separador' }));
       items.push(h('button', { type: 'button', class: 'btn btn-fantasma', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar clasificación'));
-      lateral.append(h('section', { class: 'card', 'aria-labelledby': 'sec-acciones' }, h('h2', { id: 'sec-acciones', style: 'margin-bottom: 12px' }, 'Acciones'), h('div', { class: 'acciones-ticket' }, items)));
+      lateral.append(h('section', { class: 'card acento-azul', 'aria-labelledby': 'sec-acciones' }, h('h2', { id: 'sec-acciones', style: 'margin-bottom: 14px' }, 'Acciones'), h('div', { class: 'acciones-ticket' }, items)));
     } else if (esOperador && cerrado) {
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-acciones' },
         h('h2', { id: 'sec-acciones' }, 'Acciones'),
-        h('p', { class: 'chico suave' }, 'Para agregar comentarios a un ticket cerrado hay que reabrirlo: vuelve a En proceso y lo atendés vos.'),
         h('div', { class: 'acciones-ticket' },
           h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirReabrir }, ui.icono('reabrir', 'i-sm'), 'Reabrir ticket'),
           !S.propuestaDeTicket(t) ? h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución') : null)));
     } else if (esAdmin) {
-      lateral.append(ui.aviso('Como administrador consultás el ticket. El tratamiento lo hace Mesa de ayuda (supuesto de la demo).'));
       if (cerrado && !S.propuestaDeTicket(t)) {
         lateral.append(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución'));
       }
@@ -537,12 +534,10 @@
     if (!esCliente && activo) {
       const sugeridas = App.sugerencias.buscar({ texto: t.titulo + ' ' + t.descripcion, sistemaId: t.sistemaId, subsistemaId: t.subsistemaId, localidadId: t.localidadId, excluirTicketId: t.id, limite: 4 });
       lateral.append(h('section', { class: 'card pila', 'aria-labelledby': 'sec-sug' },
-        h('div', { class: 'pila-sm' },
-          h('h2', { id: 'sec-sug', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias de solución'),
-          h('p', { class: 'chico suave' }, 'Según la descripción, el sistema y la localidad de este ticket.')),
+        h('h2', { id: 'sec-sug', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias'),
         sugeridas.length
           ? h('div', { class: 'sugerencias' }, sugeridas.map((s, i) => ui.tarjetaSugerencia(s, { mejor: i === 0, alUsar: esOperador ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' })))
-          : h('p', { class: 'chico' }, 'No se encontraron soluciones relevantes.'),
+          : h('p', { class: 'chico suave' }, 'Sin coincidencias.'),
         h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar en el catálogo ', ui.icono('flechaDer', 'i-sm'))));
     }
 

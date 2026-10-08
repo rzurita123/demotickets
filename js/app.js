@@ -14,7 +14,6 @@
 
   // Las rutas fijas van antes que las que tienen parámetros (/tickets/nuevo antes que /tickets/:numero).
   R.registrar('/ingresar', { vista: V.login, titulo: 'Ingresar', publica: true, sinMarco: true, soloSinSesion: true });
-  R.registrar('/notas', { vista: V.notas, titulo: 'Notas de la demo', publica: true });
   R.registrar('/', { vista: V.inicio, titulo: 'Inicio' });
 
   R.registrar('/tickets', { vista: V.tickets, titulo: 'Tickets' });
