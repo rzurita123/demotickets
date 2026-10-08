@@ -21,7 +21,10 @@
     const b = op.borrador || null;
     const pre = op.prefill || {}; // datos que llegan desde la búsqueda de soluciones
     // El operador decide primero si el ticket queda Abierto ('nuevo') o Cerrado ('resuelto').
-    let modo = !esOperador || b ? 'nuevo' : op.modoInicial === 'resuelto' ? 'resuelto' : null;
+    // Quien crea el ticket decide primero si queda Abierto ('nuevo') o Cerrado ('resuelto').
+    let modo = b ? 'nuevo' : op.modoInicial === 'resuelto' ? 'resuelto' : null;
+    // Proponer una solución reutilizable es cosa de ORMEN.
+    const puedeProponer = u.rol !== 'CLIENTE';
     let solucionCatalogoId = null;
     let ticketOrigen = null; // número del ticket del que se copió la solución (sólo informativo)
     const marcar = () => ctx.marcarSucio(true);
@@ -83,7 +86,7 @@
     const tituloPagina = h('h1', { id: 'titulo-pagina', tabindex: '-1' });
 
     // ------------------------------------------------------- Secciones ---
-    const segModo = esOperador && !b ? h('fieldset', { class: 'modo-registro' },
+    const segModo = !b ? h('fieldset', { class: 'modo-registro' },
       h('legend', null, '¿Cómo queda el ticket?'),
       ui.segmentado({
         nombre: 'modo',
@@ -116,9 +119,9 @@
       basadaEn,
       ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion }),
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes de la resolución ', h('span', { class: 'opcional' }, '(opcional)')), imgSolucion.el),
-      h('div', { class: 'pila-sm' },
-        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('strong', null, 'Proponer como solución reutilizable'))),
-      bloqueProponer);
+      puedeProponer ? h('div', { class: 'pila-sm' },
+        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('strong', null, 'Proponer como solución reutilizable'))) : null,
+      puedeProponer ? bloqueProponer : null);
 
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
     const btnBorrador = esOperador ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
@@ -132,9 +135,10 @@
     const hojaForm = h('div', { class: 'hoja' }, cardProblema, cardDatos, cardSolucion, acciones);
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
       resumen, segModo, hojaForm);
-    form.addEventListener('input', marcar);
     // Elegir Abierto o Cerrado no cuenta como un cambio sin guardar.
-    form.addEventListener('change', (e) => { if (e.target.name !== 'modo') marcar(); });
+    const marcarSalvoModo = (e) => { if (e.target.name !== 'modo') marcar(); };
+    form.addEventListener('input', marcarSalvoModo);
+    form.addEventListener('change', marcarSalvoModo);
     form.addEventListener('submit', (e) => { e.preventDefault(); crear(); });
 
     // ----------------------------------------------------- Sugerencias ---
@@ -185,12 +189,17 @@
       modo = v;
       const elegido = modo !== null;
       hojaForm.hidden = !elegido;
+      // Las sugerencias aparecen junto con el formulario, no antes.
+      if (lateral) {
+        lateral.hidden = !elegido;
+        columnas.className = elegido ? 'dos-columnas-anchas' : 'columna-unica';
+      }
       cardSolucion.hidden = modo !== 'resuelto';
       if (btnBorrador) btnBorrador.hidden = modo === 'resuelto';
       U.vaciar(btnCrear).append(ui.icono(modo === 'resuelto' ? 'checkCirculo' : 'enviar', 'i-sm'), modo === 'resuelto' ? 'Crear ticket cerrado' : 'Crear ticket');
       tituloPagina.textContent = b ? 'Continuar borrador' : 'Crear ticket';
       ctx.titulo(tituloPagina.textContent);
-      if (!b && esOperador && elegido) App.router.actualizarQuery(modo === 'resuelto' ? { modo: 'resuelto' } : {});
+      if (!b && elegido) App.router.actualizarQuery(modo === 'resuelto' ? { modo: 'resuelto' } : {});
     }
 
     // ----------------------------------------------------------- Acciones ---
@@ -273,6 +282,7 @@
         tituloPagina),
       b ? h('span', { class: 'badge contorno grande' }, ui.icono('borrador', 'i-sm'), 'Borrador · guardado ', ui.tiempo(b.actualizadoEn)) : null);
 
+    const columnas = h('div', { class: lateral ? 'dos-columnas-anchas' : 'columna-unica' }, form, lateral);
     cambiarModo(modo);
     if (pre.usar && modo === 'resuelto') {
       inSolucion.value = pre.usar.texto;
@@ -286,7 +296,7 @@
 
     const contenido = [
       encabezado,
-      esOperador ? h('div', { class: 'dos-columnas-anchas' }, form, lateral) : h('div', { class: 'columna-unica' }, form),
+      columnas,
     ];
     return h('div', { class: 'pila' }, contenido);
   }

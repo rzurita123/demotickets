@@ -74,7 +74,7 @@
     'tickets.crear': ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'],
     'tickets.tratar': ['OPERADOR'],
     'tickets.comentar': ['OPERADOR', 'CLIENTE'],
-    'tickets.registrarResuelto': ['OPERADOR'],
+    'tickets.registrarResuelto': ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'],
     borradores: ['OPERADOR'],
     'soluciones.ver': ['OPERADOR', 'ADMINISTRADOR'],
     'soluciones.proponer': ['OPERADOR'],

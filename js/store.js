@@ -559,14 +559,14 @@
 
   /**
    * Crea un ticket: En proceso, atendido por quien lo carga, si lo crea un
-   * operador; Abierto y sin asignar si lo crea un cliente o un administrador. Con `registroDirecto` el
-   * operador registra problema y solución y queda directamente Cerrado. Si
-   * viene `borradorId`, el borrador se convierte en el ticket.
+   * operador; Abierto y sin asignar si lo crea un cliente o un administrador.
+   * Con `registroDirecto` (cualquier rol que crea tickets) queda Cerrado con su
+   * resolución. Si viene `borradorId`, el borrador se convierte en el ticket.
    */
   function crearTicket(datos, u, opciones) {
     const op = opciones || {};
     exigir(u && ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'].includes(u.rol), 'Tu rol no puede crear tickets.');
-    exigir(!op.registroDirecto || u.rol === 'OPERADOR', 'Sólo Mesa de ayuda puede registrar un ticket ya resuelto.');
+    exigir(!op.proponer || u.rol !== 'CLIENTE', 'Sólo ORMEN puede proponer soluciones reutilizables.');
     let errores = validarTicket(datos, u, op);
     if (op.registroDirecto && op.proponer) errores = Object.assign(errores, validarPropuesta(op.proponer));
     if (op.solucionCatalogoId) {
