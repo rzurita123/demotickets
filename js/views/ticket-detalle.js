@@ -378,7 +378,7 @@
           catId = s.tipo === 'catalogo' ? s.id : s.solucionCatalogoId || null;
           pintarBasada();
           texto.focus();
-        } }, s.tipo === 'catalogo' ? ui.icono('libro', 'i-sm') : ui.icono('ticket', 'i-sm'), U.truncar(s.titulo, 48), h('span', { class: 'cuenta' }, s.puntaje + ' pts'))))) : null;
+        } }, s.tipo === 'catalogo' ? ui.icono('libro', 'i-sm') : ui.icono('ticket', 'i-sm'), U.truncar(s.titulo, 48))))) : null;
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         opcionesSug,
         basada,
@@ -527,14 +527,14 @@
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-sug' },
         h('h2', { id: 'sec-sug', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias'),
         sugeridas.length
-          ? h('ul', { class: 'sug-compactas' }, sugeridas.map((s) => h('li', null,
+          ? h('ul', { class: 'sug-compactas' }, sugeridas.map((s) => h('li', { class: s.tipo === 'catalogo' ? 'es-solucion' : null },
             h('button', { type: 'button', onClick: () => ui.modalSugerencia(s, opSug) },
-              h('span', { class: 'puntaje' }, s.puntaje + ' pts'),
+              ui.icono(s.tipo === 'catalogo' ? 'libro' : 'ticket', 'i-sm'),
               h('span', { class: 'crecer' },
                 h('span', { class: 'titulo-sug' }, s.titulo),
-                h('span', { class: 'fuente-sug' }, s.tipo === 'catalogo' ? 'Solución reutilizable' : 'Resolución del ticket #' + s.ticket.numero))))))
+                h('span', { class: 'fuente-sug' }, s.tipo === 'catalogo' ? 'Solución' : 'Resolución del ticket #' + s.ticket.numero))))))
           : h('p', { class: 'chico suave' }, 'Sin coincidencias.'),
-        h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar soluciones reutilizables ', ui.icono('flechaDer', 'i-sm'))));
+        h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar soluciones ', ui.icono('flechaDer', 'i-sm'))));
     }
 
     return h('div', { class: 'pila' },

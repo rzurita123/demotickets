@@ -625,21 +625,21 @@
   function fuenteSugerencia(r) {
     const S = App.store;
     if (r.tipo === 'catalogo') {
-      return [icono('libro', 'i-sm'), h('span', { class: 'origen' }, 'Solución reutilizable · ' + (r.usos ? 'usada ' + U.plural(r.usos, 'vez', 'veces') : 'sin usos'))];
+      return [icono('libro', 'i-sm'), h('span', { class: 'origen' }, 'Solución · ' + (r.usos ? 'usada ' + U.plural(r.usos, 'vez', 'veces') : 'sin usos'))];
     }
     const t = r.ticket;
     return [icono('ticket', 'i-sm'), h('span', { class: 'origen' }, 'Resolución del ticket #' + t.numero + ' · ' + S.nombre('localidades', t.localidadId) + ' · ' + U.fecha(t.cerradoEn))];
   }
 
   function motivos(r) {
-    return h('div', { class: 'motivos' }, r.motivos.map((m) => h('span', { class: 'motivo' }, h('b', null, '+' + m.puntos), ' ', m.texto)));
+    return h('div', { class: 'motivos' }, r.motivos.map((m) => h('span', { class: 'motivo' }, m.texto)));
   }
 
-  /** Tarjeta de una sugerencia de solución. */
+  /** Tarjeta de una sugerencia: una solución (destacada) o la resolución de un ticket anterior. */
   function tarjetaSugerencia(r, op) {
     const o = op || {};
-    return h('article', { class: ['sugerencia', o.mejor && 'mejor'] },
-      h('div', { class: 'fuente' }, h('span', { class: 'puntaje', title: 'Puntaje' }, r.puntaje + ' pts'), fuenteSugerencia(r)),
+    return h('article', { class: ['sugerencia', r.tipo === 'catalogo' && 'es-solucion'] },
+      h('div', { class: 'fuente' }, fuenteSugerencia(r)),
       r.parecidos ? h('p', { class: 'parecidos' }, 'También se resolvió así en ' + U.plural(r.parecidos, 'caso más', 'casos más') + '.') : null,
       h('h4', null, r.titulo),
       h('p', { class: 'resumen' }, r.texto),
@@ -670,13 +670,13 @@
       partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Problema'), h('div', { class: 'bloque-texto' }, t.descripcion)));
       partes.push(h('div', { class: 'solucion-ticket' }, h('h3', null, icono('checkCirculo'), 'Resolución'), h('div', { class: 'bloque-texto' }, t.solucion.texto),
         galeria(t.solucion.adjuntos),
-        t.solucion.solucionCatalogoId && h('p', { class: 'chico' }, 'Basada en la solución reutilizable «', S.nombre('soluciones', t.solucion.solucionCatalogoId, ''), '».')));
+        t.solucion.solucionCatalogoId && h('p', { class: 'chico' }, 'Basada en la solución «', S.nombre('soluciones', t.solucion.solucionCatalogoId, ''), '».')));
       if (r.palabras.length) partes.push(h('p', { class: 'chico suave' }, 'Palabras en común: ', r.palabras.join(', ')));
     }
-    partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Por qué aparece (' + r.puntaje + ' pts)'), motivos(r)));
+    partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Por qué aparece'), motivos(r)));
     const enlace = r.tipo === 'catalogo' ? '#/soluciones/' + r.id : '#/tickets/' + r.ticket.numero;
     const m = modal({
-      antetitulo: r.tipo === 'catalogo' ? 'Solución reutilizable' : 'Resolución del ticket #' + r.ticket.numero,
+      antetitulo: r.tipo === 'catalogo' ? 'Solución' : 'Resolución del ticket #' + r.ticket.numero,
       titulo: r.titulo,
       tamano: 'ancho',
       cuerpo: partes,

@@ -5,7 +5,6 @@
    - Localidades: cada cliente pertenece a una y ve sus tickets.
    - Catálogos: sistemas, subsistemas, tipos de problema, criticidades y
      grupos de soporte.
-   - Parámetros de la sugerencia de soluciones (puntos provisorios).
    ========================================================================== */
 (function (App) {
   'use strict';
@@ -18,7 +17,6 @@
     { clave: 'usuarios', texto: 'Usuarios' },
     { clave: 'localidades', texto: 'Localidades' },
     { clave: 'catalogos', texto: 'Catálogos' },
-    { clave: 'parametros', texto: 'Parámetros de sugerencias' },
   ];
 
   function marco(ctx, op) {
@@ -402,105 +400,6 @@
           tarjetaLista('tiposProblema', 'Tipos de problema'),
           tarjetaLista('criticidades', 'Criticidades'),
           tarjetaLista('gruposSoporte', 'Grupos de soporte')),
-      ],
-    });
-  };
-
-  // --------------------------------------------------------- Parámetros ---
-
-  const CAMPOS_PARAMETROS = [
-    { k: 'pesoSistema', etiqueta: 'Mismo sistema' },
-    { k: 'pesoSubsistema', etiqueta: 'Mismo subsistema' },
-    { k: 'pesoPalabraClave', etiqueta: 'Cada palabra clave de una solución reutilizable que aparece en la descripción' },
-    { k: 'pesoLocalidad', etiqueta: 'Resolución anterior de la misma localidad' },
-    { k: 'pesoPalabraComun', etiqueta: 'Cada palabra en común con una resolución anterior (hasta 5)' },
-    { k: 'maxResultados', etiqueta: 'Cantidad de sugerencias que se muestran' },
-  ];
-
-  App.vistas.adminParametros = function (ctx) {
-    const S = App.store;
-    const ui = App.ui;
-    const u = ctx.usuario;
-    const actuales = S.datos.parametros;
-    const entradas = {};
-
-    const form = h('form', { class: 'card pila', novalidate: true, 'aria-labelledby': 'sec-pesos' });
-    const resumen = h('div');
-    CAMPOS_PARAMETROS.forEach((c) => {
-      const [min, max] = S.LIMITES_PARAMETROS[c.k];
-      entradas[c.k] = h('input', { id: 'p-' + c.k, class: 'control', type: 'number', inputmode: 'numeric', min: String(min), max: String(max), step: '1', value: String(actuales[c.k]) });
-    });
-    const leer = () => {
-      const p = {};
-      CAMPOS_PARAMETROS.forEach((c) => { p[c.k] = entradas[c.k].value; });
-      return p;
-    };
-
-    // Prueba en vivo con los valores del formulario (aunque no estén guardados).
-    const inPrueba = h('textarea', { id: 'p-prueba', class: 'control', rows: '3', value: 'La impresora de la terminal no imprime el comprobante' });
-    const selSis = ui.select({ id: 'p-sis', vacio: 'Sin elegir', valor: 'sis-control-terminales', opciones: S.sistemas(true).map((s) => ({ valor: s.id, texto: s.nombre })) });
-    const resultados = h('div', { class: 'sugerencias' });
-    const estado = h('p', { class: 'chico suave', 'aria-live': 'polite' });
-    function probar() {
-      const p = {};
-      for (const c of CAMPOS_PARAMETROS) {
-        const v = Number(entradas[c.k].value);
-        const [min, max] = S.LIMITES_PARAMETROS[c.k];
-        p[c.k] = Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : actuales[c.k];
-      }
-      const res = App.sugerencias.buscar({ texto: inPrueba.value, sistemaId: selSis.value, parametros: p, limite: p.maxResultados });
-      U.vaciar(resultados);
-      estado.textContent = res.length ? U.plural(res.length, 'sugerencia', 'sugerencias') + ' con estos valores.' : 'Sin sugerencias para esta descripción.';
-      res.forEach((r, i) => resultados.append(ui.tarjetaSugerencia(r, { mejor: i === 0 })));
-    }
-    const probarDiferido = U.debounce(probar, 200);
-    inPrueba.addEventListener('input', probarDiferido);
-    selSis.addEventListener('change', probar);
-
-    form.append(
-      h('h2', { id: 'sec-pesos' }, 'Puntos de cada criterio'),
-      resumen,
-      h('div', { class: 'pila' }, CAMPOS_PARAMETROS.map((c) => {
-        const [min, max] = S.LIMITES_PARAMETROS[c.k];
-        return ui.campo({ nombre: c.k, id: 'p-' + c.k, etiqueta: c.etiqueta, control: entradas[c.k] });
-      })),
-      h('div', { class: 'fila' },
-        h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('check', 'i-sm'), 'Guardar'),
-        h('button', {
-          type: 'button', class: 'btn btn-neutro', onClick: () => {
-            CAMPOS_PARAMETROS.forEach((c) => { entradas[c.k].value = String(App.catalogos.parametros[c.k]); });
-            ctx.marcarSucio(true);
-            probar();
-            ui.toast('Se cargaron los valores iniciales de la demo. Guardá para aplicarlos.', { tipo: 'aviso' });
-          },
-        }, ui.icono('refrescar', 'i-sm'), 'Valores iniciales')));
-    form.addEventListener('input', (e) => { if (e.target.type === 'number') { ctx.marcarSucio(true); probarDiferido(); } });
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      try {
-        S.guardarParametros(leer(), u);
-        ctx.marcarSucio(false);
-        ui.limpiarErrores(form);
-        ui.toast('Parámetros guardados: las sugerencias ya usan los valores nuevos.');
-      } catch (err) {
-        if (err.campos) ui.mostrarErrores(form, err.campos, resumen);
-        else ui.mostrarError(err);
-      }
-    });
-    setTimeout(probar, 0);
-
-    return marco(ctx, {
-      seccion: 'parametros',
-      titulo: 'Parámetros de sugerencias',
-      contenido: [
-        h('div', { class: 'dos-columnas-anchas' },
-          form,
-          h('aside', { class: 'pila' }, h('section', { class: 'card pila', 'aria-labelledby': 'sec-probar' },
-            h('h2', { id: 'sec-probar' }, 'Probar con una descripción'),
-            ui.campo({ nombre: 'prueba', id: 'p-prueba', etiqueta: 'Descripción del problema', control: inPrueba }),
-            ui.campo({ nombre: 'sis', id: 'p-sis', etiqueta: 'Sistema', opcional: true, control: selSis }),
-            estado,
-            resultados))),
       ],
     });
   };

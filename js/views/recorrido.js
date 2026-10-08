@@ -49,19 +49,28 @@
     return U.duracion(Math.max(0, fin - new Date(p.desde))) + (p.hasta ? '' : ' (sigue)');
   }
 
-  function grafico(pasos) {
+  /**
+   * Gráfico de carriles. `disponible` es el ancho del contenedor: las columnas se
+   * reparten ese espacio (con un mínimo; si no entra, se desplaza) y, con lugar
+   * de sobra, los carriles y los nodos crecen.
+   */
+  function grafico(pasos, disponible) {
     const carriles = [];
     for (const p of pasos) if (!carriles.some((c) => clave(c) === clave(p.responsable))) carriles.push(p.responsable);
     const fila = new Map(carriles.map((c, i) => [clave(c), i]));
 
-    const angosto = window.innerWidth < 640;
-    const ANCHO_ETIQ = angosto ? 128 : 196;
-    const COL = angosto ? 104 : 124;
-    const ALTO = 64;
+    const angosto = disponible < 600;
+    const amplio = disponible >= 1000;
+    const ANCHO_ETIQ = angosto ? 128 : amplio ? 230 : 196;
+    const COL_MIN = angosto ? 104 : 124;
+    const COL = Math.max(COL_MIN, Math.min(360, Math.floor((disponible - ANCHO_ETIQ - 16) / pasos.length)));
+    const ALTO = amplio ? 84 : 64;
     const ARRIBA = 46;
-    const ancho = ANCHO_ETIQ + pasos.length * COL + 16;
+    const R_NODO = amplio ? 14 : 11;
+    const ancho = Math.max(disponible, ANCHO_ETIQ + pasos.length * COL + 16);
     const alto = ARRIBA + carriles.length * ALTO + 8;
     const x = (i) => ANCHO_ETIQ + i * COL + COL / 2;
+    const r = (n) => n * R_NODO / 11; // medidas de los nodos, proporcionales al radio
     const y = (p) => ARRIBA + fila.get(clave(p.responsable)) * ALTO + ALTO / 2;
 
     const svg = s('svg', {
@@ -96,8 +105,8 @@
 
     // Conectores
     for (let i = 0; i < pasos.length - 1; i++) {
-      const x1 = x(i) + 13;
-      const x2 = x(i + 1) - 15;
+      const x1 = x(i) + r(13);
+      const x2 = x(i + 1) - r(15);
       const y1 = y(pasos[i]);
       const y2 = y(pasos[i + 1]);
       const xm = (x1 + x2) / 2;
@@ -117,11 +126,11 @@
       const elev = p.motivo === 'elevado';
       const g = s('g', null,
         s('title', null, 'Paso ' + (i + 1) + ': ' + MOTIVOS[p.motivo] + ' · ' + App.store.nombreEstado(p.estado) + ' · ' + App.store.nombreResponsable(p.responsable) + ' · ' + U.fechaHora(p.desde)),
-        elev ? s('circle', { cx, cy, r: 16, fill: 'none', stroke: 'var(--naranja)', 'stroke-width': 2, 'stroke-dasharray': '3 2' }) : null,
-        s('circle', { cx, cy, r: 11, fill: col.relleno, stroke: col.trazo, 'stroke-width': 2.5 }),
-        p.estado === 'CERRADO' ? s('path', { d: 'M' + (cx - 5) + ' ' + cy + ' l3.5 3.5 l6.5 -7', fill: 'none', stroke: col.trazo, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }) : null,
-        s('text', { x: cx, y: cy + 28, 'text-anchor': 'middle', class: 'rec-nodo-estado', fill: col.trazo }, App.store.nombreEstado(p.estado)),
-        elev ? s('text', { x: cx, y: cy - 21, 'text-anchor': 'middle', class: 'rec-nodo-elev' }, 'Elevado') : null);
+        elev ? s('circle', { cx, cy, r: r(16), fill: 'none', stroke: 'var(--naranja)', 'stroke-width': 2, 'stroke-dasharray': '3 2' }) : null,
+        s('circle', { cx, cy, r: R_NODO, fill: col.relleno, stroke: col.trazo, 'stroke-width': 2.5 }),
+        p.estado === 'CERRADO' ? s('path', { d: 'M' + (cx - r(5)) + ' ' + cy + ' l' + r(3.5) + ' ' + r(3.5) + ' l' + r(6.5) + ' ' + -r(7), fill: 'none', stroke: col.trazo, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }) : null,
+        s('text', { x: cx, y: cy + r(28), 'text-anchor': 'middle', class: 'rec-nodo-estado', fill: col.trazo }, App.store.nombreEstado(p.estado)),
+        elev ? s('text', { x: cx, y: cy - r(21), 'text-anchor': 'middle', class: 'rec-nodo-elev' }, 'Elevado') : null);
       svg.append(g);
     });
     return svg;
@@ -168,19 +177,40 @@
       U.plural(pasos.length, 'paso', 'pasos'), ' · ',
       elevaciones ? U.plural(elevaciones, 'elevación', 'elevaciones') : 'sin elevaciones',
       t.elevadoA ? [' · último destino: ', h('strong', null, S.nombreDestino(t.elevadoA))] : null);
+    const envoltura = h('div', { class: 'recorrido-envoltura', tabindex: '0', 'aria-label': 'Gráfico del recorrido (desplazable)' });
+    let anchoDibujado = 0;
+    function dibujar() {
+      const disponible = envoltura.clientWidth || 800;
+      if (Math.abs(disponible - anchoDibujado) < 8) return;
+      anchoDibujado = disponible;
+      U.vaciar(envoltura).append(grafico(pasos, disponible));
+    }
     ui.modal({
       antetitulo: 'Ticket #' + t.numero,
       titulo: 'Recorrido del ticket',
-      tamano: 'ancho',
+      tamano: 'completo',
       cuerpo: [
         resumen,
         leyenda(),
-        h('div', { class: 'recorrido-envoltura', tabindex: '0', 'aria-label': 'Gráfico del recorrido (desplazable)' }, grafico(pasos)),
+        envoltura,
         h('h3', { class: 'chico fuerte' }, 'Paso a paso'),
         lista(pasos, u),
       ],
       acciones: [{ texto: 'Cerrar', clase: 'btn-neutro' }],
     });
+    // La ventana ya está en pantalla: se dibuja con su ancho real y se vuelve a dibujar si cambia.
+    dibujar();
+    const alCambiarTamano = U.debounce(() => {
+      if (!envoltura.isConnected) { dejarDeObservar(); return; }
+      dibujar();
+    }, 120);
+    const obs = window.ResizeObserver ? new ResizeObserver(alCambiarTamano) : null;
+    if (obs) obs.observe(envoltura);
+    window.addEventListener('resize', alCambiarTamano);
+    function dejarDeObservar() {
+      if (obs) obs.disconnect();
+      window.removeEventListener('resize', alCambiarTamano);
+    }
   }
 
   App.recorrido = { abrir };

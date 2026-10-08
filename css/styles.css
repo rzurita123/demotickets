@@ -458,6 +458,8 @@ fieldset > legend { margin-bottom: 6px; padding: 0; }
   display: flex; flex-direction: column; max-height: none;
 }
 .modal.ancho { max-width: 860px; }
+/* Ventanas que muestran algo que gana con espacio (el recorrido del ticket) */
+.modal.completo { max-width: min(1400px, 96vw); }
 .modal.angosto { max-width: 460px; }
 .modal-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 24px 12px; }
 .modal-cabecera h2 { font-size: 21px; }
@@ -635,12 +637,10 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
   display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--borde); border-radius: var(--radio);
   background: var(--superficie);
 }
-.sugerencia.mejor { border: 2px solid var(--azul); background: var(--azul-muy-claro); }
+/* Las soluciones (catálogo) se destacan en dorado frente a las resoluciones de tickets anteriores. */
+.sugerencia.es-solucion { border-color: #E2C98E; background: #FFFAEE; box-shadow: inset 4px 0 0 var(--dorado); }
+.sugerencia.es-solucion .fuente { color: var(--dorado-oscuro); font-weight: 600; }
 .sugerencia .fuente { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--texto-suave); }
-.sugerencia .puntaje {
-  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--tinta); color: #fff;
-  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
-}
 .sugerencia .fuente .origen { flex: 1 1 0; min-width: 0; }
 .sugerencia .parecidos { font-size: 12.5px; color: var(--texto-suave); margin-top: -4px; }
 .sugerencia h4 { font-family: var(--fuente); font-size: 15.5px; font-weight: 700; color: var(--tinta); }
@@ -716,7 +716,6 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .item-catalogo.inactivo .nombre-item { text-decoration: line-through; color: var(--texto-suave); }
 .arbol-sistema.inactivo > .fila-entre .nombre-item { text-decoration: line-through; color: var(--texto-suave); }
 .lista-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.parametros { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 
 /* Correos */
 .correo { border: 1px solid var(--borde); border-radius: var(--radio); background: var(--superficie); overflow: hidden; }
@@ -945,10 +944,14 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .sug-compactas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .sug-compactas li + li { border-top: 1px solid var(--borde-suave); }
 .sug-compactas button {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 4px; border: 0; background: none; text-align: left; border-radius: var(--radio-sm);
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 8px; border: 0; background: none; text-align: left; border-radius: var(--radio-sm);
 }
+.sug-compactas button > .icono { margin-top: 3px; color: var(--texto-suave); }
+.sug-compactas li.es-solucion button { background: #FFFAEE; box-shadow: inset 3px 0 0 var(--dorado); }
+.sug-compactas li.es-solucion button:hover { background: var(--dorado-claro); }
+.sug-compactas li.es-solucion button > .icono, .sug-compactas li.es-solucion .fuente-sug { color: var(--dorado-oscuro); }
+.sug-compactas li.es-solucion .fuente-sug { font-weight: 600; }
 .sug-compactas button:hover { background: var(--azul-muy-claro); }
-.sug-compactas .puntaje { flex: none; min-width: 52px; text-align: center; padding: 2px 6px; border-radius: 999px; background: var(--tinta); color: #fff; font-size: 12px; font-weight: 700; margin-top: 2px; }
 .sug-compactas .titulo-sug { display: block; font-weight: 600; color: var(--tinta); line-height: 1.3; }
 .sug-compactas .fuente-sug { display: block; font-size: 13px; color: var(--texto-suave); }
 

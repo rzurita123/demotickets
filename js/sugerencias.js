@@ -4,11 +4,11 @@
    Sigue lo que ORMEN contó que hace hoy:
    - Fuentes: el catálogo de soluciones, tickets anteriores del mismo
      sistema o servicio y tickets anteriores de la misma localidad.
-   - Puntaje: mismo sistema y subsistema + palabras clave del catálogo que
-     aparecen en la descripción. Se ordena por puntaje y el operador elige.
+   - Relevancia: mismo sistema y subsistema + palabras clave del catálogo
+     que aparecen en la descripción. Se muestran las más parecidas primero
+     (el puntaje interno no se muestra) y el operador elige.
 
-   ORMEN no dijo cuántos puntos vale cada criterio: los pesos son
-   provisorios y se cambian en Administración > Parámetros. Para los
+   Los pesos de cada criterio son internos (datos.parametros). Para los
    tickets anteriores (que no tienen palabras clave) se cuentan las
    palabras en común con la descripción.
    Sólo se sugieren soluciones aprobadas; las pendientes no.

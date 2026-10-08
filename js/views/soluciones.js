@@ -291,11 +291,10 @@
       const lista = palabras.valor();
       if (!texto) { resultadoPrueba.append(h('p', { class: 'chico suave' }, 'Escribí un problema de ejemplo.')); return; }
       const coinciden = App.sugerencias.palabrasClaveEn(texto, lista);
-      const p = S.datos.parametros;
       resultadoPrueba.append(
         h('div', { class: 'chips' }, lista.length ? lista.map((x) => h('span', { class: ['palabra-clave', coinciden.includes(x) && 'coincide'] }, coinciden.includes(x) ? ui.icono('check', 'i-sm') : null, x)) : h('span', { class: 'chico suave' }, 'Todavía no hay palabras clave.')),
         h('p', { class: 'chico' }, coinciden.length
-          ? '+' + coinciden.length * p.pesoPalabraClave + ' pts por ' + U.plural(coinciden.length, 'palabra clave', 'palabras clave') + '.'
+          ? 'Coinciden ' + U.plural(coinciden.length, 'palabra clave', 'palabras clave') + '.'
           : 'Ninguna palabra clave coincide.'));
     }
     inPrueba.addEventListener('input', U.debounce(probar, 200));
@@ -402,8 +401,8 @@
         })));
         return;
       }
-      estado.textContent = U.plural(res.length, 'resultado', 'resultados') + ', ordenados de mayor a menor puntaje.';
-      res.forEach((r, i) => resultados.append(ui.tarjetaSugerencia(r, { mejor: i === 0, alUsar: esOperador ? usar : null, textoUsar: 'Crear ticket cerrado con esta' })));
+      estado.textContent = U.plural(res.length, 'resultado', 'resultados') + ', los más parecidos primero.';
+      res.forEach((r) => resultados.append(ui.tarjetaSugerencia(r, { alUsar: esOperador ? usar : null, textoUsar: 'Crear ticket cerrado con esta' })));
     }
 
     const buscarDiferido = U.debounce(buscar, 250);

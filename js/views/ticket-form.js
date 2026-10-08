@@ -157,7 +157,7 @@
         return;
       }
       estadoSug.textContent = U.plural(res.length, 'sugerencia', 'sugerencias');
-      res.forEach((r, i) => listaSug.append(ui.tarjetaSugerencia(r, { mejor: i === 0, alUsar: usarSolucion })));
+      res.forEach((r) => listaSug.append(ui.tarjetaSugerencia(r, { alUsar: usarSolucion })));
     }
     const actualizarDiferido = U.debounce(actualizarSugerencias, 250);
     [inTitulo, inDesc].forEach((el) => el.addEventListener('input', actualizarDiferido));

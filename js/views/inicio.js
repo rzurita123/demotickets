@@ -223,7 +223,6 @@
           ['#/admin/usuarios', 'usuarios', 'Usuarios'],
           ['#/admin/localidades', 'pin', 'Localidades'],
           ['#/admin/catalogos', 'capas', 'Catálogos'],
-          ['#/admin/parametros', 'ajustes', 'Sugerencias'],
           ['#/auditoria', 'escudo', 'Auditoría'],
         ].map(([href, ic, t]) => h('a', { href, class: 'acceso' }, ui.icono(ic), h('span', null, t)))))));
   }
