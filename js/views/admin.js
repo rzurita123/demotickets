@@ -4,7 +4,7 @@
      con el tutor; ORMEN acepta una lista de usuarios predefinida.
    - Localidades: cada cliente pertenece a una y ve sus tickets.
    - Catálogos: sistemas, subsistemas, tipos de problema, criticidades y
-     tipos de solicitud.
+     grupos de soporte.
    - Parámetros de la sugerencia de soluciones (puntos provisorios).
    ========================================================================== */
 (function (App) {
@@ -318,10 +318,9 @@
       subsistemas: U.contarPor(registrados, (t) => t.subsistemaId),
       tiposProblema: U.contarPor(registrados, (t) => t.tipoProblemaId),
       criticidades: U.contarPor(registrados, (t) => t.criticidadId),
-      tiposSolicitud: U.contarPor(registrados, (t) => t.tipoSolicitudId),
       gruposSoporte: U.contarPor(registrados, (t) => (t.elevadoA && t.elevadoA.tipo === 'grupo' ? t.elevadoA.id : null)),
     };
-    const SINGULAR = { sistemas: 'sistema', subsistemas: 'subsistema', tiposProblema: 'tipo de problema', criticidades: 'criticidad', tiposSolicitud: 'tipo de solicitud', gruposSoporte: 'grupo de soporte' };
+    const SINGULAR = { sistemas: 'sistema', subsistemas: 'subsistema', tiposProblema: 'tipo de problema', criticidades: 'criticidad', gruposSoporte: 'grupo de soporte' };
 
     function abrir(tipo, item, sistemaId) {
       const inNombre = h('input', { id: 'c-nombre', class: 'control', type: 'text', autocomplete: 'off', value: item ? item.nombre : '' });
@@ -402,8 +401,7 @@
         h('div', { class: 'grid-3' },
           tarjetaLista('tiposProblema', 'Tipos de problema'),
           tarjetaLista('criticidades', 'Criticidades'),
-          tarjetaLista('tiposSolicitud', 'Tipos de solicitud')),
-        tarjetaLista('gruposSoporte', 'Grupos de soporte'),
+          tarjetaLista('gruposSoporte', 'Grupos de soporte')),
       ],
     });
   };

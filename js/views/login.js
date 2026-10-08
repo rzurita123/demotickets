@@ -19,7 +19,6 @@
 
     function entrar(resultado) {
       if (!resultado.ok) return false;
-      ui.cerrarModales();
       ui.toast('Ingresaste como ' + resultado.usuario.nombre + '.');
       App.router.ir(volver, { reemplazar: true });
       return true;
@@ -29,9 +28,10 @@
     const panel = h('section', { class: 'login-panel', 'aria-label': 'ORMEN' },
       h('div', { class: 'marca' },
         h('img', { class: 'marca-logo', src: 'assets/logo-ormen.png', alt: 'ORMEN' })),
-      h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Mesa de ayuda', h('span', null, 'Sistema de tickets')));
+      h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Mesa de ayuda', h('span', null, 'Sistema de tickets')),
+      h('img', { class: 'login-esfera', src: 'assets/esfera-ormen.svg', alt: '', 'aria-hidden': 'true' }));
 
-    // Accesos rápidos: un usuario por perfil
+    // Todos los usuarios de prueba
     const rapidos = h('div', { class: 'usuarios-demo' }, App.catalogos.accesosRapidos.map((id) => {
       const u = S.usuario(id);
       if (!u || u.activo === false) return null;
@@ -63,28 +63,9 @@
       entrar(r);
     });
 
-    // Todos los usuarios de prueba, en una ventana
-    function verTodos() {
-      const filas = S.usuarios().map((u) => h('tr', null,
-        ui.celda('Nombre', h('span', { class: 'fila-sm', style: 'flex-wrap: nowrap' }, ui.avatar(u, 'sm'), h('span', { class: 'fuerte' }, u.nombre))),
-        ui.celda('Rol', ui.nombreRol(u)),
-        ui.celda('Localidad o cargo', detalleUsuario(u)),
-        ui.celda('', u.activo === false
-          ? h('span', { class: 'badge inactivo' }, 'Inactivo')
-          : h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => entrar(App.auth.ingresarComo(u.id)) }, 'Entrar'), 'derecha')));
-      ui.modal({
-        titulo: 'Usuarios de prueba',
-        tamano: 'ancho',
-        cuerpo: h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
-          h('thead', null, h('tr', null, ['Nombre', 'Rol', 'Localidad o cargo', ''].map((t) => h('th', { scope: 'col' }, t)))),
-          h('tbody', null, filas))),
-      });
-    }
-
     const contenido = h('section', { class: 'login-contenido', 'aria-labelledby': 'login-titulo' },
       h('h2', { id: 'login-titulo' }, 'Ingresar como'),
       rapidos,
-      h('button', { type: 'button', class: 'enlace-boton login-todos', onClick: verTodos }, 'Ver los ' + S.usuarios().length + ' usuarios de prueba'),
       h('div', { class: 'login-sep' }, h('span', null, 'o con usuario y contraseña')),
       form,
       h('p', { class: 'login-clave' }, 'Contraseña de prueba: ', h('strong', null, 'demo')));

@@ -56,16 +56,16 @@
     const ui = App.ui;
     const o = op || {};
     const def = {
-      numero: { th: 'Nº', td: (t) => ui.celda('Nº', h('span', { class: 'num' }, '#' + t.numero)) },
+      numero: { th: 'Nº', td: (t) => ui.celda('Nº', h('span', { class: 'num' }, '#' + t.numero), 'celda-num') },
       ticket: {
         th: 'Ticket',
         td: (t) => ui.celda('Ticket', h('div', { class: 'titulo-celda' },
           enlaceTicket(t, t.titulo),
-          h('span', { class: 'sub' }, clasificacionCorta(t), t.tipoSolicitudId === 'ts-sugerencia' ? ' · Sugerencia' : '', t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t))), 'sin-label'),
+          h('span', { class: 'sub' }, clasificacionCorta(t), t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t))), 'sin-label'),
       },
       localidad: { th: 'Localidad', td: (t) => ui.celda('Localidad', S.nombre('localidades', t.localidadId)) },
       creador: { th: 'Creado por', td: (t) => { const u = S.usuario(t.creadoPorId); return ui.celda('Creado por', u ? (u.rol === 'CLIENTE' ? u.nombre : u.nombre + ' (Mesa de ayuda)') : '—'); } },
-      estado: { th: 'Estado', td: (t) => ui.celda('Estado', ui.badgeEstado(t.estado)) },
+      estado: { th: 'Estado', td: (t) => ui.celda('Estado', ui.pistaEstado(t.estado)) },
       criticidad: { th: 'Criticidad', td: (t) => ui.celda('Criticidad', ui.badgeCriticidad(t.criticidadId)) },
       atiende: { th: 'Atiende', td: (t) => ui.celda('Atiende', atiende(t)) },
       actualizado: { th: 'Actualizado', td: (t) => ui.celda('Actualizado', ui.tiempo(t.actualizadoEn)) },
@@ -93,6 +93,44 @@
       h('span', { class: 'etiqueta' }, op.icono && App.ui.icono(op.icono, 'i-sm'), op.etiqueta),
       h('span', { class: 'valor' }, U.formatoNumero(op.valor)),
       op.detalle && h('span', { class: 'detalle' }, op.detalle));
+  }
+
+  /**
+   * Cola de trabajo: pestañas con contador y la lista debajo.
+   * cola({ id, activa, alCambiar, pestanas: [{ clave, texto, cuenta, tono, contenido: () => nodo }] })
+   */
+  function cola(op) {
+    const pestanas = op.pestanas;
+    let activa = pestanas.some((p) => p.clave === op.activa) ? op.activa : pestanas[0].clave;
+    const panel = h('div', { class: 'cola-panel', role: 'tabpanel', id: op.id + '-panel', tabindex: '0' });
+    const botones = pestanas.map((p) => h('button', {
+      type: 'button', role: 'tab', id: op.id + '-' + p.clave, 'aria-controls': op.id + '-panel', dataset: { clave: p.clave, tono: p.tono || null },
+      onClick: () => elegir(p.clave),
+    }, h('span', null, p.texto), h('span', { class: 'cuenta' }, U.formatoNumero(p.cuenta))));
+    const lista = h('div', { class: 'cola-pestanas', role: 'tablist', 'aria-label': op.etiqueta || 'Cola de trabajo' }, botones);
+    lista.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const i = pestanas.findIndex((p) => p.clave === activa);
+      const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + pestanas.length) % pestanas.length;
+      elegir(pestanas[j].clave);
+      botones[j].focus();
+    });
+    function pintar() {
+      botones.forEach((b) => {
+        const sel = b.dataset.clave === activa;
+        b.setAttribute('aria-selected', String(sel));
+        b.tabIndex = sel ? 0 : -1;
+      });
+      panel.setAttribute('aria-labelledby', op.id + '-' + activa);
+      U.vaciar(panel).append(...[].concat(pestanas.find((p) => p.clave === activa).contenido()).filter(Boolean));
+    }
+    function elegir(clave) {
+      activa = clave;
+      pintar();
+      if (op.alCambiar) op.alCambiar(clave);
+    }
+    pintar();
+    return h('section', { class: 'cola' }, lista, panel);
   }
 
   /** Texto "Ticket #1005" o "Ticket #1005 · Título" para avisos. */
@@ -131,5 +169,5 @@
     }));
   };
 
-  App.comun = { ORDENES, ORDEN_CRITICIDAD, enlaceTicket, clasificacionCorta, atiende, tablaTickets, nombreTicket, mosaico };
+  App.comun = { ORDENES, ORDEN_CRITICIDAD, enlaceTicket, clasificacionCorta, atiende, tablaTickets, nombreTicket, mosaico, cola };
 })(window.App = window.App || {});

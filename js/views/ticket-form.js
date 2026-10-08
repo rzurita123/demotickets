@@ -16,6 +16,8 @@
     const ui = App.ui;
     const u = ctx.usuario;
     const esOperador = u.rol === 'OPERADOR';
+    // ORMEN (operador o administrador) elige la localidad; el cliente usa la suya.
+    const eligeLocalidad = u.rol !== 'CLIENTE';
     const b = op.borrador || null;
     const pre = op.prefill || {}; // datos que llegan desde la búsqueda de soluciones
     // El operador decide primero si el ticket queda Abierto ('nuevo') o Cerrado ('resuelto').
@@ -25,7 +27,7 @@
     const marcar = () => ctx.marcarSucio(true);
 
     // ------------------------------------------------------- Controles ---
-    const selLocalidad = esOperador
+    const selLocalidad = eligeLocalidad
       ? ui.select({ id: 't-localidad', vacio: 'Elegí la localidad', valor: b ? b.localidadId : pre.localidadId || '', opciones: S.localidades(true).map((l) => ({ valor: l.id, texto: l.nombre })) })
       : h('input', { id: 't-localidad', class: 'control', type: 'text', readonly: true, value: S.nombre('localidades', u.localidadId) });
     const selSistema = ui.select({ id: 't-sistema', vacio: 'Elegí el sistema o servicio', valor: b ? b.sistemaId : pre.sistemaId || '', opciones: S.sistemas(true).map((s) => ({ valor: s.id, texto: s.nombre })) });
@@ -41,7 +43,6 @@
     cargarSubsistemas(b ? b.subsistemaId : pre.subsistemaId || '');
     selSistema.addEventListener('change', () => cargarSubsistemas(''));
 
-    const segTipo = ui.segmentado({ nombre: 'tipoSolicitud', valor: b ? b.tipoSolicitudId || 'ts-atencion' : 'ts-atencion', opciones: S.catalogo('tiposSolicitud', true).map((x) => ({ valor: x.id, texto: x.nombre, icono: x.id === 'ts-sugerencia' ? 'bombilla' : null })) });
     const segCri = ui.segmentado({ nombre: 'criticidad', valor: b ? b.criticidadId : '', opciones: S.catalogo('criticidades', true).map((c) => ({ valor: c.id, texto: c.nombre, punto: c.clase })) });
     const selTipoProblema = esOperador ? ui.select({ id: 't-tipo-problema', valor: (b && b.tipoProblemaId) || 'tp-nodef', opciones: S.catalogo('tiposProblema', true).map((x) => ({ valor: x.id, texto: x.nombre })) }) : null;
     const inTitulo = h('input', { id: 't-titulo', class: 'control', type: 'text', maxlength: '120', autocomplete: 'off', value: b ? b.titulo : pre.titulo || '', placeholder: 'Por ejemplo: la impresora de la terminal no imprime' });
@@ -94,24 +95,23 @@
         onChange: (v) => cambiarModo(v),
       })) : null;
 
-    const cardDatos = h('section', { class: 'card pila', 'aria-labelledby': 'sec-datos' },
+    const cardDatos = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-datos' },
       h('h2', { id: 'sec-datos' }, 'Datos del ticket'),
       h('div', { class: 'grid-2' },
-        ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: esOperador, control: selLocalidad }),
+        ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: eligeLocalidad, control: selLocalidad }),
         ui.campo({ nombre: 'sistemaId', id: 't-sistema', etiqueta: 'Sistema o servicio afectado', requerido: true, control: selSistema })),
       h('div', { class: 'grid-2' },
         ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub }),
         esOperador ? ui.campo({ nombre: 'tipoProblemaId', id: 't-tipo-problema', etiqueta: 'Tipo de problema', opcional: true, control: selTipoProblema }) : h('div')),
-      ui.grupo({ nombre: 'tipoSolicitudId', etiqueta: 'Tipo de solicitud', requerido: true, control: segTipo }),
       ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri }));
 
-    const cardProblema = h('section', { class: 'card pila', 'aria-labelledby': 'sec-problema' },
+    const cardProblema = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-problema' },
       h('h2', { id: 'sec-problema' }, 'Problema'),
       ui.campo({ nombre: 'titulo', id: 't-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
       ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción del problema', requerido: true, control: inDesc }),
       h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el));
 
-    const cardSolucion = h('section', { class: 'card acento-dorado pila', 'aria-labelledby': 'sec-solucion', hidden: modo !== 'resuelto' },
+    const cardSolucion = h('section', { class: 'hoja-seccion seccion-resolucion pila', 'aria-labelledby': 'sec-solucion', hidden: modo !== 'resuelto' },
       h('div', { class: 'fila-entre' }, h('h2', { id: 'sec-solucion' }, 'Resolución')),
       basadaEn,
       ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion }),
@@ -123,13 +123,15 @@
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
     const btnBorrador = esOperador ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
     const btnDescartar = b ? h('button', { type: 'button', class: 'btn btn-peligro', onClick: descartar }, ui.icono('basura', 'i-sm'), 'Descartar borrador') : null;
-    const acciones = h('div', { class: 'fila' },
+    const acciones = h('div', { class: 'barra-form' },
       btnCrear, btnBorrador,
       h('a', { class: 'btn btn-fantasma btn-lg', href: b ? '#/borradores' : '#/' }, 'Cancelar'),
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
+    // Los campos aparecen recién cuando el operador eligió Abierto o Cerrado.
+    const hojaForm = h('div', { class: 'hoja' }, cardProblema, cardDatos, cardSolucion, acciones);
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
-      resumen, segModo, cardProblema, cardDatos, cardSolucion, acciones);
+      resumen, segModo, hojaForm);
     form.addEventListener('input', marcar);
     // Elegir Abierto o Cerrado no cuenta como un cambio sin guardar.
     form.addEventListener('change', (e) => { if (e.target.name !== 'modo') marcar(); });
@@ -140,7 +142,7 @@
     const estadoSug = h('p', { class: 'chico suave', 'aria-live': 'polite' });
     function actualizarSugerencias() {
       const texto = inTitulo.value + ' ' + inDesc.value;
-      const res = App.sugerencias.buscar({ texto, sistemaId: selSistema.value, subsistemaId: selSub.value, localidadId: esOperador ? selLocalidad.value : u.localidadId });
+      const res = App.sugerencias.buscar({ texto, sistemaId: selSistema.value, subsistemaId: selSub.value, localidadId: eligeLocalidad ? selLocalidad.value : u.localidadId });
       U.vaciar(listaSug);
       if (!texto.trim() && !selSistema.value) {
         estadoSug.textContent = 'Escribí el problema para ver soluciones parecidas.';
@@ -182,7 +184,7 @@
     function cambiarModo(v) {
       modo = v;
       const elegido = modo !== null;
-      [cardProblema, cardDatos, acciones].forEach((el) => { el.hidden = !elegido; });
+      hojaForm.hidden = !elegido;
       cardSolucion.hidden = modo !== 'resuelto';
       if (btnBorrador) btnBorrador.hidden = modo === 'resuelto';
       U.vaciar(btnCrear).append(ui.icono(modo === 'resuelto' ? 'checkCirculo' : 'enviar', 'i-sm'), modo === 'resuelto' ? 'Crear ticket cerrado' : 'Crear ticket');
@@ -194,10 +196,9 @@
     // ----------------------------------------------------------- Acciones ---
     function leer() {
       return {
-        localidadId: esOperador ? selLocalidad.value : u.localidadId,
+        localidadId: eligeLocalidad ? selLocalidad.value : u.localidadId,
         sistemaId: selSistema.value,
         subsistemaId: selSub.value,
-        tipoSolicitudId: ui.valorRadio(form, 'tipoSolicitud'),
         criticidadId: ui.valorRadio(form, 'criticidad'),
         tipoProblemaId: selTipoProblema ? selTipoProblema.value : null,
         titulo: inTitulo.value,
@@ -221,7 +222,7 @@
         const t = S.crearTicket(leer(), u, opciones);
         ctx.marcarSucio(false);
         const prop = modo === 'resuelto' && chkProponer.checked ? ' Solución reutilizable propuesta: queda por aprobar.' : '';
-        ui.toast((modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado. Queda En proceso, a tu nombre.') + prop);
+        ui.toast((modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado.' + (esOperador ? ' Queda En proceso, a tu nombre.' : '')) + prop);
         App.router.ir('/tickets/' + t.numero);
       } catch (e) {
         if (e.campos) ui.mostrarErrores(form, e.campos, resumen);

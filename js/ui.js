@@ -211,6 +211,20 @@
       icono(e ? e.icono : 'circulo', 'i-sm'), e ? e.nombre : estado);
   }
 
+  /**
+   * Estado como pista de tres tramos (Abierto → En proceso → Cerrado):
+   * muestra en qué punto del flujo está el ticket. Bloqueado ocupa el tramo
+   * de En proceso, en rojo.
+   */
+  const PASO_ESTADO = { ABIERTO: 1, EN_PROCESO: 2, BLOQUEADO: 2, CERRADO: 3 };
+  function pistaEstado(estado) {
+    const e = App.dominio.ESTADOS[estado];
+    const paso = PASO_ESTADO[estado] || 0;
+    return h('span', { class: 'pista-estado', dataset: { estado }, title: e ? e.descripcion : null },
+      h('span', { class: 'tramos', 'aria-hidden': 'true' }, [1, 2, 3].map((n) => h('i', { class: n <= paso ? 'lleno' : null }))),
+      e ? e.nombre : estado);
+  }
+
   function badgeCriticidad(id, conPrefijo) {
     const c = App.store.criticidad(id);
     if (!c) return h('span', { class: 'badge contorno' }, 'Sin criticidad');
@@ -251,10 +265,6 @@
       : h('span', { class: 'badge origen-solucion', title: '«' + sol.titulo + '»' }, contenido);
   }
 
-  function badgeTipoSolicitud(id) {
-    if (id !== 'ts-sugerencia') return null;
-    return h('span', { class: 'badge sugerencia' }, icono('bombilla', 'i-sm'), 'Sugerencia de funcionalidad');
-  }
 
   // Las marcas de pendientes con ORMEN no se muestran en la interfaz.
   function pendiente() { return null; }
@@ -701,7 +711,7 @@
 
   App.ui = {
     ICONOS, icono, toast, mostrarError, modal, cerrarModales, confirmar,
-    badgeEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeTipoSolicitud, badgeElevado, badgeOrigenSolucion,
+    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion,
     pendiente, avisoPendiente, aviso, nombreRol, avatar, vacio, tiempo, cabecera,
     campo, grupo, select, segmentado, valorRadio, limpiarErrores, mostrarErrores, entradaPalabras,
     selectorImagenes, galeria, lightbox,

@@ -20,12 +20,14 @@ y entrá a http://localhost:8000.
 
 ## Usuarios de prueba
 
-En la pantalla de ingreso hay un acceso rápido por rol. Todos usan la contraseña `demo`.
+En la pantalla de ingreso están los seis usuarios de prueba. Todos usan la contraseña `demo`.
 
 | Usuario | Rol | Para mostrar |
 |---|---|---|
-| `vpereira` | Operadora de Mesa de ayuda | Crear y atender tickets, elevar y bloquear, sugerencias, cierre con solución, proponer soluciones, borradores |
-| `scabrera` | Administradora | Revisar y aprobar borradores de solución, estadísticas, usuarios, localidades, catálogos, auditoría |
+| `vpereira` | Operadora de Mesa de ayuda | Crear y atender tickets, elevar y bloquear, sugerencias, cierre con resolución, proponer soluciones reutilizables, borradores |
+| `nacosta` | Operador de Mesa de ayuda | Asignar y elevar entre operadores |
+| `scabrera` | Administradora | Aprobar soluciones reutilizables, estadísticas, usuarios, localidades, catálogos, auditoría |
+| `ralvarez` | Administrador | Lo mismo, con otro usuario |
 | `mtechera` | Cliente de Pando | Crear tickets y ver los de su localidad |
 | `lgomez` | Cliente de Lagomar | Comprobar que no ve los tickets de Pando |
 

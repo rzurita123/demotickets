@@ -15,8 +15,7 @@
       return [
         { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
         { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo' },
-        { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo' },
-        { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
+        { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
       ];
     }
     if (u.rol === 'OPERADOR') {
@@ -33,9 +32,9 @@
     const pendientes = S.soluciones({ estado: 'PENDIENTE' }).length;
     return [
       { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
-      { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: empieza('/tickets') },
-      { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones'), contador: pendientes, contadorTitulo: U.plural(pendientes, 'solución reutilizable por aprobar', 'soluciones reutilizables por aprobar') },
       { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
+      { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones'), contador: pendientes, contadorTitulo: U.plural(pendientes, 'solución reutilizable por aprobar', 'soluciones reutilizables por aprobar') },
+      { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: empieza('/tickets') },
       { href: '#/admin/usuarios', texto: 'Administración', icono: 'ajustes', activo: empieza('/admin') },
       { href: '#/auditoria', texto: 'Auditoría', icono: 'escudo', activo: empieza('/auditoria') },
     ];
@@ -132,7 +131,7 @@
     interior.append(h('nav', { class: 'nav', 'aria-label': 'Principal' }, items.filter((i) => !i.soloMovil).map((i) => enlaceNav(i, ruta))));
     const acciones = h('div', { class: 'barra-acciones' });
     // En el inicio el botón grande ya ocupa ese lugar.
-    if (u.rol === 'OPERADOR' && ruta !== '/tickets/nuevo' && ruta !== '/') {
+    if ((u.rol === 'OPERADOR' || u.rol === 'CLIENTE') && ruta !== '/tickets/nuevo' && ruta !== '/') {
       acciones.append(h('a', { class: 'btn btn-primario btn-sm solo-escritorio', href: '#/tickets/nuevo' }, App.ui.icono('mas', 'i-sm'), 'Crear ticket'));
     }
     acciones.append(menuUsuario(u));

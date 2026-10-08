@@ -107,18 +107,16 @@
         ui.badgeElevado(t, verRecorrido),
         ui.badgeOrigenSolucion(solucionOriginada, true),
         ui.badgeCriticidad(t.criticidadId, true),
-        ui.badgeTipoSolicitud(t.tipoSolicitudId),
         t.registroDirecto ? h('span', { class: 'badge contorno' }, ui.icono('checkCirculo', 'i-sm'), 'Registrado ya resuelto') : null),
       h('div', { class: 'ticket-titular' },
         h('h1', { id: 'titulo-pagina', tabindex: '-1' }, h('span', { class: 'numero' }, '#' + t.numero), ' ', t.titulo),
         flujoEstado(t.estado)),
-      h('div', { class: 'meta' },
-        h('span', null, ui.icono('pin', 'i-sm'), h('strong', null, loc)),
-        h('span', null, ui.icono('usuario', 'i-sm'), textoAtiende),
-        h('span', null, ui.icono('reloj', 'i-sm'), U.fechaHora(t.creadoEn))));
+      h('dl', { class: 'meta-ticket' },
+        [['Localidad', loc], ['Atiende', textoAtiende], ['Creado por', creador ? creador.nombre : '—'], ['Creado', U.fechaHora(t.creadoEn)]]
+          .map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, v)))));
 
     // --------------------------------------------------------- Descripción ---
-    const descripcion = h('section', { class: 'card pila', 'aria-labelledby': 'sec-desc' },
+    const descripcion = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-desc' },
       h('h2', { id: 'sec-desc' }, 'Descripción del problema'),
       h('div', { class: 'bloque-texto' }, t.descripcion),
       ui.galeria(t.adjuntos, { grande: true }));
@@ -245,7 +243,7 @@
       return form;
     }
 
-    const cardActividad = h('section', { class: 'card', 'aria-labelledby': 'sec-act' },
+    const cardActividad = h('section', { class: 'hoja-seccion', 'aria-labelledby': 'sec-act' },
       h('div', { class: 'card-titulo' }, h('h2', { id: 'sec-act' }, 'Actividad')),
       pestanas, listaAct, composer());
 
@@ -427,7 +425,6 @@
       }
       cargar(t.subsistemaId);
       selSis.addEventListener('change', () => cargar(''));
-      const selTipo = ui.select({ id: 'cl-tipo', valor: t.tipoSolicitudId, opciones: S.catalogo('tiposSolicitud').map((x) => ({ valor: x.id, texto: x.nombre })) });
       const selCri = ui.select({ id: 'cl-cri', valor: t.criticidadId, opciones: S.catalogo('criticidades').map((x) => ({ valor: x.id, texto: x.nombre })) });
       const selTp = ui.select({ id: 'cl-tp', valor: t.tipoProblemaId || 'tp-nodef', opciones: S.catalogo('tiposProblema').map((x) => ({ valor: x.id, texto: x.nombre })) });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
@@ -435,9 +432,8 @@
           ui.campo({ nombre: 'sistemaId', id: 'cl-sistema', etiqueta: 'Sistema o servicio', control: selSis }),
           ui.campo({ nombre: 'subsistemaId', id: 'cl-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub })),
         h('div', { class: 'grid-2' },
-          ui.campo({ nombre: 'tipoSolicitudId', id: 'cl-tipo', etiqueta: 'Tipo de solicitud', control: selTipo }),
-          ui.campo({ nombre: 'criticidadId', id: 'cl-cri', etiqueta: 'Criticidad', control: selCri })),
-        ui.campo({ nombre: 'tipoProblemaId', id: 'cl-tp', etiqueta: 'Tipo de problema', control: selTp }));
+          ui.campo({ nombre: 'criticidadId', id: 'cl-cri', etiqueta: 'Criticidad', control: selCri }),
+          ui.campo({ nombre: 'tipoProblemaId', id: 'cl-tp', etiqueta: 'Tipo de problema', control: selTp })));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
@@ -445,7 +441,7 @@
         cuerpo,
         acciones: [
           { texto: 'Cancelar' },
-          { texto: 'Guardar cambios', clase: 'btn-primario', fn: () => enVentana(cuerpo, () => S.modificarClasificacion(t.id, u, { sistemaId: selSis.value, subsistemaId: selSub.value, tipoSolicitudId: selTipo.value, criticidadId: selCri.value, tipoProblemaId: selTp.value }), 'Clasificación actualizada.') },
+          { texto: 'Guardar cambios', clase: 'btn-primario', fn: () => enVentana(cuerpo, () => S.modificarClasificacion(t.id, u, { sistemaId: selSis.value, subsistemaId: selSub.value, criticidadId: selCri.value, tipoProblemaId: selTp.value }), 'Clasificación actualizada.') },
         ],
       });
     }
@@ -497,8 +493,6 @@
         items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirDesbloquear }, ui.icono('reabrir', 'i-sm'), 'Desbloquear'));
       }
       items.push(h('button', { type: 'button', class: 'btn btn-exito btn-lg', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con resolución'));
-      items.push(h('hr', { class: 'separador' }));
-      items.push(h('button', { type: 'button', class: 'btn btn-fantasma', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar clasificación'));
       lateral.append(h('section', { class: 'card acento-azul', 'aria-labelledby': 'sec-acciones' }, h('h2', { id: 'sec-acciones', style: 'margin-bottom: 14px' }, 'Acciones'), h('div', { class: 'acciones-ticket' }, items)));
     } else if (esOperador && cerrado) {
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-acciones' },
@@ -513,31 +507,32 @@
     }
 
     const datos = [
-      ['Localidad', loc],
       ['Sistema', S.nombre('sistemas', t.sistemaId)],
       ['Subsistema', t.subsistemaId ? S.nombre('subsistemas', t.subsistemaId) : '—'],
-      ['Tipo de solicitud', S.nombre('tiposSolicitud', t.tipoSolicitudId)],
       ['Criticidad', S.nombre('criticidades', t.criticidadId)],
       esCliente ? null : ['Tipo de problema', S.nombre('tiposProblema', t.tipoProblemaId, 'No definido')],
-      ['Creado por', creador ? S.etiquetaUsuario(creador) : '—'],
-      ['Creado', U.fechaHora(t.creadoEn)],
       ['Actualizado', U.fechaHora(t.actualizadoEn)],
       cerrado ? ['Cerrado', U.fechaHora(t.cerradoEn)] : null,
-      ['Estado', ui.badgeEstado(t.estado)],
-      ['Atiende', textoAtiende],
-      ['Elevado', t.elevadoA ? ui.badgeElevado(t, verRecorrido) : 'No'],
     ].filter(Boolean);
-    lateral.append(h('section', { class: 'card pila', 'aria-labelledby': 'sec-datos' },
-      h('h2', { id: 'sec-datos' }, 'Datos del ticket'),
+    lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-datos' },
+      h('div', { class: 'fila-entre' },
+        h('h2', { id: 'sec-datos' }, 'Clasificación'),
+        esOperador && activo ? h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar') : null),
       h('dl', { class: 'datos-lista' }, datos.map(([k, v]) => [h('dt', null, k), h('dd', null, v)])),
-      h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', style: 'align-self: flex-start', onClick: verRecorrido }, ui.icono('recorrido', 'i-sm'), 'Ver el recorrido del ticket')));
+      h('button', { type: 'button', class: 'enlace-boton chico', style: 'align-self: flex-start; margin-top: 4px', onClick: verRecorrido }, ui.icono('recorrido', 'i-sm'), ' Ver el recorrido del ticket')));
 
     if (!esCliente && activo) {
       const sugeridas = App.sugerencias.buscar({ texto: t.titulo + ' ' + t.descripcion, sistemaId: t.sistemaId, subsistemaId: t.subsistemaId, localidadId: t.localidadId, excluirTicketId: t.id, limite: 4 });
-      lateral.append(h('section', { class: 'card pila', 'aria-labelledby': 'sec-sug' },
+      const opSug = { alUsar: esOperador ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' };
+      lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-sug' },
         h('h2', { id: 'sec-sug', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias'),
         sugeridas.length
-          ? h('div', { class: 'sugerencias' }, sugeridas.map((s, i) => ui.tarjetaSugerencia(s, { mejor: i === 0, alUsar: esOperador ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' })))
+          ? h('ul', { class: 'sug-compactas' }, sugeridas.map((s) => h('li', null,
+            h('button', { type: 'button', onClick: () => ui.modalSugerencia(s, opSug) },
+              h('span', { class: 'puntaje' }, s.puntaje + ' pts'),
+              h('span', { class: 'crecer' },
+                h('span', { class: 'titulo-sug' }, s.titulo),
+                h('span', { class: 'fuente-sug' }, s.tipo === 'catalogo' ? 'Solución reutilizable' : 'Resolución del ticket #' + s.ticket.numero))))))
           : h('p', { class: 'chico suave' }, 'Sin coincidencias.'),
         h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar soluciones reutilizables ', ui.icono('flechaDer', 'i-sm'))));
     }
@@ -545,7 +540,7 @@
     return h('div', { class: 'pila' },
       cabecera,
       h('div', { class: 'dos-columnas' },
-        h('div', { class: 'pila-lg' }, descripcion, solucion, cardActividad),
+        h('div', { class: 'hoja' }, descripcion, solucion ? h('div', { class: 'hoja-seccion' }, solucion) : null, cardActividad),
         lateral));
   };
 })(window.App = window.App || {});

@@ -1,10 +1,8 @@
 /* ==========================================================================
    Estadísticas (módulo de estadísticas de "Contexto a desarrollar").
-   - Gestión de ORMEN (Administrador): estadísticas generales por
-     sistema/subsistema, por fecha, por usuario de Mesa de ayuda, por tipo de
-     ticket y por tipo de problema, y las soluciones técnicas aplicadas.
-   - Cliente: estadísticas de los tickets de su localidad y seguimiento de
-     los tickets en curso.
+   Sólo para el administrador: estadísticas generales por localidad,
+   sistema/subsistema, fecha, operador, tipo de problema y soluciones
+   reutilizables usadas.
    Como en el sistema actual, debajo se listan los tickets del filtro.
    Los borradores no cuentan. Al hacer clic en una barra se filtra el resto
    de la página; otro clic en la misma barra quita el filtro.
@@ -58,8 +56,6 @@
     const ui = App.ui;
     const C = App.comun;
     const u = ctx.usuario;
-    const esCliente = u.rol === 'CLIENTE';
-    const loc = esCliente ? S.nombre('localidades', u.localidadId) : null;
     const base = S.ticketsVisibles(u); // nunca incluye borradores
     const q = Object.assign({}, DEFECTOS, ctx.query);
     if (!PERIODOS.some((p) => p.clave === q.periodo)) q.periodo = DEFECTOS.periodo;
@@ -85,7 +81,6 @@
           return q.sis ? x.nombre : S.nombre('sistemas', x.sistemaId) + ' › ' + x.nombre;
         },
       },
-      tipo: { etiqueta: 'Tipo de solicitud', valor: (t) => t.tipoSolicitudId, nombre: (v) => S.nombre('tiposSolicitud', v) },
       tp: { etiqueta: 'Tipo de problema', valor: (t) => t.tipoProblemaId || 'tp-nodef', nombre: (v) => S.nombre('tiposProblema', v) },
       op: { etiqueta: 'Atiende', valor: (t) => t.operadorId || 'sin', nombre: (v) => (v === 'sin' ? 'Sin asignar' : nombreOperador(v)) },
       estado: { etiqueta: 'Estado', valor: (t) => t.estado, nombre: (v) => S.nombreEstado(v) },
@@ -96,8 +91,7 @@
         nombre: (v) => { const x = T.lista.find((b) => b.clave === v); return x ? x.etiquetaLarga : v; },
       },
     };
-    // Un cliente sólo filtra por lo que ve en su pantalla.
-    const CLAVES = esCliente ? ['sis', 'sub', 'tipo', 'estado', 'tramo'] : ['loc', 'sis', 'sub', 'tipo', 'tp', 'op', 'estado', 'sol', 'tramo'];
+    const CLAVES = ['loc', 'sis', 'sub', 'tp', 'op', 'estado', 'sol', 'tramo'];
     Object.keys(DIM).forEach((k) => { if (!CLAVES.includes(k)) delete q[k]; });
     if (q.tramo && !T.lista.some((b) => b.clave === q.tramo)) q.tramo = '';
     if (q.sub) { const x = S.subsistema(q.sub); if (!x) q.sub = ''; else q.sis = x.sistemaId; }
@@ -105,15 +99,12 @@
     // --------------------------------------------------------- Filtros ---
     const ctrl = {};
     ctrl.periodo = ui.select({ id: 'e-periodo', valor: q.periodo, opciones: PERIODOS.map((p) => ({ valor: p.clave, texto: p.texto })) });
-    if (!esCliente) ctrl.loc = ui.select({ id: 'e-loc', vacio: 'Todas', valor: q.loc, opciones: S.localidades().map((l) => ({ valor: l.id, texto: l.nombre })) });
+    ctrl.loc = ui.select({ id: 'e-loc', vacio: 'Todas', valor: q.loc, opciones: S.localidades().map((l) => ({ valor: l.id, texto: l.nombre })) });
     ctrl.sis = ui.select({ id: 'e-sis', vacio: 'Todos', valor: q.sis, opciones: S.sistemas().map((s) => ({ valor: s.id, texto: s.nombre })) });
     ctrl.sub = h('select', { id: 'e-sub', class: 'control' });
-    ctrl.tipo = ui.select({ id: 'e-tipo', vacio: 'Todos', valor: q.tipo, opciones: S.catalogo('tiposSolicitud').map((x) => ({ valor: x.id, texto: x.nombre })) });
-    if (!esCliente) ctrl.tp = ui.select({ id: 'e-tp', vacio: 'Todos', valor: q.tp, opciones: S.catalogo('tiposProblema').map((x) => ({ valor: x.id, texto: x.nombre })) });
-    if (!esCliente) {
-      ctrl.op = ui.select({ id: 'e-op', vacio: 'Cualquiera', valor: q.op,
-        opciones: [{ valor: 'sin', texto: 'Sin asignar' }].concat(S.operadores().map((o) => ({ valor: o.id, texto: nombreOperador(o.id) }))) });
-    }
+    ctrl.tp = ui.select({ id: 'e-tp', vacio: 'Todos', valor: q.tp, opciones: S.catalogo('tiposProblema').map((x) => ({ valor: x.id, texto: x.nombre })) });
+    ctrl.op = ui.select({ id: 'e-op', vacio: 'Cualquiera', valor: q.op,
+      opciones: [{ valor: 'sin', texto: 'Sin asignar' }].concat(S.operadores().map((o) => ({ valor: o.id, texto: nombreOperador(o.id) }))) });
     ctrl.estado = ui.select({ id: 'e-estado', vacio: 'Todos', valor: q.estado, opciones: D.ESTADOS_REGISTRADOS.map((e) => ({ valor: e, texto: S.nombreEstado(e) })) });
 
     function cargarSubs() {
@@ -126,8 +117,8 @@
     }
     cargarSubs();
 
-    const ETIQUETAS = { periodo: 'Período', loc: 'Localidad', sis: 'Sistema', sub: 'Subsistema', tipo: 'Tipo de solicitud', tp: 'Tipo de problema', op: 'Atiende', estado: 'Estado' };
-    const filtros = h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de estadísticas' },
+    const ETIQUETAS = { periodo: 'Período', loc: 'Localidad', sis: 'Sistema', sub: 'Subsistema', tp: 'Tipo de problema', op: 'Atiende', estado: 'Estado' };
+    const filtros = h('div', { class: 'filtros filtros-grilla', role: 'search', 'aria-label': 'Filtros de estadísticas' },
       Object.keys(ctrl).map((k) => ui.campo({ nombre: k, id: ctrl[k].id, etiqueta: ETIQUETAS[k], control: ctrl[k] })));
     const activos = h('div', { class: 'fila-sm' });
 
@@ -272,17 +263,15 @@
         C.mosaico({ etiqueta: 'Tickets registrados', icono: 'ticket', valor: filtrados.length, detalle: q.tramo ? DIM.tramo.nombre(q.tramo) : periodo.texto }),
         C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso, detalle: [U.plural(cuenta('ABIERTO'), 'abierto', 'abiertos'), U.plural(cuenta('EN_PROCESO'), 'en proceso', 'en proceso'), U.plural(cuenta('BLOQUEADO'), 'bloqueado', 'bloqueados'), U.plural(filtrados.filter((t) => t.elevadoA && D.ESTADOS_ACTIVOS.includes(t.estado)).length, 'elevado', 'elevados')].join(' · ') }),
         C.mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados, detalle: U.porcentaje(cerrados, filtrados.length) + ' de los registrados' }),
+        C.mosaico({ etiqueta: 'Resueltos con solución reutilizable', icono: 'libro', valor: conCatalogo, detalle: U.porcentaje(conCatalogo, cerrados) + ' de los cerrados' }),
       ];
-      if (!esCliente) {
-        lista.push(C.mosaico({ etiqueta: 'Resueltos con solución reutilizable', icono: 'libro', valor: conCatalogo, detalle: U.porcentaje(conCatalogo, cerrados) + ' de los cerrados' }));
-      }
       return h('div', { class: 'mosaicos', 'aria-live': 'polite' }, lista);
     }
 
     function tarjetaDetalle(filtrados) {
       const lista = filtrados.slice().sort(C.ORDENES.recientes.fn);
       const cont = h('div');
-      const cols = esCliente ? ['numero', 'ticket', 'creador', 'estado', 'creado'] : ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'creado'];
+      const cols = ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'creado'];
       const idTitulo = 'sec-detalle';
       function pintarTabla() {
         U.vaciar(cont);
@@ -331,10 +320,6 @@
           datos: contar('estado', sub(['estado']), { categorias: D.ESTADOS_REGISTRADOS }),
         }),
         tarjetaBarras({
-          clave: 'tipo', titulo: 'Por tipo de solicitud', columna: 'Tipo de solicitud',
-          datos: contar('tipo', sub(['tipo']), { categorias: S.catalogo('tiposSolicitud').map((x) => x.id) }),
-        }),
-        tarjetaBarras({
           clave: 'sis', titulo: 'Por sistema', columna: 'Sistema',
           datos: contar('sis', sub(['sis'])),
         }),
@@ -352,29 +337,27 @@
           });
         })(),
       ];
-      if (!esCliente) {
-        const cerradosCatalogo = sub(['sol']).filter((t) => DIM.sol.valor(t));
-        tarjetas.push(
-          tarjetaBarras({
-            clave: 'tp', titulo: 'Por tipo de problema', columna: 'Tipo de problema',
-            datos: contar('tp', sub(['tp']), { categorias: S.catalogo('tiposProblema').map((x) => x.id) }),
-          }),
-          tarjetaBarras({
-            clave: 'op', titulo: 'Por operador', columna: 'Atiende',
-            datos: contar('op', sub(['op'])),
-          }),
-          tarjetaBarras({
-            clave: 'loc', titulo: 'Por localidad', columna: 'Localidad',
-            datos: contar('loc', sub(['loc'])),
-          }),
-          tarjetaBarras({
-            clave: 'sol', titulo: 'Soluciones reutilizables más usadas', columna: 'Solución reutilizable', columnaPorcentaje: '% de estos cierres',
-            datos: contar('sol', cerradosCatalogo, { limite: 8 }),
-            total: cerradosCatalogo.length,
-            rotulosLargos: true,
-            textoVacio: 'Ninguna resolución de este filtro usó una solución reutilizable.',
-          }));
-      }
+      const cerradosCatalogo = sub(['sol']).filter((t) => DIM.sol.valor(t));
+      tarjetas.push(
+        tarjetaBarras({
+          clave: 'tp', titulo: 'Por tipo de problema', columna: 'Tipo de problema',
+          datos: contar('tp', sub(['tp']), { categorias: S.catalogo('tiposProblema').map((x) => x.id) }),
+        }),
+        tarjetaBarras({
+          clave: 'op', titulo: 'Por operador', columna: 'Atiende',
+          datos: contar('op', sub(['op'])),
+        }),
+        tarjetaBarras({
+          clave: 'loc', titulo: 'Por localidad', columna: 'Localidad',
+          datos: contar('loc', sub(['loc'])),
+        }),
+        tarjetaBarras({
+          clave: 'sol', titulo: 'Soluciones reutilizables más usadas', columna: 'Solución reutilizable', columnaPorcentaje: '% de estos cierres',
+          datos: contar('sol', cerradosCatalogo, { limite: 8 }),
+          total: cerradosCatalogo.length,
+          rotulosLargos: true,
+          textoVacio: 'Ninguna resolución de este filtro usó una solución reutilizable.',
+        }));
 
       U.vaciar(cuerpo).append(
         indicadores(filtrados),
@@ -385,11 +368,8 @@
 
     pintar();
 
-    ctx.titulo(esCliente ? 'Estadísticas de ' + loc : 'Estadísticas');
     return h('div', { class: 'pila-lg' },
-      ui.cabecera({
-        titulo: esCliente ? 'Estadísticas de ' + loc : 'Estadísticas',
-      }),
+      ui.cabecera({ titulo: 'Estadísticas' }),
       h('section', { class: 'card pila-sm', 'aria-label': 'Filtros' }, filtros, activos),
       cuerpo);
   };

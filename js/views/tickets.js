@@ -15,9 +15,9 @@
     { clave: 'en-curso', texto: 'En curso', fn: (t) => D.ESTADOS_ACTIVOS.includes(t.estado) },
     { clave: 'ABIERTO', texto: 'Abiertos', fn: (t) => t.estado === 'ABIERTO' },
     { clave: 'EN_PROCESO', texto: 'En proceso', fn: (t) => t.estado === 'EN_PROCESO' },
-    { clave: 'BLOQUEADO', texto: 'Bloqueados', fn: (t) => t.estado === 'BLOQUEADO' },
+    { clave: 'BLOQUEADO', texto: 'Bloqueados', tono: 'rojo', fn: (t) => t.estado === 'BLOQUEADO' },
     { clave: 'elevados', texto: 'Elevados en curso', fn: (t) => !!t.elevadoA && D.ESTADOS_ACTIVOS.includes(t.estado) },
-    { clave: 'CERRADO', texto: 'Cerrados', fn: (t) => t.estado === 'CERRADO' },
+    { clave: 'CERRADO', texto: 'Cerrados', tono: 'verde', fn: (t) => t.estado === 'CERRADO' },
     { clave: 'todos', texto: 'Todos', fn: () => true },
   ];
 
@@ -46,15 +46,14 @@
       sis: ui.select({ id: 'f-sis', vacio: 'Todos', valor: q.sis, opciones: S.sistemas().map((s) => ({ valor: s.id, texto: s.nombre })) }),
       cri: ui.select({ id: 'f-cri', vacio: 'Todas', valor: q.cri, opciones: S.catalogo('criticidades').map((c) => ({ valor: c.id, texto: c.nombre })) }),
       atiende: !esCliente && ui.select({ id: 'f-atiende', vacio: 'Cualquiera', valor: q.atiende, opciones: opcionesAtiende }),
-      tipo: ui.select({ id: 'f-tipo', vacio: 'Todos', valor: q.tipo, opciones: S.catalogo('tiposSolicitud').map((x) => ({ valor: x.id, texto: x.nombre })) }),
       orden: ui.select({ id: 'f-orden', valor: q.orden, opciones: Object.keys(C.ORDENES).map((k) => ({ valor: k, texto: C.ORDENES[k].texto })) }),
     };
-    const ETIQUETAS = { loc: 'Localidad', sis: 'Sistema', cri: 'Criticidad', atiende: 'Atiende', tipo: 'Tipo de solicitud', orden: 'Orden' };
+    const ETIQUETAS = { loc: 'Localidad', sis: 'Sistema', cri: 'Criticidad', atiende: 'Atiende', orden: 'Orden' };
 
     // Filtros secundarios: se despliegan con el botón "Filtros".
-    const filtros = h('div', { class: 'filtros', id: 'panel-filtros', role: 'search', 'aria-label': 'Filtros de tickets' },
+    const filtros = h('div', { class: 'filtros filtros-grilla', id: 'panel-filtros', role: 'search', 'aria-label': 'Filtros de tickets' },
       Object.keys(controles).filter((k) => controles[k]).map((k) => ui.campo({ nombre: k, id: controles[k].id, etiqueta: ETIQUETAS[k], control: controles[k] })));
-    const hayFiltros = () => ['loc', 'sis', 'cri', 'atiende', 'tipo'].some((k) => q[k] && controles[k]);
+    const hayFiltros = () => ['loc', 'sis', 'cri', 'atiende'].some((k) => q[k] && controles[k]);
     filtros.hidden = !hayFiltros();
     const cuentaFiltros = h('span', { class: 'contador' });
     const btnFiltros = h('button', { type: 'button', class: 'btn btn-neutro', 'aria-controls': 'panel-filtros', 'aria-expanded': String(!filtros.hidden), onClick: () => {
@@ -65,10 +64,9 @@
       h('div', { class: 'buscar-lista' }, ui.icono('buscar'), inBuscar),
       btnFiltros);
 
-    const chips = h('div', { class: 'chips pestanas-estado', role: 'group', 'aria-label': 'Estado' });
-    const activos = h('div', { class: 'fila-sm' });
-    const resultados = h('div');
-    const textoTotal = h('p', { class: 'chico suave', 'aria-live': 'polite' });
+    const chips = h('div', { class: 'cola-pestanas', role: 'group', 'aria-label': 'Estado' });
+    const activos = h('div', { class: 'filtros-activos' });
+    const resultados = h('div', { 'aria-live': 'polite' });
 
     // ---- filtrado ----
     function coincideTexto(t, texto) {
@@ -86,7 +84,6 @@
         (!q.loc || t.localidadId === q.loc) &&
         (!q.sis || t.sistemaId === q.sis) &&
         (!q.cri || t.criticidadId === q.cri) &&
-        (!q.tipo || t.tipoSolicitudId === q.tipo) &&
         (!q.atiende || (q.atiende === 'sin' ? !t.operadorId : t.operadorId === q.atiende)));
     }
 
@@ -109,18 +106,19 @@
       U.vaciar(chips);
       ESTADOS_FILTRO.forEach((e) => {
         const n = base.filter(e.fn).length;
-        chips.append(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(q.estado === e.clave), onClick: () => cambiar('estado', e.clave) },
-          e.texto, h('span', { class: 'cuenta' }, n)));
+        chips.append(h('button', { type: 'button', 'aria-pressed': String(q.estado === e.clave), dataset: { tono: e.tono || null }, onClick: () => cambiar('estado', e.clave) },
+          h('span', null, e.texto), h('span', { class: 'cuenta' }, U.formatoNumero(n))));
       });
 
       // filtros activos
-      const nFiltros = ['loc', 'sis', 'cri', 'atiende', 'tipo'].filter((k) => q[k] && controles[k]).length;
+      const nFiltros = ['loc', 'sis', 'cri', 'atiende'].filter((k) => q[k] && controles[k]).length;
       cuentaFiltros.textContent = nFiltros || '';
       cuentaFiltros.hidden = !nFiltros;
       U.vaciar(activos);
+      activos.hidden = !nFiltros && !q.q;
       const quitables = [];
       if (q.q) quitables.push(['q', 'Búsqueda: «' + q.q + '»']);
-      ['loc', 'sis', 'cri', 'atiende', 'tipo'].forEach((k) => {
+      ['loc', 'sis', 'cri', 'atiende'].forEach((k) => {
         if (!q[k] || !controles[k]) return;
         const opt = Array.from(controles[k].options).find((o) => o.value === q[k]);
         quitables.push([k, ETIQUETAS[k] + ': ' + (opt ? opt.textContent : q[k])]);
@@ -130,7 +128,7 @@
       if (quitables.length > 1) {
         activos.append(h('button', { type: 'button', class: 'enlace-boton chico', onClick: () => {
           inBuscar.value = '';
-          ['loc', 'sis', 'cri', 'atiende', 'tipo'].forEach((k) => { if (controles[k]) controles[k].value = ''; q[k] = ''; });
+          ['loc', 'sis', 'cri', 'atiende'].forEach((k) => { if (controles[k]) controles[k].value = ''; q[k] = ''; });
           cambiar('q', '');
         } }, 'Limpiar filtros'));
       }
@@ -140,7 +138,6 @@
       const paginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
       const pagina = Math.min(Math.max(1, Number(q.p) || 1), paginas);
       const pag = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
-      textoTotal.textContent = U.plural(lista.length, 'ticket', 'tickets');
       U.vaciar(resultados);
       if (!lista.length) {
         resultados.append(ui.vacio({
@@ -165,13 +162,13 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         titulo: esCliente ? 'Tickets de ' + loc : 'Tickets',
-        acciones: App.auth.puede('tickets.crear', u) ? [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')] : null,
+        // Operador y cliente tienen «Crear ticket» en la barra; para el administrador no es lo principal.
+        acciones: u.rol === 'ADMINISTRADOR' ? [h('a', { class: 'btn btn-neutro', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')] : null,
       }),
-      h('div', { class: 'fila-entre' }, chips, barraLista),
-      filtros,
-      activos,
-      h('section', { class: 'card sin-padding', 'aria-label': 'Listado de tickets' },
-        h('div', { class: 'card-cabeza' }, textoTotal),
+      h('section', { class: 'cola', 'aria-label': 'Listado de tickets' },
+        h('div', { class: 'cola-cabeza' }, chips, barraLista),
+        filtros,
+        activos,
         resultados));
   };
 })(window.App = window.App || {});

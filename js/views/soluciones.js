@@ -15,8 +15,8 @@
 
   const PESTANAS = [
     { estado: 'APROBADA', texto: 'Aprobadas' },
-    { estado: 'PENDIENTE', texto: 'Por aprobar' },
-    { estado: 'RECHAZADA', texto: 'Rechazadas' },
+    { estado: 'PENDIENTE', texto: 'Por aprobar', tono: 'dorado' },
+    { estado: 'RECHAZADA', texto: 'Rechazadas', tono: 'rojo' },
   ];
 
 
@@ -29,21 +29,23 @@
     return 'Cargada sin ticket';
   }
 
-  function tarjetaSolucion(s, usos, u) {
+  /** Fila del catálogo: título y clasificación, palabras clave, usos u autor, origen. */
+  function filaSolucion(s, usos, u) {
     const S = App.store;
     const ui = App.ui;
     const autor = S.usuario(s.creadaPorId);
-    const extra = s.palabrasClave.length > 4 ? s.palabrasClave.length - 4 : 0;
-    return h('a', { class: 'card tarjeta-solucion', href: '#/soluciones/' + s.id },
-      h('div', { class: 'fila-entre', style: 'align-items: flex-start' },
-        h('h3', null, s.titulo),
-        s.estado !== 'APROBADA' ? ui.badgeSolucion(s.estado) : null),
-      h('div', { class: 'clasif fila-sm' }, ui.icono('capas', 'i-sm'), ui.clasificacion(s.sistemaId, s.subsistemaId)),
-      h('p', { class: 'resumen' }, s.descripcion),
-      h('div', { class: 'chips' }, s.palabrasClave.slice(0, 4).map((p) => h('span', { class: 'palabra-clave' }, p)), extra ? h('span', { class: 'palabra-clave' }, '+' + extra) : null),
-      h('div', { class: 'chico suave' },
-        s.estado === 'APROBADA' ? (usos ? 'Usada ' + U.plural(usos, 'vez', 'veces') : 'Sin usos') : 'Propuesta por ' + (autor ? (autor.id === u.id ? 'vos' : autor.nombre) : '—') + ' · ' + U.relativo(s.creadaEn),
-        ' · ', origenTexto(s)));
+    const extra = s.palabrasClave.length > 3 ? s.palabrasClave.length - 3 : 0;
+    const tr = h('tr', { class: 'clic' },
+      ui.celda('Solución', h('div', { class: 'titulo-celda' },
+        h('a', { href: '#/soluciones/' + s.id }, s.titulo),
+        h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
+      ui.celda('Palabras clave', h('div', { class: 'chips' }, s.palabrasClave.slice(0, 3).map((p) => h('span', { class: 'palabra-clave' }, p)), extra ? h('span', { class: 'palabra-clave' }, '+' + extra) : null)),
+      s.estado === 'APROBADA'
+        ? ui.celda('Usos', usos ? U.plural(usos, 'vez', 'veces') : h('span', { class: 'suave' }, 'Sin usos'), 'numero')
+        : ui.celda('Propuesta', [autor ? (autor.id === u.id ? 'Vos' : autor.nombre) : '—', h('span', { class: 'sub' }, U.relativo(s.creadaEn))]),
+      ui.celda('Origen', origenTexto(s)));
+    tr.addEventListener('click', (e) => { if (!e.target.closest('a, button')) App.router.ir('/soluciones/' + s.id); });
+    return tr;
   }
 
   // ------------------------------------------------------------- Listado ---
@@ -63,8 +65,8 @@
     const selOrigen = ui.select({ id: 's-origen', vacio: 'Todos', valor: q.origen, opciones: [{ valor: 'ticket', texto: 'Desde un ticket' }, { valor: 'directa', texto: 'Cargadas sin ticket' }] });
     const selOrden = ui.select({ id: 's-orden', valor: q.orden || 'usos', opciones: [{ valor: 'usos', texto: 'Más aplicadas' }, { valor: 'recientes', texto: 'Más recientes' }, { valor: 'titulo', texto: 'Título (A-Z)' }] });
 
-    const pestanas = h('div', { class: 'pestanas', role: 'tablist', 'aria-label': 'Estado de las soluciones' });
-    const resultados = h('div', { class: 'pila', role: 'tabpanel', id: 'panel-soluciones' });
+    const pestanas = h('div', { class: 'cola-pestanas', role: 'group', 'aria-label': 'Estado de las soluciones' });
+    const resultados = h('div', { id: 'panel-soluciones', 'aria-live': 'polite' });
 
     function filtrar() {
       const n = U.normalizar(q.q || '');
@@ -79,7 +81,8 @@
       U.vaciar(pestanas);
       PESTANAS.forEach((p) => {
         const n = todas.filter((s) => s.estado === p.estado).length;
-        pestanas.append(h('button', { type: 'button', role: 'tab', 'aria-selected': String(q.estado === p.estado), 'aria-controls': 'panel-soluciones', onClick: () => cambiar('estado', p.estado) }, p.texto + ' (' + n + ')'));
+        pestanas.append(h('button', { type: 'button', 'aria-pressed': String(q.estado === p.estado), dataset: { tono: p.tono || null }, onClick: () => cambiar('estado', p.estado) },
+          h('span', null, p.texto), h('span', { class: 'cuenta' }, n)));
       });
       U.vaciar(resultados);
       const orden = q.orden || 'usos';
@@ -88,14 +91,17 @@
           : orden === 'recientes' ? b.actualizadaEn.localeCompare(a.actualizadaEn)
             : (usos.get(b.id) || 0) - (usos.get(a.id) || 0) || a.titulo.localeCompare(b.titulo, 'es'));
       if (!lista.length) {
-        resultados.append(h('div', { class: 'card' }, ui.vacio({
+        resultados.append(ui.vacio({
           icono: 'libro',
           titulo: q.estado === 'PENDIENTE' ? 'No hay soluciones reutilizables por aprobar' : q.estado === 'RECHAZADA' ? 'No hay soluciones reutilizables rechazadas' : 'No hay soluciones reutilizables con estos filtros',
-        })));
+        }));
         return;
       }
-      resultados.append(h('p', { class: 'chico suave' }, U.plural(lista.length, 'solución reutilizable', 'soluciones reutilizables')),
-        h('div', { class: 'lista-soluciones' }, lista.map((s) => tarjetaSolucion(s, usos.get(s.id) || 0, u))));
+      const columnas = ['Solución', 'Palabras clave', q.estado === 'APROBADA' ? 'Usos' : 'Propuesta', 'Origen'];
+      resultados.append(h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
+        h('caption', { class: 'sr-only' }, 'Soluciones reutilizables'),
+        h('thead', null, h('tr', null, columnas.map((c) => h('th', { scope: 'col', class: c === 'Usos' ? 'numero' : null }, c)))),
+        h('tbody', null, lista.map((s) => filaSolucion(s, usos.get(s.id) || 0, u))))));
     }
 
     function cambiar(k, v) {
@@ -120,14 +126,14 @@
           h('a', { class: 'btn btn-primario', href: '#/soluciones/nueva' }, ui.icono('mas', 'i-sm'), esAdmin ? 'Nueva solución reutilizable' : 'Proponer solución reutilizable'),
         ],
       }),
-      h('section', { class: 'card pila', 'aria-label': 'Filtros' },
-        pestanas,
-        h('div', { class: 'filtros', style: 'margin-bottom: 0' },
+      h('section', { class: 'cola', 'aria-label': 'Soluciones reutilizables' },
+        h('div', { class: 'cola-cabeza' }, pestanas),
+        h('div', { class: 'filtros filtros-grilla filtros-cola' },
           ui.campo({ nombre: 'q', id: 's-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),
           ui.campo({ nombre: 'sis', id: 's-sis', etiqueta: 'Sistema', control: selSis }),
           ui.campo({ nombre: 'origen', id: 's-origen', etiqueta: 'Origen', control: selOrigen }),
-          ui.campo({ nombre: 'orden', id: 's-orden', etiqueta: 'Orden', control: selOrden }))),
-      resultados);
+          ui.campo({ nombre: 'orden', id: 's-orden', etiqueta: 'Orden', control: selOrden })),
+        resultados));
   };
 
   // ------------------------------------------------------------- Detalle ---

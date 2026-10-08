@@ -304,7 +304,6 @@
   const subsistema = (id) => porId(db.subsistemas, id);
   const tipoProblema = (id) => porId(db.tiposProblema, id);
   const criticidad = (id) => porId(db.criticidades, id);
-  const tipoSolicitud = (id) => porId(db.tiposSolicitud, id);
   const solucion = (id) => porId(db.soluciones, id);
   const ticket = (id) => porId(db.tickets, id);
 
@@ -488,7 +487,6 @@
       const sub = subsistema(datos.subsistemaId);
       if (!sub || sub.sistemaId !== s.id || sub.activo === false) e.subsistemaId = 'Ese subsistema no corresponde al sistema elegido.';
     }
-    if (!tipoSolicitud(datos.tipoSolicitudId)) e.tipoSolicitudId = 'Elegí el tipo de solicitud.';
     if (!criticidad(datos.criticidadId)) e.criticidadId = 'Elegí la criticidad.';
     if (!limpio(datos.titulo)) e.titulo = 'Escribí un título.';
     else if (limpio(datos.titulo).length > 120) e.titulo = 'El título puede tener hasta 120 caracteres.';
@@ -528,7 +526,6 @@
       localidadId: u.rol === 'CLIENTE' ? u.localidadId : datos.localidadId,
       sistemaId: datos.sistemaId,
       subsistemaId: datos.subsistemaId || null,
-      tipoSolicitudId: datos.tipoSolicitudId,
       criticidadId: datos.criticidadId,
       tipoProblemaId: u.rol === 'OPERADOR' && datos.tipoProblemaId ? datos.tipoProblemaId : 'tp-nodef',
     };
@@ -561,14 +558,14 @@
   // ---------------------------------------------------- Alta de tickets ---
 
   /**
-   * Crea un ticket: Abierto si lo crea un cliente; En proceso, atendido por
-   * quien lo carga, si lo crea Mesa de ayuda. Con `registroDirecto` el
+   * Crea un ticket: En proceso, atendido por quien lo carga, si lo crea un
+   * operador; Abierto y sin asignar si lo crea un cliente o un administrador. Con `registroDirecto` el
    * operador registra problema y solución y queda directamente Cerrado. Si
    * viene `borradorId`, el borrador se convierte en el ticket.
    */
   function crearTicket(datos, u, opciones) {
     const op = opciones || {};
-    exigir(u && (u.rol === 'OPERADOR' || u.rol === 'CLIENTE'), 'Tu rol no puede crear tickets.');
+    exigir(u && ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'].includes(u.rol), 'Tu rol no puede crear tickets.');
     exigir(!op.registroDirecto || u.rol === 'OPERADOR', 'Sólo Mesa de ayuda puede registrar un ticket ya resuelto.');
     let errores = validarTicket(datos, u, op);
     if (op.registroDirecto && op.proponer) errores = Object.assign(errores, validarPropuesta(op.proponer));
@@ -630,7 +627,6 @@
         localidadId: datos.localidadId || '',
         sistemaId: datos.sistemaId || '',
         subsistemaId: datos.subsistemaId || '',
-        tipoSolicitudId: datos.tipoSolicitudId || 'ts-atencion',
         criticidadId: datos.criticidadId || '',
         tipoProblemaId: datos.tipoProblemaId || 'tp-nodef',
       };
@@ -829,7 +825,6 @@
   const CAMPOS_CLASIFICACION = [
     ['sistemaId', 'Sistema', 'sistemas'],
     ['subsistemaId', 'Subsistema', 'subsistemas'],
-    ['tipoSolicitudId', 'Tipo de solicitud', 'tiposSolicitud'],
     ['criticidadId', 'Criticidad', 'criticidades'],
     ['tipoProblemaId', 'Tipo de problema', 'tiposProblema'],
   ];
@@ -845,7 +840,6 @@
       const sub = subsistema(datos.subsistemaId);
       if (!sub || sub.sistemaId !== s.id) e.subsistemaId = 'Ese subsistema no corresponde al sistema elegido.';
     }
-    if (!tipoSolicitud(datos.tipoSolicitudId)) e.tipoSolicitudId = 'Elegí el tipo de solicitud.';
     if (!criticidad(datos.criticidadId)) e.criticidadId = 'Elegí la criticidad.';
     if (!tipoProblema(datos.tipoProblemaId)) e.tipoProblemaId = 'Elegí el tipo de problema.';
     if (Object.keys(e).length) throw errorDeCampos(e);
@@ -1216,7 +1210,6 @@
     subsistemas: 'Subsistemas',
     tiposProblema: 'Tipos de problema',
     criticidades: 'Criticidades',
-    tiposSolicitud: 'Tipos de solicitud',
     gruposSoporte: 'Grupos de soporte',
   };
 
@@ -1240,7 +1233,7 @@
         auditar(admin.id, 'CATALOGO', null, NOMBRES_CATALOGO[tipo] + ': ' + (antes === n ? n : antes + ' → ' + n));
         return existente;
       }
-      const prefijos = { sistemas: 'sis', subsistemas: 'sub', tiposProblema: 'tp', criticidades: 'cri', tiposSolicitud: 'ts', gruposSoporte: 'gs' };
+      const prefijos = { sistemas: 'sis', subsistemas: 'sub', tiposProblema: 'tp', criticidades: 'cri', gruposSoporte: 'gs' };
       const item = { id: U.uid(prefijos[tipo]), nombre: n, activo: true };
       if (tipo === 'subsistemas') Object.assign(item, { sistemaId, ejemplo: false });
       if (tipo === 'criticidades') Object.assign(item, { orden: lista.length + 1, clase: '' });
@@ -1291,7 +1284,7 @@
     get datos() { return db; },
     get almacenamientoDisponible() { return disponible; },
     // consultas
-    usuario, localidad, sistema, subsistema, tipoProblema, criticidad, tipoSolicitud, solucion, ticket,
+    usuario, localidad, sistema, subsistema, tipoProblema, criticidad, solucion, ticket,
     nombre, nombreEstado, etiquetaUsuario, esOrmen,
     usuarios, operadores, localidades, sistemas, subsistemasDe, catalogo,
     puedeVerTicket, ticketsVisibles, borradoresDe, ticketPorNumero, ticketParaUsuario, borradorParaUsuario,

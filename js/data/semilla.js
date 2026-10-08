@@ -13,7 +13,7 @@
 (function (App) {
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 6;
 
   // ------------------------------------------------- Imágenes de ejemplo ---
 
@@ -140,14 +140,14 @@
       sistemaId: 'sis-control-terminales', subsistemaId: 'sub-term-impresion',
       palabrasClave: ['impresora', 'no imprime', 'imprime en blanco', 'papel', 'rollo', 'comprobante'],
       descripcion: '1. Apagar la terminal.\n2. Retirar el rollo y volver a colocarlo con el lado térmico hacia el cabezal.\n3. Encender la terminal y hacer una impresión de prueba.\n4. Si imprime en blanco, el rollo está colocado al revés.',
-      creadaPorId: 'u-crivero', revisadaPorId: 'u-scabrera', desdeTicket: 'p-term-impresion', imagen: true,
+      creadaPorId: 'u-vpereira', revisadaPorId: 'u-scabrera', desdeTicket: 'p-term-impresion', imagen: true,
     },
     {
       id: 'sol-online-router', titulo: 'Sin conexión: reiniciar el router de la agencia',
       sistemaId: 'sis-online', subsistemaId: 'sub-online-conexion',
       palabrasClave: ['sin conexión', 'conexión', 'internet', 'router', 'no conecta'],
       descripcion: '1. Confirmar si el problema ocurre en todas las terminales.\n2. Pedir a la agencia que apague el router, espere un minuto y lo vuelva a encender.\n3. Verificar la conexión con On-Line.\n4. Si sigue sin conexión, la agencia debe contactar a su proveedor de internet.',
-      creadaPorId: 'u-fnunez', revisadaPorId: 'u-ralvarez', desdeTicket: 'p-online-conexion',
+      creadaPorId: 'u-nacosta', revisadaPorId: 'u-ralvarez', desdeTicket: 'p-online-conexion',
     },
     {
       id: 'sol-env-tamano', titulo: 'El archivo de cierre supera el tamaño permitido',
@@ -175,7 +175,7 @@
       sistemaId: 'sis-adm-usuarios', subsistemaId: 'sub-usu-contrasena',
       palabrasClave: ['usuario bloqueado', 'contraseña', 'intentos', 'no puede ingresar'],
       descripcion: '1. Verificar la identidad del encargado de la agencia.\n2. Desbloquear el usuario.\n3. Generar una contraseña temporal.\n4. Indicar que la cambie en el primer ingreso.',
-      creadaPorId: 'u-fnunez', revisadaPorId: 'u-ralvarez', desdeTicket: 'p-usu-bloqueado',
+      creadaPorId: 'u-nacosta', revisadaPorId: 'u-ralvarez', desdeTicket: 'p-usu-bloqueado',
     },
     {
       id: 'sol-usu-alta', titulo: 'Alta de usuario de agencia',
@@ -225,12 +225,6 @@
       solucion: 'Se borró la caché del navegador y se volvió a exportar; el archivo se descargó bien.',
       catalogoId: 'sol-navegador',
     },
-    {
-      id: 'p-liq-sugerencia', sistemaId: 'sis-liquidacion', subsistemaId: 'sub-liq-reportes', tipoProblemaId: 'tp-nodef', peso: 1, sugerencia: true,
-      titulo: 'Filtrar el reporte de liquidación por rango de fechas',
-      descripciones: ['Sería útil poder elegir un rango de fechas en el reporte de liquidación en lugar de consultar día por día.'],
-      solucion: 'Se registró la sugerencia para que ORMEN la evalúe.',
-    },
     // Caja
     {
       id: 'p-caja-apertura', sistemaId: 'sis-caja', subsistemaId: 'sub-caja-apertura', tipoProblemaId: 'tp-operacion', peso: 5,
@@ -258,12 +252,6 @@
       titulo: 'El cierre de caja queda procesando',
       descripciones: ['Al confirmar el cierre de caja la pantalla queda procesando y no termina.', 'El cierre de caja no termina nunca, queda cargando.'],
       solucion: 'Se verificó que el cierre se había registrado en el sistema central. Se recargó la pantalla y el cierre figuraba como realizado.',
-    },
-    {
-      id: 'p-caja-sugerencia', sistemaId: 'sis-caja', subsistemaId: 'sub-caja-cierre', tipoProblemaId: 'tp-nodef', peso: 1, sugerencia: true,
-      titulo: 'Poder reimprimir el comprobante de cierre',
-      descripciones: ['Pedimos poder reimprimir el comprobante de cierre de caja de días anteriores.'],
-      solucion: 'Se registró la sugerencia para que ORMEN la evalúe.',
     },
     // Control Terminales
     {
@@ -391,7 +379,7 @@
     ['loc-pando', 24], ['loc-rosario', 10], ['loc-artigas', 6], ['loc-durazno', 6], ['loc-carmelo', 5], ['loc-canelones', 5],
     ['loc-florida', 4], ['loc-paysandu', 5], ['loc-lagomar', 5], ['loc-santa-lucia', 3], ['loc-trinidad', 3],
   ];
-  const PESO_OPERADOR = [['u-vpereira', 30], ['u-nacosta', 26], ['u-crivero', 24], ['u-fnunez', 20]];
+  const PESO_OPERADOR = [['u-vpereira', 52], ['u-nacosta', 48]];
 
   const TXT = {
     publicoAtencion: [
@@ -421,7 +409,6 @@
       'Se eleva porque requiere revisión fuera de mesa de ayuda.',
       'No se puede resolver desde mesa de ayuda; se eleva.',
     ],
-    privadoSugerencia: ['Se eleva la sugerencia para su evaluación.'],
     bloqueo: [
       'Esperamos que la agencia confirme el número de terminal para seguir.',
       'Esperamos la respuesta del proveedor de terminales.',
@@ -467,7 +454,6 @@
         titulo: titulo || plantilla.titulo,
         descripcion: descripcion || elegir(plantilla.descripciones),
         localidadId, sistemaId: plantilla.sistemaId, subsistemaId: plantilla.subsistemaId,
-        tipoSolicitudId: plantilla.sugerencia ? 'ts-sugerencia' : 'ts-atencion',
         criticidadId, tipoProblemaId: esOrmen ? plantilla.tipoProblemaId : 'tp-nodef',
         creadoPorId: creador.id, operadorId: esOrmen ? creador.id : null,
         creadoEn, actualizadoEn: creadoEn, cerradoEn: null,
@@ -510,7 +496,6 @@
       'sis-control-terminales': 'gs-proveedor-terminales', 'sis-todos-terminales': 'gs-proveedor-terminales', 'sis-instalaciones': 'gs-proveedor-terminales',
     };
     function destinoElevacion(plantilla) {
-      if (plantilla.sugerencia) return grupo('gs-desarrollo');
       if (rnd() < 0.55) return grupo('gs-soporte-n2');
       return grupo(GRUPO_POR_SISTEMA[plantilla.sistemaId] || 'gs-desarrollo');
     }
@@ -560,7 +545,7 @@
       }
       if (destino === 'ELEVADO') {
         comentar(t, paso(5, 60), op, elegir(TXT.publicoAtencion), 'PUBLICO');
-        elevar(t, paso(20, 240), op, destinoElevacion(plantilla), elegir(plantilla.sugerencia ? TXT.privadoSugerencia : TXT.privadoElevado));
+        elevar(t, paso(20, 240), op, destinoElevacion(plantilla), elegir(TXT.privadoElevado));
         return;
       }
       // Cerrado
@@ -571,12 +556,12 @@
         comentar(t, paso(20, 600), t.creadoPorId, elegir(TXT.clienteRespuesta), 'PUBLICO');
         desbloquear(t, paso(5, 60), op);
       }
-      if (!plantilla.sugerencia && rnd() < 0.12) {
+      if (rnd() < 0.12) {
         elevar(t, paso(20, 240), op, destinoElevacion(plantilla), elegir(TXT.privadoElevado));
       }
       const usarCatalogo = rnd() < 0.62;
       const msCierre = paso(10, rnd() < 0.7 ? 240 : 2880);
-      if (rnd() < 0.45) comentar(t, msCierre - 1000, op, plantilla.sugerencia ? 'Gracias por la sugerencia. Quedó registrada para que ORMEN la evalúe.' : elegir(TXT.publicoCierre), 'PUBLICO');
+      if (rnd() < 0.45) comentar(t, msCierre - 1000, op, elegir(TXT.publicoCierre), 'PUBLICO');
       cerrar(t, msCierre, op, plantilla, usarCatalogo);
       if (antiguedad > 25 * DIA && rnd() < 0.06) {
         const ms = paso(1440, 4320);
@@ -600,12 +585,11 @@
       let creadoMs = d.getTime();
       if (creadoMs > ahora - 35 * MIN) creadoMs = ahora - (35 + rnd() * 300) * MIN;
       const antiguedad = ahora - creadoMs;
-      const operadores = antiguedad > 150 * DIA ? PESO_OPERADOR.concat([['u-mlopez', 22]]) : PESO_OPERADOR;
-      const operador = usu(elegirPeso(operadores));
+      const operador = usu(elegirPeso(PESO_OPERADOR));
       const clientes = clientesPorLocalidad.get(localidadId) || [];
       const porCliente = clientes.length > 0 && rnd() < 0.38;
       const creador = porCliente ? elegir(clientes) : operador;
-      const criticidadId = plantilla.sugerencia ? 'cri-baja' : elegirPeso([['cri-alta', 2], ['cri-media', 5], ['cri-baja', 3]]);
+      const criticidadId = elegirPeso([['cri-alta', 2], ['cri-media', 5], ['cri-baja', 3]]);
       const t = nuevoTicket({ plantilla, localidadId, creador, creadoMs, criticidadId });
       const reciente = antiguedad < 12 * DIA;
       const destino = !reciente
@@ -629,11 +613,11 @@
       t.adjuntos.push({ id: nuevoId('img'), nombre: 'mensaje-terminal.png', dataUrl: IMG_ERROR, autorId: 'u-mtechera', fecha: t.creadoEn });
       tickets.push(t);
     }
-    // 2) Pando · Lucía (otra usuaria de la misma localidad): Bloqueado esperando un dato de la agencia, atiende Valeria.
+    // 2) Pando · Marcelo: Bloqueado esperando un dato de la agencia, atiende Valeria.
     {
       const ms = haceDias(1, 19, 40);
       const t = nuevoTicket({
-        plantilla: p('p-caja-diferencia'), localidadId: 'loc-pando', creador: usu('u-lsosa'), creadoMs: ms, criticidadId: 'cri-media',
+        plantilla: p('p-caja-diferencia'), localidadId: 'loc-pando', creador: usu('u-mtechera'), creadoMs: ms, criticidadId: 'cri-media',
         descripcion: 'Al cerrar la caja de anoche quedó una diferencia de $ 1.250 entre el total del sistema y el efectivo contado.',
       });
       asignar(t, ms + 12 * MIN, 'u-vpereira', 'u-vpereira');
@@ -657,20 +641,20 @@
       elevar(t, ms + 3 * HORA + 2 * MIN, 'u-nacosta', grupo('gs-infraestructura'), 'Soporte de 2º nivel lo deriva: hay que revisar el enlace de la agencia.');
       tickets.push(t);
     }
-    // 4) Lagomar · Laura: En proceso, atiende Camila. Pando no lo ve.
+    // 4) Lagomar · Laura: En proceso, atiende Nicolás. Pando no lo ve.
     {
       const ms = recienteOAyer(185);
       const t = nuevoTicket({
         plantilla: p('p-term-bloqueada'), localidadId: 'loc-lagomar', creador: usu('u-lgomez'), creadoMs: ms, criticidadId: 'cri-alta',
         descripcion: 'La terminal 1 muestra el mensaje de terminal bloqueada y no permite vender.',
       });
-      asignar(t, ms + 9 * MIN, 'u-crivero', 'u-crivero');
-      comentar(t, ms + 14 * MIN, 'u-crivero', 'Recibimos el ticket y lo estamos revisando.', 'PUBLICO');
+      asignar(t, ms + 9 * MIN, 'u-nacosta', 'u-nacosta');
+      comentar(t, ms + 14 * MIN, 'u-nacosta', 'Recibimos el ticket y lo estamos revisando.', 'PUBLICO');
       tickets.push(t);
     }
-    // 5) Rosario · Ana: Abierto sin asignar.
+    // 5) Lagomar · Laura: Abierto sin asignar.
     tickets.push(nuevoTicket({
-      plantilla: p('p-correo-no-llegan'), localidadId: 'loc-rosario', creador: usu('u-arodriguez'), creadoMs: recienteOAyer(70), criticidadId: 'cri-baja',
+      plantilla: p('p-correo-no-llegan'), localidadId: 'loc-lagomar', creador: usu('u-lgomez'), creadoMs: recienteOAyer(70), criticidadId: 'cri-baja',
       descripcion: 'Desde el viernes no nos llegan los correos con los resúmenes diarios.',
     }));
     // 6) Durazno · cargado por Valeria durante una llamada: En proceso, atiende Valeria.
@@ -693,34 +677,25 @@
         plantilla: p('p-usu-bloqueado'), localidadId: 'loc-pando', creador: usu('u-mtechera'), creadoMs: ms, criticidadId: 'cri-alta',
         descripcion: 'No podemos ingresar con el usuario del turno de la tarde: dice usuario bloqueado.',
       });
-      asignar(t, ms + 6 * MIN, 'u-fnunez', 'u-fnunez');
-      comentar(t, ms + 24 * MIN, 'u-fnunez', 'Te enviamos una contraseña temporal al correo del encargado. Cambiala en el primer ingreso.', 'PUBLICO');
-      cerrar(t, ms + 25 * MIN, 'u-fnunez', p('p-usu-bloqueado'), true);
-      tickets.push(t);
-    }
-    // 9) Pando · Marcelo: sugerencia cerrada.
-    {
-      const ms = haceDias(6, 16, 20);
-      const t = nuevoTicket({ plantilla: p('p-caja-sugerencia'), localidadId: 'loc-pando', creador: usu('u-mtechera'), creadoMs: ms, criticidadId: 'cri-baja' });
-      asignar(t, ms + 40 * MIN, 'u-crivero', 'u-crivero');
-      comentar(t, ms + 50 * MIN, 'u-crivero', 'Gracias por la sugerencia. Quedó registrada para que ORMEN la evalúe.', 'PUBLICO');
-      cerrar(t, ms + 50 * MIN + 1000, 'u-crivero', p('p-caja-sugerencia'), false);
+      asignar(t, ms + 6 * MIN, 'u-nacosta', 'u-nacosta');
+      comentar(t, ms + 24 * MIN, 'u-nacosta', 'Te enviamos una contraseña temporal al correo del encargado. Cambiala en el primer ingreso.', 'PUBLICO');
+      cerrar(t, ms + 25 * MIN, 'u-nacosta', p('p-usu-bloqueado'), true);
       tickets.push(t);
     }
 
-    // 10) Paysandú · Javier: Nicolás lo eleva a Federico, que lo resuelve. De este ticket surge una solución aprobada.
+    // 10) Lagomar · Laura: Nicolás lo eleva a Valeria, que lo resuelve. De este ticket surge una solución aprobada.
     {
       const ms = haceDias(9, 9, 30);
       const t = nuevoTicket({
-        plantilla: p('p-env-incompleto'), localidadId: 'loc-paysandu', creador: usu('u-jromero'), creadoMs: ms, criticidadId: 'cri-media',
+        plantilla: p('p-env-incompleto'), localidadId: 'loc-lagomar', creador: usu('u-lgomez'), creadoMs: ms, criticidadId: 'cri-media',
         descripcion: 'El archivo de jugadas que nos llegó hoy está incompleto: faltan los registros de la tarde.',
       });
       asignar(t, ms + 10 * MIN, 'u-nacosta', 'u-nacosta');
       comentar(t, ms + 15 * MIN, 'u-nacosta', 'Recibimos el ticket y lo estamos revisando.', 'PUBLICO');
-      elevar(t, ms + 50 * MIN, 'u-nacosta', { tipo: 'usuario', id: 'u-fnunez' }, 'Federico conoce el proceso de recepción de archivos.');
-      comentar(t, ms + 90 * MIN, 'u-fnunez', 'El archivo se cortó durante la transferencia. Pedimos el reenvío.', 'PRIVADO');
-      comentar(t, ms + 100 * MIN, 'u-fnunez', 'Listo, ya llegó el archivo completo. Cualquier cosa nos avisás.', 'PUBLICO');
-      cerrar(t, ms + 101 * MIN, 'u-fnunez', p('p-env-incompleto'), false);
+      elevar(t, ms + 50 * MIN, 'u-nacosta', { tipo: 'usuario', id: 'u-vpereira' }, 'Valeria conoce el proceso de recepción de archivos.');
+      comentar(t, ms + 90 * MIN, 'u-vpereira', 'El archivo se cortó durante la transferencia. Pedimos el reenvío.', 'PRIVADO');
+      comentar(t, ms + 100 * MIN, 'u-vpereira', 'Listo, ya llegó el archivo completo. Cualquier cosa nos avisás.', 'PUBLICO');
+      cerrar(t, ms + 101 * MIN, 'u-vpereira', p('p-env-incompleto'), false);
       t._escenario = 'origen-solucion';
       tickets.push(t);
     }
@@ -778,7 +753,7 @@
         id: 'sol-prop-caja-procesando', titulo: 'El cierre de caja queda procesando',
         descripcion: '1. Verificar en el sistema central si el cierre quedó registrado.\n2. Si está registrado, pedir a la agencia que recargue la pantalla.\n3. Si no está registrado, repetir el cierre.',
         sistemaId: 'sis-caja', subsistemaId: 'sub-caja-cierre', palabrasClave: ['cierre de caja', 'procesando', 'no termina', 'cargando'],
-        ticketOrigenId: origen ? origen.id : null, creadaPorId: origen ? origen.solucion.autorId : 'u-crivero',
+        ticketOrigenId: origen ? origen.id : null, creadaPorId: origen ? origen.solucion.autorId : 'u-vpereira',
         creadaEn: origen ? iso(new Date(origen.cerradoEn).getTime() + 2 * MIN) : iso(ahora - 3 * DIA),
       });
     }
@@ -799,7 +774,7 @@
         id: 'sol-env-incompleto', titulo: 'Pedir el reenvío de un archivo recibido incompleto',
         descripcion: '1. Confirmar con la agencia qué archivo es y de qué fecha.\n2. Pedir el reenvío.\n3. Verificar que el archivo nuevo llegue completo.',
         sistemaId: 'sis-envio-archivos', subsistemaId: 'sub-env-recepcion', palabrasClave: ['archivo incompleto', 'faltan registros', 'reenvío'],
-        ticketOrigenId: origen.id, creadaPorId: 'u-fnunez', creadaEn: iso(creadaMs),
+        ticketOrigenId: origen.id, creadaPorId: 'u-nacosta', creadaEn: iso(creadaMs),
         estado: 'APROBADA', revisadaPorId: 'u-scabrera', revisadaEn: iso(creadaMs + 26 * HORA),
       });
     }
@@ -807,7 +782,7 @@
       id: 'sol-rech-reiniciar-todo', titulo: 'Reiniciar todas las terminales ante cualquier error',
       descripcion: 'Ante cualquier error, reiniciar todas las terminales de la agencia.',
       sistemaId: 'sis-todos-terminales', subsistemaId: 'sub-todos-otros', palabrasClave: ['error', 'terminal'],
-      creadaPorId: 'u-fnunez', creadaEn: iso(ahora - 40 * DIA), estado: 'RECHAZADA',
+      creadaPorId: 'u-nacosta', creadaEn: iso(ahora - 40 * DIA), estado: 'RECHAZADA',
       revisadaPorId: 'u-scabrera', revisadaEn: iso(ahora - 39 * DIA),
       motivoRechazo: 'Es demasiado general. Conviene una solución por síntoma, con pasos concretos.',
     });
@@ -825,7 +800,7 @@
       const creadoEn = iso(datos.ms);
       return Object.assign({
         id: nuevoId('b'), numero: null, estado: 'BORRADOR', titulo: '', descripcion: '',
-        localidadId: '', sistemaId: '', subsistemaId: '', tipoSolicitudId: 'ts-atencion', criticidadId: '', tipoProblemaId: 'tp-nodef',
+        localidadId: '', sistemaId: '', subsistemaId: '', criticidadId: '', tipoProblemaId: 'tp-nodef',
         creadoPorId: 'u-vpereira', operadorId: 'u-vpereira', creadoEn, actualizadoEn: creadoEn, cerradoEn: null,
         adjuntos: [], solucion: null, registroDirecto: false, elevadoA: null, actividad: [],
       }, datos, { ms: undefined });
@@ -865,7 +840,7 @@
       if (s.revisadaEn) aud(s.revisadaEn, s.revisadaPorId, s.estado === 'RECHAZADA' ? 'SOLUCION_RECHAZADA' : 'SOLUCION_APROBADA', null, s.titulo);
     }
     for (let dia = 6; dia >= 0; dia--) {
-      for (const uid of ['u-vpereira', 'u-nacosta', 'u-crivero', 'u-fnunez', 'u-scabrera', 'u-mtechera']) {
+      for (const uid of ['u-vpereira', 'u-nacosta', 'u-scabrera', 'u-mtechera']) {
         if (rnd() < 0.2) continue;
         let ms = haceDias(dia, uid === 'u-scabrera' ? 9 : 8, Math.floor(rnd() * 50));
         if (ms > ahora - 5 * MIN) continue;
@@ -937,7 +912,6 @@
       subsistemas: C.subsistemas.map((x) => Object.assign({ activo: true }, x)),
       tiposProblema: C.tiposProblema.map((x) => Object.assign({ activo: true }, x)),
       criticidades: C.criticidades.map((x) => Object.assign({ activo: true }, x)),
-      tiposSolicitud: C.tiposSolicitud.map((x) => Object.assign({ activo: true }, x)),
       gruposSoporte: C.gruposSoporte.map((x) => Object.assign({ activo: true, ejemplo: true }, x)),
       tickets: tickets.concat(borradores),
       soluciones,

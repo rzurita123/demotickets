@@ -106,7 +106,7 @@
     const porTexto = new Map();
     for (const t of db.tickets) {
       if (t.estado !== 'CERRADO' || !t.solucion || t.id === consulta.excluirTicketId) continue;
-      if (t.tipoSolicitudId === 'ts-sugerencia') continue; // las sugerencias de funcionalidad no resuelven problemas
+      if (t.tipoSolicitudId === 'ts-sugerencia') continue; // bases guardadas antes de quitar el tipo de solicitud: no eran problemas
       const mismoSistema = !!sistemaId && t.sistemaId === sistemaId;
       const mismaLocalidad = !!localidadId && t.localidadId === localidadId;
       if (!mismoSistema && !mismaLocalidad && !hayTexto) continue;

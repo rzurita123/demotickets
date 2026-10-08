@@ -11,7 +11,6 @@
      reales de ORMEN.
    - Tipos de problema: los del sistema actual (No definido, Operación,
      Software, Equipamiento, Configuración).
-   - Tipos de solicitud: los del documento "Contexto a desarrollar".
    - Criticidad: valores de ejemplo (Alta, Media, Baja); ORMEN no los definió.
    - Grupos de soporte (a quién se eleva un ticket): EJEMPLOS, ORMEN no
      los definió.
@@ -100,11 +99,6 @@
     { id: 'cri-baja', nombre: 'Baja', orden: 3, clase: 'cri-baja' },
   ];
 
-  const tiposSolicitud = [
-    { id: 'ts-atencion', nombre: 'Solicitud de atención' },
-    { id: 'ts-sugerencia', nombre: 'Sugerencia de funcionalidad' },
-  ];
-
   /**
    * Grupos a los que se puede elevar un ticket (además de las personas de
    * Mesa de ayuda). Son EJEMPLOS: ORMEN todavía no definió los reales.
@@ -122,25 +116,12 @@
     // Mesa de ayuda de ORMEN
     { id: 'u-vpereira', usuario: 'vpereira', nombre: 'Valeria Pereira', rol: 'OPERADOR', email: 'vpereira@ormen.example', cargo: 'Mesa de ayuda' },
     { id: 'u-nacosta', usuario: 'nacosta', nombre: 'Nicolás Acosta', rol: 'OPERADOR', email: 'nacosta@ormen.example', cargo: 'Mesa de ayuda' },
-    { id: 'u-crivero', usuario: 'crivero', nombre: 'Camila Rivero', rol: 'OPERADOR', email: 'crivero@ormen.example', cargo: 'Mesa de ayuda' },
-    { id: 'u-fnunez', usuario: 'fnunez', nombre: 'Federico Núñez', rol: 'OPERADOR', email: 'fnunez@ormen.example', cargo: 'Mesa de ayuda' },
-    { id: 'u-mlopez', usuario: 'mlopez', nombre: 'Martina López', rol: 'OPERADOR', email: 'mlopez@ormen.example', cargo: 'Mesa de ayuda', activo: false },
     // Gestión de ORMEN
     { id: 'u-scabrera', usuario: 'scabrera', nombre: 'Silvia Cabrera', rol: 'ADMINISTRADOR', email: 'scabrera@ormen.example', cargo: 'Gerencia de operaciones' },
     { id: 'u-ralvarez', usuario: 'ralvarez', nombre: 'Rodrigo Álvarez', rol: 'ADMINISTRADOR', email: 'ralvarez@ormen.example', cargo: 'Responsable de sistemas' },
     // Clientes (usuarios de bancas y agencias)
     { id: 'u-mtechera', usuario: 'mtechera', nombre: 'Marcelo Techera', rol: 'CLIENTE', email: 'mtechera@pando.example', localidadId: 'loc-pando', cargo: 'Encargado' },
-    { id: 'u-lsosa', usuario: 'lsosa', nombre: 'Lucía Sosa', rol: 'CLIENTE', email: 'lsosa@pando.example', localidadId: 'loc-pando', cargo: 'Cajera' },
     { id: 'u-lgomez', usuario: 'lgomez', nombre: 'Laura Gómez', rol: 'CLIENTE', email: 'lgomez@lagomar.example', localidadId: 'loc-lagomar', cargo: 'Encargada' },
-    { id: 'u-jsilva', usuario: 'jsilva', nombre: 'Jorge Silva', rol: 'CLIENTE', email: 'jsilva@artigas.example', localidadId: 'loc-artigas', cargo: 'Encargado' },
-    { id: 'u-arodriguez', usuario: 'arodriguez', nombre: 'Ana Rodríguez', rol: 'CLIENTE', email: 'arodriguez@rosario.example', localidadId: 'loc-rosario', cargo: 'Encargada' },
-    { id: 'u-sferreira', usuario: 'sferreira', nombre: 'Sebastián Ferreira', rol: 'CLIENTE', email: 'sferreira@canelones.example', localidadId: 'loc-canelones', cargo: 'Encargado' },
-    { id: 'u-polivera', usuario: 'polivera', nombre: 'Patricia Olivera', rol: 'CLIENTE', email: 'polivera@santalucia.example', localidadId: 'loc-santa-lucia', cargo: 'Encargada' },
-    { id: 'u-gmendez', usuario: 'gmendez', nombre: 'Gustavo Méndez', rol: 'CLIENTE', email: 'gmendez@carmelo.example', localidadId: 'loc-carmelo', cargo: 'Encargado' },
-    { id: 'u-csuarez', usuario: 'csuarez', nombre: 'Claudia Suárez', rol: 'CLIENTE', email: 'csuarez@durazno.example', localidadId: 'loc-durazno', cargo: 'Encargada' },
-    { id: 'u-acastro', usuario: 'acastro', nombre: 'Andrés Castro', rol: 'CLIENTE', email: 'acastro@trinidad.example', localidadId: 'loc-trinidad', cargo: 'Encargado' },
-    { id: 'u-mbenitez', usuario: 'mbenitez', nombre: 'Mónica Benítez', rol: 'CLIENTE', email: 'mbenitez@florida.example', localidadId: 'loc-florida', cargo: 'Encargada' },
-    { id: 'u-jromero', usuario: 'jromero', nombre: 'Javier Romero', rol: 'CLIENTE', email: 'jromero@paysandu.example', localidadId: 'loc-paysandu', cargo: 'Encargado' },
   ];
 
   /**
@@ -158,7 +139,8 @@
   };
 
   /** Usuarios destacados en la pantalla de ingreso (uno por rol). */
-  const accesosRapidos = ['u-vpereira', 'u-scabrera', 'u-mtechera', 'u-lgomez'];
+  // Todos los usuarios de prueba, en el orden en que aparecen en el ingreso.
+  const accesosRapidos = ['u-vpereira', 'u-nacosta', 'u-scabrera', 'u-ralvarez', 'u-mtechera', 'u-lgomez'];
 
-  App.catalogos = { localidades, sistemas, subsistemas, tiposProblema, criticidades, tiposSolicitud, gruposSoporte, usuarios, parametros, accesosRapidos };
+  App.catalogos = { localidades, sistemas, subsistemas, tiposProblema, criticidades, gruposSoporte, usuarios, parametros, accesosRapidos };
 })(window.App = window.App || {});

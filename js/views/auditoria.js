@@ -131,7 +131,7 @@
       ui.cabecera({ titulo: 'Auditoría' }),
       h('section', { class: 'card sin-padding', 'aria-label': 'Registro de auditoría' },
         h('div', { style: 'padding: 18px 20px 6px' },
-          h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de auditoría' },
+          h('div', { class: 'filtros filtros-grilla', role: 'search', 'aria-label': 'Filtros de auditoría' },
             ui.campo({ nombre: 'q', id: 'a-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),
             ui.campo({ nombre: 'usuario', id: 'a-usuario', etiqueta: 'Usuario', control: selUsuario }),
             ui.campo({ nombre: 'op', id: 'a-operacion', etiqueta: 'Operación', control: selOperacion }),

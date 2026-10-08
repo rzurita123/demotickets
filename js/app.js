@@ -17,7 +17,7 @@
   R.registrar('/', { vista: V.inicio, titulo: 'Inicio' });
 
   R.registrar('/tickets', { vista: V.tickets, titulo: 'Tickets' });
-  R.registrar('/tickets/nuevo', { vista: V.ticketNuevo, titulo: 'Crear ticket', roles: ['OPERADOR', 'CLIENTE'] });
+  R.registrar('/tickets/nuevo', { vista: V.ticketNuevo, titulo: 'Crear ticket', roles: ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'] });
   R.registrar('/tickets/:numero', { vista: V.ticketDetalle, titulo: 'Ticket' });
 
   R.registrar('/borradores', { vista: V.borradores, titulo: 'Borradores', roles: ['OPERADOR'] });
@@ -29,7 +29,7 @@
   R.registrar('/soluciones/:id', { vista: V.solucion, titulo: 'Solución reutilizable', roles: ORMEN });
   R.registrar('/soluciones/:id/editar', { vista: V.solucionForm, titulo: 'Editar solución', roles: ['ADMINISTRADOR'] });
 
-  R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR', 'CLIENTE'] });
+  R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR'] });
 
   R.registrar('/admin', { vista: V.adminUsuarios, titulo: 'Usuarios', roles: ['ADMINISTRADOR'] });
   R.registrar('/admin/usuarios', { vista: V.adminUsuarios, titulo: 'Usuarios', roles: ['ADMINISTRADOR'] });

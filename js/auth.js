@@ -71,7 +71,7 @@
 
   /** Permisos por rol. */
   const PERMISOS = {
-    'tickets.crear': ['OPERADOR', 'CLIENTE'],
+    'tickets.crear': ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'],
     'tickets.tratar': ['OPERADOR'],
     'tickets.comentar': ['OPERADOR', 'CLIENTE'],
     'tickets.registrarResuelto': ['OPERADOR'],
@@ -79,7 +79,7 @@
     'soluciones.ver': ['OPERADOR', 'ADMINISTRADOR'],
     'soluciones.proponer': ['OPERADOR'],
     'soluciones.gestionar': ['ADMINISTRADOR'],
-    estadisticas: ['ADMINISTRADOR', 'CLIENTE'],
+    estadisticas: ['ADMINISTRADOR'],
     administracion: ['ADMINISTRADOR'],
     auditoria: ['ADMINISTRADOR'],
   };
