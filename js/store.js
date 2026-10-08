@@ -423,7 +423,7 @@
       }
     }
     if (u.rol !== 'CLIENTE' && t.solucion && t.solucion.adjuntos) {
-      for (const a of t.solucion.adjuntos) lista.push(Object.assign({ origen: 'Solución' }, a));
+      for (const a of t.solucion.adjuntos) lista.push(Object.assign({ origen: 'Resolución' }, a));
     }
     return lista;
   }
@@ -493,7 +493,7 @@
     if (!limpio(datos.titulo)) e.titulo = 'Escribí un título.';
     else if (limpio(datos.titulo).length > 120) e.titulo = 'El título puede tener hasta 120 caracteres.';
     if (!limpio(datos.descripcion)) e.descripcion = 'Describí el problema.';
-    if (op.registroDirecto && !limpio(op.solucionTexto)) e.solucionTexto = 'Escribí la solución aplicada.';
+    if (op.registroDirecto && !limpio(op.solucionTexto)) e.solucionTexto = 'Escribí la resolución.';
     return e;
   }
 
@@ -512,7 +512,7 @@
 
   function validarPropuesta(p) {
     const e = {};
-    if (!limpio(p.titulo)) e.propuestaTitulo = 'Escribí un título para la solución.';
+    if (!limpio(p.titulo)) e.propuestaTitulo = 'Escribí un título para la solución reutilizable.';
     if (!normalizarPalabras(p.palabrasClave).length) e.propuestaPalabras = 'Agregá al menos una palabra clave.';
     return e;
   }
@@ -574,7 +574,7 @@
     if (op.registroDirecto && op.proponer) errores = Object.assign(errores, validarPropuesta(op.proponer));
     if (op.solucionCatalogoId) {
       const s = solucion(op.solucionCatalogoId);
-      if (!s || s.estado !== 'APROBADA') errores.solucionTexto = 'La solución del catálogo elegida ya no está aprobada.';
+      if (!s || s.estado !== 'APROBADA') errores.solucionTexto = 'La solución reutilizable elegida ya no está aprobada.';
     }
     if (Object.keys(errores).length) throw errorDeCampos(errores);
     if (op.borradorId) exigir(borradorParaUsuario(op.borradorId, u), 'El borrador ya no existe.');
@@ -872,10 +872,10 @@
     const t = ticketActivoParaOperador(ticketId, u);
     exigir(t.estado !== 'CERRADO', 'El ticket ya está cerrado.');
     let e = {};
-    if (!limpio(datos.texto)) e.solucionTexto = 'Escribí la solución aplicada.';
+    if (!limpio(datos.texto)) e.solucionTexto = 'Escribí la resolución.';
     if (datos.solucionCatalogoId) {
       const s = solucion(datos.solucionCatalogoId);
-      if (!s || s.estado !== 'APROBADA') e.solucionTexto = 'La solución del catálogo elegida ya no está aprobada.';
+      if (!s || s.estado !== 'APROBADA') e.solucionTexto = 'La solución reutilizable elegida ya no está aprobada.';
     }
     if (datos.tipoProblemaId && !tipoProblema(datos.tipoProblemaId)) e.tipoProblemaId = 'Elegí el tipo de problema.';
     if (datos.proponer) e = Object.assign(e, validarPropuesta(datos.proponer));
@@ -994,10 +994,10 @@
   function proponerSolucion(ticketId, u, datos) {
     const t = ticket(ticketId);
     exigir(t && t.estado !== 'BORRADOR', 'El ticket no existe.');
-    exigir(esOrmen(u), 'Sólo ORMEN puede proponer soluciones.');
-    exigir(t.estado === 'CERRADO' && t.solucion, 'Sólo se propone como solución un ticket cerrado.');
+    exigir(esOrmen(u), 'Sólo ORMEN puede proponer soluciones reutilizables.');
+    exigir(t.estado === 'CERRADO' && t.solucion, 'Sólo la resolución de un ticket cerrado puede dar origen a una solución reutilizable.');
     const previa = propuestaDeTicket(t);
-    exigir(!previa, previa && previa.estado === 'APROBADA' ? 'De este ticket ya surgió una solución.' : 'Este ticket ya tiene un borrador de solución esperando revisión.');
+    exigir(!previa, previa && previa.estado === 'APROBADA' ? 'La resolución de este ticket ya dio origen a una solución reutilizable.' : 'La resolución de este ticket ya tiene una solución reutilizable por aprobar.');
     const e = validarPropuesta({ titulo: datos.titulo, palabrasClave: datos.palabrasClave });
     if (!limpio(datos.descripcion)) e.propuestaDescripcion = 'Escribí la solución (los pasos a seguir).';
     if (Object.keys(e).length) throw errorDeCampos(e);
@@ -1040,19 +1040,19 @@
   }
 
   /**
-   * Alta o edición de una solución del catálogo.
+   * Alta o edición de una solución reutilizable.
    * - Administrador: queda aprobada.
    * - Operador: queda pendiente de aprobación (supuesto: mismo circuito que
    *   las soluciones que vienen de un ticket).
    * Sólo el administrador edita soluciones existentes.
    */
   function guardarSolucion(datos, u, id) {
-    exigir(esOrmen(u), 'Las soluciones son para Mesa de ayuda y gestión de ORMEN.');
+    exigir(esOrmen(u), 'Las soluciones reutilizables son para Mesa de ayuda y gestión de ORMEN.');
     const e = validarSolucion(datos);
     if (Object.keys(e).length) throw errorDeCampos(e);
     const existente = id ? solucion(id) : null;
     exigir(!id || existente, 'La solución no existe.');
-    exigir(!existente || u.rol === 'ADMINISTRADOR', 'Sólo un administrador puede modificar soluciones del catálogo.');
+    exigir(!existente || u.rol === 'ADMINISTRADOR', 'Sólo un administrador puede modificar soluciones reutilizables.');
     return mutar(() => {
       const ahora = U.isoAhora();
       const campos = {
@@ -1090,7 +1090,7 @@
   }
 
   function revisarSolucion(id, u, aprobar, motivo, cambios) {
-    exigir(u && u.rol === 'ADMINISTRADOR', 'Sólo un administrador puede aprobar o rechazar soluciones.');
+    exigir(u && u.rol === 'ADMINISTRADOR', 'Sólo un administrador puede aprobar o rechazar soluciones reutilizables.');
     const s = solucion(id);
     exigir(s, 'La solución no existe.');
     exigir(s.estado === 'PENDIENTE', 'La solución ya fue revisada.');

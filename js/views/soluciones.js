@@ -14,8 +14,8 @@
   const h = U.h;
 
   const PESTANAS = [
-    { estado: 'APROBADA', texto: 'Catálogo' },
-    { estado: 'PENDIENTE', texto: 'Borradores por revisar' },
+    { estado: 'APROBADA', texto: 'Aprobadas' },
+    { estado: 'PENDIENTE', texto: 'Por aprobar' },
     { estado: 'RECHAZADA', texto: 'Rechazadas' },
   ];
 
@@ -24,7 +24,7 @@
     const S = App.store;
     if (s.ticketOrigenId) {
       const t = S.ticket(s.ticketOrigenId);
-      return t ? 'Desde el ticket #' + t.numero : 'Desde un ticket';
+      return t ? 'De la resolución del ticket #' + t.numero : 'De la resolución de un ticket';
     }
     return 'Cargada sin ticket';
   }
@@ -42,7 +42,7 @@
       h('p', { class: 'resumen' }, s.descripcion),
       h('div', { class: 'chips' }, s.palabrasClave.slice(0, 4).map((p) => h('span', { class: 'palabra-clave' }, p)), extra ? h('span', { class: 'palabra-clave' }, '+' + extra) : null),
       h('div', { class: 'chico suave' },
-        s.estado === 'APROBADA' ? (usos ? 'Aplicada ' + U.plural(usos, 'vez', 'veces') : 'Todavía sin usos') : 'Borrador de ' + (autor ? (autor.id === u.id ? 'vos' : autor.nombre) : '—') + ' · ' + U.relativo(s.creadaEn),
+        s.estado === 'APROBADA' ? (usos ? 'Usada ' + U.plural(usos, 'vez', 'veces') : 'Sin usos') : 'Propuesta por ' + (autor ? (autor.id === u.id ? 'vos' : autor.nombre) : '—') + ' · ' + U.relativo(s.creadaEn),
         ' · ', origenTexto(s)));
   }
 
@@ -90,11 +90,11 @@
       if (!lista.length) {
         resultados.append(h('div', { class: 'card' }, ui.vacio({
           icono: 'libro',
-          titulo: q.estado === 'PENDIENTE' ? 'No hay borradores por revisar' : q.estado === 'RECHAZADA' ? 'No hay soluciones rechazadas' : 'No hay soluciones con estos filtros',
+          titulo: q.estado === 'PENDIENTE' ? 'No hay soluciones reutilizables por aprobar' : q.estado === 'RECHAZADA' ? 'No hay soluciones reutilizables rechazadas' : 'No hay soluciones reutilizables con estos filtros',
         })));
         return;
       }
-      resultados.append(h('p', { class: 'chico suave' }, U.plural(lista.length, 'solución', 'soluciones')),
+      resultados.append(h('p', { class: 'chico suave' }, U.plural(lista.length, 'solución reutilizable', 'soluciones reutilizables')),
         h('div', { class: 'lista-soluciones' }, lista.map((s) => tarjetaSolucion(s, usos.get(s.id) || 0, u))));
     }
 
@@ -114,10 +114,10 @@
 
     return h('div', { class: 'pila' },
       ui.cabecera({
-        titulo: 'Soluciones',
+        titulo: 'Soluciones reutilizables',
         acciones: [
           h('a', { class: 'btn btn-neutro', href: '#/soluciones/buscar' }, ui.icono('buscar', 'i-sm'), 'Buscar por problema'),
-          h('a', { class: 'btn btn-primario', href: '#/soluciones/nueva' }, ui.icono('mas', 'i-sm'), esAdmin ? 'Cargar solución' : 'Proponer solución'),
+          h('a', { class: 'btn btn-primario', href: '#/soluciones/nueva' }, ui.icono('mas', 'i-sm'), esAdmin ? 'Nueva solución reutilizable' : 'Proponer solución reutilizable'),
         ],
       }),
       h('section', { class: 'card pila', 'aria-label': 'Filtros' },
@@ -138,8 +138,8 @@
     const u = ctx.usuario;
     const s = S.solucion(ctx.params.id);
     if (!s) {
-      return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Solución no encontrada'),
-        ui.vacio({ icono: 'libro', titulo: 'No encontramos la solución', accion: h('a', { class: 'btn btn-primario', href: '#/soluciones' }, 'Ver el catálogo') }));
+      return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Solución reutilizable no encontrada'),
+        ui.vacio({ icono: 'libro', titulo: 'No encontramos la solución reutilizable', accion: h('a', { class: 'btn btn-primario', href: '#/soluciones' }, 'Ver las soluciones reutilizables') }));
     }
     ctx.titulo(s.titulo);
     const esAdmin = u.rol === 'ADMINISTRADOR';
@@ -149,11 +149,11 @@
     const origen = s.ticketOrigenId ? S.ticket(s.ticketOrigenId) : null;
 
     async function aprobar() {
-      const ok = await ui.confirmar({ titulo: 'Aprobar la solución', mensaje: 'Pasa al catálogo y el sistema la empieza a sugerir cuando coincidan el sistema o las palabras clave.', textoConfirmar: 'Aprobar' });
+      const ok = await ui.confirmar({ titulo: 'Aprobar la solución reutilizable', mensaje: 'Se empieza a sugerir al cargar tickets parecidos.', textoConfirmar: 'Aprobar' });
       if (!ok) return;
       try {
         S.aprobarSolucion(s.id, u);
-        ui.toast('Solución aprobada: desde ahora se sugiere.');
+        ui.toast('Solución reutilizable aprobada: desde ahora se sugiere.');
         ctx.refrescar({ enfocar: '#titulo-pagina' });
       } catch (e) { ui.mostrarError(e); }
     }
@@ -164,7 +164,7 @@
         ui.campo({ nombre: 'motivo', id: 'rechazo-motivo', etiqueta: 'Motivo del rechazo', requerido: true, control: motivo }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
-        titulo: 'Rechazar la solución',
+        titulo: 'Rechazar la solución reutilizable',
         antetitulo: s.titulo,
         cuerpo,
         acciones: [
@@ -175,7 +175,7 @@
                 if (e.campos) { ui.mostrarErrores(cuerpo, e.campos); return false; }
                 throw e;
               }
-              ui.toast('Solución rechazada.');
+              ui.toast('Solución reutilizable rechazada.');
               ctx.refrescar({ enfocar: '#titulo-pagina' });
               return true;
             },
@@ -187,16 +187,16 @@
     // Columna principal
     const principal = h('div', { class: 'pila-lg' },
       h('section', { class: 'card pila', 'aria-labelledby': 'sec-pasos' },
-        h('h2', { id: 'sec-pasos' }, 'Solución'),
+        h('h2', { id: 'sec-pasos' }, 'Pasos a seguir'),
         h('div', { class: 'pasos' }, s.descripcion),
         ui.galeria(s.adjuntos, { grande: true })),
       h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-claves' },
         h('h2', { id: 'sec-claves' }, 'Palabras clave'),
         h('div', { class: 'chips' }, s.palabrasClave.map((p) => h('span', { class: 'palabra-clave' }, p)))),
       h('section', { class: 'card sin-padding', 'aria-labelledby': 'sec-usos' },
-        h('div', { class: 'card-titulo', style: 'padding: 18px 22px 0' }, h('h2', { id: 'sec-usos' }, 'Tickets que la usaron'), h('span', { class: 'suave' }, U.plural(usos.length, 'ticket', 'tickets'))),
+        h('div', { class: 'card-titulo', style: 'padding: 18px 22px 0' }, h('h2', { id: 'sec-usos' }, 'Resoluciones que la usaron'), h('span', { class: 'suave' }, U.plural(usos.length, 'ticket', 'tickets'))),
         usos.length
-          ? App.comun.tablaTickets(usos.slice(0, 10), ['numero', 'ticket', 'localidad', 'cerrado'], { caption: 'Tickets cerrados con esta solución' })
+          ? App.comun.tablaTickets(usos.slice(0, 10), ['numero', 'ticket', 'localidad', 'cerrado'], { caption: 'Tickets resueltos con esta solución reutilizable' })
           : h('p', { class: 'chico suave', style: 'padding: 0 22px 18px' }, 'Sin usos todavía.')));
 
     // Lateral
@@ -214,28 +214,27 @@
     } else if (s.estado === 'RECHAZADA') {
       lateral.append(ui.aviso([h('strong', null, 'Rechazada'), ' por ', revisor ? revisor.nombre : '—', ' el ', U.fecha(s.revisadaEn), '. Motivo: ', s.motivoRechazo || '—'], 'rojo'));
     } else if (esAdmin) {
-      lateral.append(h('a', { class: 'btn btn-neutro', href: '#/soluciones/' + s.id + '/editar' }, ui.icono('editar', 'i-sm'), 'Editar la solución'));
+      lateral.append(h('a', { class: 'btn btn-neutro', href: '#/soluciones/' + s.id + '/editar' }, ui.icono('editar', 'i-sm'), 'Editar'));
     }
     const datos = [
       ['Estado', ui.badgeSolucion(s.estado)],
       ['Sistema', s.sistemaId ? S.nombre('sistemas', s.sistemaId) : 'General'],
       ['Subsistema', s.subsistemaId ? S.nombre('subsistemas', s.subsistemaId) : '—'],
-      ['Origen', origen ? h('a', { href: '#/tickets/' + origen.numero }, 'Ticket #' + origen.numero) : 'Cargada sin ticket'],
+      ['Surgió de', origen ? h('a', { href: '#/tickets/' + origen.numero }, 'Resolución del ticket #' + origen.numero) : 'Cargada sin ticket'],
       [s.ticketOrigenId || s.estado !== 'APROBADA' ? 'Propuesta por' : 'Cargada por', autor ? autor.nombre : '—'],
       ['Fecha', U.fechaHora(s.creadaEn)],
       s.revisadaEn ? [s.estado === 'RECHAZADA' ? 'Rechazada por' : 'Aprobada por', revisor ? revisor.nombre : '—'] : null,
       s.revisadaEn ? ['Revisión', U.fechaHora(s.revisadaEn)] : null,
-      s.estado === 'APROBADA' ? ['Aplicada', U.plural(usos.length, 'vez', 'veces')] : null,
+      s.estado === 'APROBADA' ? ['Usada', U.plural(usos.length, 'vez', 'veces')] : null,
     ].filter(Boolean);
     lateral.append(h('section', { class: 'card', 'aria-labelledby': 'sec-datos-sol' },
       h('h2', { id: 'sec-datos-sol', style: 'margin-bottom: 12px' }, 'Datos'),
       h('dl', { class: 'datos-lista' }, datos.map(([k, v]) => [h('dt', null, k), h('dd', null, v)]))));
     if (origen && S.puedeVerTicket(origen, u)) {
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-origen' },
-        h('h2', { id: 'sec-origen' }, 'Ticket de origen'),
+        h('h2', { id: 'sec-origen' }, 'Resolución de origen'),
         h('a', { href: '#/tickets/' + origen.numero, class: 'fuerte' }, '#' + origen.numero + ' · ' + origen.titulo),
-        h('p', { class: 'chico suave' }, S.nombre('localidades', origen.localidadId), ' · cerrado el ', U.fecha(origen.cerradoEn)),
-        h('p', { class: 'chico' }, U.truncar(origen.descripcion, 200))));
+        h('p', { class: 'chico' }, U.truncar(origen.solucion ? origen.solucion.texto : '', 200))));
     }
 
     return h('div', { class: 'pila' },
@@ -274,7 +273,7 @@
     selSis.addEventListener('change', () => cargarSubs(''));
     const inDesc = h('textarea', { id: 'sol-descripcion', class: 'control', rows: '9', value: existente ? existente.descripcion : '', placeholder: '1. Primer paso…\n2. Segundo paso…' });
     const palabras = ui.entradaPalabras({ id: 'sol-palabras', valor: existente ? existente.palabrasClave : [], alCambiar: () => { marcar(); probar(); } });
-    const imagenes = ui.selectorImagenes({ inicial: existente ? existente.adjuntos : [], pegarEn: [inDesc], etiqueta: 'Imágenes de la solución', alCambiar: marcar });
+    const imagenes = ui.selectorImagenes({ inicial: existente ? existente.adjuntos : [], pegarEn: [inDesc], etiqueta: 'Imágenes de los pasos', alCambiar: marcar });
     const resumen = h('div');
 
     // Probador de palabras clave
@@ -303,12 +302,12 @@
         h('div', { class: 'grid-2' },
           ui.campo({ nombre: 'sistemaId', id: 'sol-sistema', etiqueta: 'Sistema o servicio', opcional: true, control: selSis }),
           ui.campo({ nombre: 'subsistemaId', id: 'sol-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub })),
-        ui.campo({ nombre: 'descripcion', id: 'sol-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc }),
+        ui.campo({ nombre: 'descripcion', id: 'sol-descripcion', etiqueta: 'Pasos a seguir', requerido: true, control: inDesc }),
         h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el),
         ui.campo({ nombre: 'palabrasClave', id: 'sol-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el })),
       h('div', { class: 'fila' },
         h('button', { type: 'submit', class: 'btn btn-primario btn-lg' }, ui.icono(aprobarAlGuardar ? 'checkCirculo' : 'check', 'i-sm'),
-          aprobarAlGuardar ? 'Guardar y aprobar' : existente ? 'Guardar cambios' : esAdmin ? 'Cargar en el catálogo' : 'Proponer solución'),
+          aprobarAlGuardar ? 'Guardar y aprobar' : existente ? 'Guardar cambios' : esAdmin ? 'Guardar' : 'Proponer'),
         h('a', { class: 'btn btn-fantasma btn-lg', href: existente ? '#/soluciones/' + existente.id : '#/soluciones' }, 'Cancelar')));
     form.addEventListener('input', marcar);
     form.addEventListener('change', marcar);
@@ -324,7 +323,7 @@
           s = S.guardarSolucion(datos, u, existente ? existente.id : null);
         }
         ctx.marcarSucio(false);
-        ui.toast(aprobarAlGuardar ? 'Solución aprobada: desde ahora se sugiere.' : existente ? 'Cambios guardados.' : esAdmin ? 'Solución cargada en el catálogo.' : 'Borrador de solución creado. Queda esperando la revisión de un administrador.');
+        ui.toast(aprobarAlGuardar ? 'Solución reutilizable aprobada: desde ahora se sugiere.' : existente ? 'Cambios guardados.' : esAdmin ? 'Solución reutilizable cargada.' : 'Solución reutilizable propuesta: queda por aprobar.');
         App.router.ir('/soluciones/' + s.id);
       } catch (err) {
         if (err.campos) ui.mostrarErrores(form, err.campos, resumen);
@@ -332,7 +331,7 @@
       }
     });
 
-    const titulo = aprobarAlGuardar ? 'Revisar y aprobar' : existente ? 'Editar solución' : esAdmin ? 'Cargar solución' : 'Proponer solución';
+    const titulo = aprobarAlGuardar ? 'Revisar y aprobar' : existente ? 'Editar solución reutilizable' : esAdmin ? 'Nueva solución reutilizable' : 'Proponer solución reutilizable';
     ctx.titulo(titulo);
     return h('div', { class: 'pila' },
       ui.cabecera({
@@ -384,7 +383,7 @@
       App.router.actualizarQuery({ q: q.q, sis: q.sis, sub: q.sub, loc: q.loc });
       U.vaciar(resultados);
       if (!q.q && !q.sis) {
-        estado.textContent = 'Escribí cómo describe el problema la agencia. No hace falta clasificar el ticket antes.';
+        estado.textContent = 'Escribí cómo describe el problema la agencia.';
         return;
       }
       const res = App.sugerencias.buscar({ texto: q.q, sistemaId: q.sis, subsistemaId: q.sub, localidadId: q.loc, limite: 12 });
@@ -392,14 +391,13 @@
         estado.textContent = '';
         resultados.append(h('div', { class: 'card' }, ui.vacio({
           icono: 'buscar',
-          titulo: 'No se encontraron soluciones relevantes',
-          texto: 'Probá con otras palabras o con otro sistema. Si es un problema nuevo, creá el ticket: cuando se cierre, su solución puede pasar al catálogo.',
+          titulo: 'Sin coincidencias',
           accion: esOperador ? h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo?' + U.buildQuery({ descripcion: q.q, sis: q.sis, sub: q.sub, loc: q.loc }) }, ui.icono('mas', 'i-sm'), 'Crear ticket con esta descripción') : null,
         })));
         return;
       }
       estado.textContent = U.plural(res.length, 'resultado', 'resultados') + ', ordenados de mayor a menor puntaje.';
-      res.forEach((r, i) => resultados.append(ui.tarjetaSugerencia(r, { mejor: i === 0, alUsar: esOperador ? usar : null, textoUsar: 'Ya lo resolví con esta' })));
+      res.forEach((r, i) => resultados.append(ui.tarjetaSugerencia(r, { mejor: i === 0, alUsar: esOperador ? usar : null, textoUsar: 'Crear ticket cerrado con esta' })));
     }
 
     const buscarDiferido = U.debounce(buscar, 250);

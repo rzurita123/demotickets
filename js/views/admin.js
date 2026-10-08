@@ -411,12 +411,12 @@
   // --------------------------------------------------------- Parámetros ---
 
   const CAMPOS_PARAMETROS = [
-    { k: 'pesoSistema', etiqueta: 'Mismo sistema', origen: 'Criterio de ORMEN.' },
-    { k: 'pesoSubsistema', etiqueta: 'Mismo subsistema', origen: 'Criterio de ORMEN.' },
-    { k: 'pesoPalabraClave', etiqueta: 'Cada palabra clave del catálogo que aparece en la descripción', origen: 'Criterio de ORMEN.' },
-    { k: 'pesoLocalidad', etiqueta: 'Ticket anterior de la misma localidad', origen: 'Agregado en la demo: ORMEN nombró estos tickets como fuente, pero no cómo suman.' },
-    { k: 'pesoPalabraComun', etiqueta: 'Cada palabra en común con un ticket anterior (hasta 5)', origen: 'Agregado en la demo: los tickets anteriores no tienen palabras clave.' },
-    { k: 'maxResultados', etiqueta: 'Cantidad de sugerencias que se muestran', origen: 'Al crear y al cerrar un ticket.' },
+    { k: 'pesoSistema', etiqueta: 'Mismo sistema' },
+    { k: 'pesoSubsistema', etiqueta: 'Mismo subsistema' },
+    { k: 'pesoPalabraClave', etiqueta: 'Cada palabra clave de una solución reutilizable que aparece en la descripción' },
+    { k: 'pesoLocalidad', etiqueta: 'Resolución anterior de la misma localidad' },
+    { k: 'pesoPalabraComun', etiqueta: 'Cada palabra en común con una resolución anterior (hasta 5)' },
+    { k: 'maxResultados', etiqueta: 'Cantidad de sugerencias que se muestran' },
   ];
 
   App.vistas.adminParametros = function (ctx) {

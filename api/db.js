@@ -15,7 +15,7 @@
    Los datos son ficticios; cualquiera que tenga la dirección de la demo
    puede leerlos y cambiarlos, igual que con la demo misma.
    ========================================================================== */
-import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
+import { get, head, put, BlobPreconditionFailedError, BlobNotFoundError } from '@vercel/blob';
 
 const RUTA = 'demo/db.json';
 const MAX_BYTES = 4 * 1024 * 1024; // las funciones aceptan hasta 4,5 MB por pedido
@@ -32,6 +32,12 @@ function json(datos, status) {
 /** Sin store de Blob conectado al proyecto, la demo sigue sólo con el navegador. */
 const configurado = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 const sinConfigurar = () => json({ sinConfigurar: true, error: 'No hay un store de Vercel Blob conectado a este proyecto.' }, 501);
+
+/**
+ * La lectura del blob devuelve un etag débil (W/"abc") y put/head uno fuerte
+ * ("abc"): se comparan sin el prefijo ni las comillas.
+ */
+const normalizarEtag = (etag) => String(etag || '').replace(/^W\//, '').replace(/"/g, '');
 
 function falla(e) {
   console.error(e);
@@ -67,15 +73,28 @@ export async function PUT(request) {
   }
   if (!db || typeof db.version !== 'number' || !Array.isArray(db.tickets)) return json({ error: 'No parece una base de la demo.' }, 400);
 
-  const etag = request.headers.get('if-match');
+  const leido = request.headers.get('if-match');
+  let etag = null;
   try {
-    if (!etag) {
+    if (!leido) {
       // Sin etag sólo se puede crear: si otra persona ya guardó una base, es un conflicto.
       const actual = await get(RUTA, { access: 'private', useCache: false });
       if (actual) {
         if (actual.stream) await actual.stream.cancel();
         return json({ conflicto: true }, 412);
       }
+    } else {
+      // El etag que tiene el navegador viene de la lectura (formato débil): se compara
+      // con el etag real del blob y se usa éste en la escritura condicional.
+      let actual;
+      try {
+        actual = await head(RUTA);
+      } catch (e) {
+        if (e instanceof BlobNotFoundError) return json({ conflicto: true }, 412);
+        throw e;
+      }
+      if (normalizarEtag(actual.etag) !== normalizarEtag(leido)) return json({ conflicto: true }, 412);
+      etag = actual.etag;
     }
     const r = await put(RUTA, texto, {
       access: 'private',

@@ -28,8 +28,7 @@
     // Panel de marca
     const panel = h('section', { class: 'login-panel', 'aria-label': 'ORMEN' },
       h('div', { class: 'marca' },
-        h('span', { class: 'marca-circulo', 'aria-hidden': 'true' }),
-        h('span', { class: 'marca-nombre' }, 'ORMEN')),
+        h('img', { class: 'marca-logo', src: 'assets/logo-ormen.png', alt: 'ORMEN' })),
       h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Mesa de ayuda', h('span', null, 'Sistema de tickets')));
 
     // Accesos rápidos: un usuario por perfil

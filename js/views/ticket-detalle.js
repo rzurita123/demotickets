@@ -132,15 +132,16 @@
       const puedeProponer = (esOperador || esAdmin) && !S.propuestaDeTicket(t);
       solucion = h('section', { class: 'solucion-ticket', 'aria-labelledby': 'sec-sol' },
         h('div', { class: 'fila-entre' },
-          h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Solución aplicada'),
+          h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Resolución del ticket'),
           h('span', { class: 'badge contorno' }, ui.icono('candado', 'i-sm'), 'Sólo ORMEN')),
         h('div', { class: 'bloque-texto' }, t.solucion.texto),
         ui.galeria(t.solucion.adjuntos),
-        cat ? h('p', { class: 'chico' }, ui.icono('libro', 'i-sm'), ' Catálogo: ', h('a', { href: '#/soluciones/' + cat.id }, '«' + cat.titulo + '»')) : null,
-        h('div', { class: 'fila-entre' },
-          h('span', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.fechaHora(t.solucion.fecha)),
-          propuesta ? h('a', { class: 'fila-sm chico fuerte', href: '#/soluciones/' + propuesta.id }, ui.badgeSolucion(propuesta.estado), '«' + propuesta.titulo + '»') : null,
-          puedeProponer ? h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => abrirProponer() }, ui.icono('libro', 'i-sm'), 'Proponer como solución') : null));
+        cat ? h('p', { class: 'chico' }, ui.icono('libro', 'i-sm'), ' Basada en la solución reutilizable ', h('a', { href: '#/soluciones/' + cat.id }, '«' + cat.titulo + '»')) : null,
+        h('span', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.fechaHora(t.solucion.fecha)),
+        propuesta || puedeProponer ? h('div', { class: 'origina' },
+          h('span', { class: 'origina-flecha' }, ui.icono('flechaDer', 'i-sm'), propuesta ? 'Dio origen a' : 'Puede dar origen a'),
+          propuesta ? h('a', { class: 'fila-sm fuerte', href: '#/soluciones/' + propuesta.id }, ui.icono('libro', 'i-sm'), 'Solución reutilizable «' + propuesta.titulo + '»', ui.badgeSolucion(propuesta.estado)) : null,
+          puedeProponer ? h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => abrirProponer() }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable') : null) : null);
     } else if (cerrado && esCliente) {
       solucion = ui.aviso(['Cerrado el ', U.fechaHora(t.cerradoEn), '.'], 'verde');
     }
@@ -182,12 +183,12 @@
       else if (ev.tipo === 'propuesta') {
         ic = 'libro';
         const sol = S.solucion(ev.solucionId);
-        texto = [fuerte, ' propuso el ticket como solución', sol ? [': ', h('a', { href: '#/soluciones/' + sol.id }, '«' + sol.titulo + '»'), ' ', ui.badgeSolucion(sol.estado)] : null];
+        texto = [fuerte, ' propuso la resolución como solución reutilizable', sol ? [': ', h('a', { href: '#/soluciones/' + sol.id }, '«' + sol.titulo + '»'), ' ', ui.badgeSolucion(sol.estado)] : null];
       } else if (ev.tipo === 'datos') { ic = 'editar'; texto = [fuerte, ' modificó la clasificación: ', (ev.cambios || []).map((c) => c.etiqueta + ': ' + c.de + ' → ' + c.a).join(' · ')]; }
       else if (ev.tipo === 'cierre') {
         ic = 'check';
         texto = [fuerte, ev.registroDirecto ? ' registró el ticket ya resuelto' : ' cerró el ticket', ev.de ? [' (estaba ', ui.badgeEstado(ev.de), ')'] : null,
-          ev.texto && !esCliente ? h('span', { class: 'chico suave', style: 'flex-basis: 100%' }, 'Solución: «' + U.truncar(ev.texto, 160) + '»') : null];
+          ev.texto && !esCliente ? h('span', { class: 'chico suave', style: 'flex-basis: 100%' }, 'Resolución: «' + U.truncar(ev.texto, 160) + '»') : null];
       } else if (ev.tipo === 'reapertura') { ic = 'reabrir'; texto = [fuerte, ' reabrió el ticket', ev.a ? ['→', ui.badgeEstado(ev.a)] : null, nota('Motivo (privado)', ev.texto)]; }
       else texto = [fuerte, ' actualizó el ticket'];
       return h('div', { class: 'item-act evento' },
@@ -327,20 +328,20 @@
       const pal = ui.entradaPalabras({ id: 'prop-palabras' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         h('ol', { class: 'pasos-flujo', 'aria-label': 'Flujo' },
-          h('li', { class: 'hecho' }, 'Ticket cerrado'), h('li', { class: 'actual' }, 'Borrador de solución'), h('li', null, 'Revisión del administrador'), h('li', null, 'Solución aprobada')),
+          h('li', { class: 'hecho' }, 'Ticket'), h('li', { class: 'hecho' }, 'Resolución'), h('li', { class: 'actual' }, 'Solución reutilizable'), h('li', null, 'Aprobación del administrador')),
         ui.campo({ nombre: 'propuestaTitulo', id: 'prop-titulo', etiqueta: 'Título', requerido: true, control: inTit }),
-        ui.campo({ nombre: 'propuestaDescripcion', id: 'prop-descripcion', etiqueta: 'Solución (pasos a seguir)', requerido: true, control: inDesc }),
+        ui.campo({ nombre: 'propuestaDescripcion', id: 'prop-descripcion', etiqueta: 'Pasos a seguir', requerido: true, control: inDesc }),
         ui.campo({ nombre: 'propuestaPalabras', id: 'prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el }));
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
-        titulo: 'Proponer como solución',
+        titulo: 'Proponer como solución reutilizable',
         tamano: 'ancho',
         cuerpo,
         enfocar: '#prop-titulo',
         acciones: [
           { texto: 'Cancelar' },
-          { texto: 'Crear borrador de solución', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: inDesc.value, palabrasClave: pal.valor() }), 'Borrador de solución creado.') },
+          { texto: 'Proponer', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: inDesc.value, palabrasClave: pal.valor() }), 'Solución reutilizable propuesta: queda por aprobar.') },
         ],
       });
     }
@@ -349,14 +350,14 @@
       let catId = sugerida ? (sugerida.tipo === 'catalogo' ? sugerida.id : sugerida.solucionCatalogoId || null) : null;
       const texto = h('textarea', { id: 'cierre-texto', class: 'control', rows: '6', value: sugerida ? sugerida.texto : '' });
       const basada = h('div', { class: 'fila-sm' });
-      const imgs = ui.selectorImagenes({ pegarEn: [texto], etiqueta: 'Imágenes de la solución' });
+      const imgs = ui.selectorImagenes({ pegarEn: [texto], etiqueta: 'Imágenes de la resolución' });
       const selTp = ui.select({ id: 'cierre-tipo', valor: t.tipoProblemaId || 'tp-nodef', opciones: S.catalogo('tiposProblema', true).map((x) => ({ valor: x.id, texto: x.nombre })) });
       const mensaje = h('textarea', { id: 'cierre-mensaje', class: 'control', rows: '2', placeholder: 'Por ejemplo: quedó resuelto, cualquier cosa nos avisás.' });
       const chk = h('input', { type: 'checkbox', id: 'cierre-proponer' });
       const inTit = h('input', { id: 'cierre-prop-titulo', class: 'control', type: 'text', maxlength: '120', value: t.titulo });
       const pal = ui.entradaPalabras({ id: 'cierre-prop-palabras' });
       const bloque = h('div', { class: 'pila', hidden: true },
-        ui.campo({ nombre: 'propuestaTitulo', id: 'cierre-prop-titulo', etiqueta: 'Título para el catálogo', requerido: true, control: inTit }),
+        ui.campo({ nombre: 'propuestaTitulo', id: 'cierre-prop-titulo', etiqueta: 'Título de la solución reutilizable', requerido: true, control: inTit }),
         ui.campo({ nombre: 'propuestaPalabras', id: 'cierre-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: pal.el }));
       chk.addEventListener('change', () => { bloque.hidden = !chk.checked; });
       function pintarBasada() {
@@ -366,8 +367,8 @@
           chk.checked = false;
           bloque.hidden = true;
           const s = S.solucion(catId);
-          basada.append(h('span', { class: 'chip-activo' }, ui.icono('libro', 'i-sm'), 'Basada en el catálogo: «' + (s ? s.titulo : '') + '»',
-            h('button', { type: 'button', 'aria-label': 'Quitar la referencia al catálogo', onClick: () => { catId = null; pintarBasada(); } }, ui.icono('x', 'i-sm'))));
+          basada.append(h('span', { class: 'chip-activo' }, ui.icono('libro', 'i-sm'), 'Basada en la solución reutilizable «' + (s ? s.titulo : '') + '»',
+            h('button', { type: 'button', 'aria-label': 'Quitar la referencia a la solución reutilizable', onClick: () => { catId = null; pintarBasada(); } }, ui.icono('x', 'i-sm'))));
         }
       }
       pintarBasada();
@@ -383,7 +384,7 @@
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         opcionesSug,
         basada,
-        ui.campo({ nombre: 'solucionTexto', id: 'cierre-texto', etiqueta: 'Solución aplicada (privada)', requerido: true, control: texto }),
+        ui.campo({ nombre: 'solucionTexto', id: 'cierre-texto', etiqueta: 'Resolución (privada)', requerido: true, control: texto }),
         imgs.el,
         h('div', { class: 'grid-2' },
           ui.campo({ nombre: 'tipoProblemaId', id: 'cierre-tipo', etiqueta: 'Tipo de problema', control: selTp }),
@@ -393,7 +394,7 @@
       cuerpo.addEventListener('submit', (e) => e.preventDefault());
       ui.modal({
         antetitulo: 'Ticket #' + t.numero,
-        titulo: 'Cerrar con solución',
+        titulo: 'Cerrar con resolución',
         tamano: 'ancho',
         cuerpo,
         enfocar: '#cierre-texto',
@@ -408,7 +409,7 @@
               tipoProblemaId: selTp.value,
               mensajePublico: mensaje.value,
               proponer: chk.checked ? { titulo: inTit.value, palabrasClave: pal.valor() } : null,
-            }), 'Ticket #' + t.numero + ' cerrado.' + (chk.checked ? ' Se creó un borrador de solución para revisar.' : '') + avisoCorreo()),
+            }), 'Ticket #' + t.numero + ' cerrado.' + (chk.checked ? ' Solución reutilizable propuesta.' : '') + avisoCorreo()),
           },
         ],
       });
@@ -495,7 +496,7 @@
       } else if (t.estado === 'BLOQUEADO') {
         items.push(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirDesbloquear }, ui.icono('reabrir', 'i-sm'), 'Desbloquear'));
       }
-      items.push(h('button', { type: 'button', class: 'btn btn-exito btn-lg', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con solución'));
+      items.push(h('button', { type: 'button', class: 'btn btn-exito btn-lg', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con resolución'));
       items.push(h('hr', { class: 'separador' }));
       items.push(h('button', { type: 'button', class: 'btn btn-fantasma', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar clasificación'));
       lateral.append(h('section', { class: 'card acento-azul', 'aria-labelledby': 'sec-acciones' }, h('h2', { id: 'sec-acciones', style: 'margin-bottom: 14px' }, 'Acciones'), h('div', { class: 'acciones-ticket' }, items)));
@@ -504,10 +505,10 @@
         h('h2', { id: 'sec-acciones' }, 'Acciones'),
         h('div', { class: 'acciones-ticket' },
           h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirReabrir }, ui.icono('reabrir', 'i-sm'), 'Reabrir ticket'),
-          !S.propuestaDeTicket(t) ? h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución') : null)));
+          !S.propuestaDeTicket(t) ? h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable') : null)));
     } else if (esAdmin) {
       if (cerrado && !S.propuestaDeTicket(t)) {
-        lateral.append(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución'));
+        lateral.append(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable'));
       }
     }
 
@@ -538,7 +539,7 @@
         sugeridas.length
           ? h('div', { class: 'sugerencias' }, sugeridas.map((s, i) => ui.tarjetaSugerencia(s, { mejor: i === 0, alUsar: esOperador ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' })))
           : h('p', { class: 'chico suave' }, 'Sin coincidencias.'),
-        h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar en el catálogo ', ui.icono('flechaDer', 'i-sm'))));
+        h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar soluciones reutilizables ', ui.icono('flechaDer', 'i-sm'))));
     }
 
     return h('div', { class: 'pila' },

@@ -1,7 +1,7 @@
 /* ==========================================================================
    Inicio de cada rol.
    - Cliente: seguimiento de los tickets de su localidad.
-   - Operador: puerta de entrada ("Quiero crear un ticket" / "Ya lo resolví"),
+   - Operador: botón "Crear ticket",
      buscador de soluciones y su cola de trabajo.
    - Administrador: indicadores, soluciones por aprobar y tickets elevados.
    ========================================================================== */
@@ -56,7 +56,7 @@
     return h('div', { class: 'pila-lg' },
       ui.cabecera({
         titulo: 'Hola, ' + primerNombre(u),
-        acciones: [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear un ticket')],
+        acciones: [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')],
       }),
       h('div', { class: 'mosaicos' },
         mosaico({ etiqueta: 'Abiertos', icono: 'circulo', valor: cuenta('ABIERTO'), href: '#/tickets?estado=ABIERTO' }),
@@ -108,15 +108,10 @@
 
     return h('div', { class: 'pila-lg' },
       saludo(u),
-      h('div', { class: 'puertas' },
-        h('a', { class: 'puerta azul', href: '#/tickets/nuevo' },
-          h('span', { class: 'icono-caja' }, ui.icono('ticket')),
-          h('span', { class: 'textos' }, h('span', { class: 'eyebrow' }, 'Queda en proceso'), h('h2', null, 'Crear ticket')),
-          h('span', { class: 'ir', 'aria-hidden': 'true' }, ui.icono('flechaDer'))),
-        h('a', { class: 'puerta dorada', href: '#/tickets/nuevo?modo=resuelto' },
-          h('span', { class: 'icono-caja' }, ui.icono('checkCirculo')),
-          h('span', { class: 'textos' }, h('span', { class: 'eyebrow' }, 'Queda cerrado'), h('h2', null, 'Ya lo resolví')),
-          h('span', { class: 'ir', 'aria-hidden': 'true' }, ui.icono('flechaDer')))),
+      h('a', { class: 'puerta azul', href: '#/tickets/nuevo' },
+        h('span', { class: 'icono-caja' }, ui.icono('ticket')),
+        h('h2', null, 'Crear ticket'),
+        h('span', { class: 'ir', 'aria-hidden': 'true' }, ui.icono('flechaDer'))),
       formBuscar,
       h('div', { class: 'mosaicos' },
         mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar.length, tono: 'dorado', href: '#/tickets?atiende=sin' }),
@@ -183,7 +178,7 @@
         mosaico({ etiqueta: 'Por aprobar', icono: 'libro', valor: porAprobar.length, tono: 'tinta', href: '#/soluciones?estado=PENDIENTE' })),
       h('div', { class: 'dos-columnas' },
         h('div', { class: 'pila-lg' },
-          tarjeta('Soluciones por aprobar', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
+          tarjeta('Soluciones reutilizables por aprobar', listaPorAprobar, porAprobar.length > 4 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
           tarjeta('Tickets elevados en curso',
             elevados.length
               ? App.comun.tablaTickets(elevados.slice(0, 6), ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'actualizado'], { caption: 'Tickets elevados en curso' })

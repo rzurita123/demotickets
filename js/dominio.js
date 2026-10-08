@@ -20,7 +20,7 @@
     ABIERTO: { nombre: 'Abierto', descripcion: 'Registrado y todavía no atendido: nadie de Mesa de ayuda lo tomó.', icono: 'circulo' },
     EN_PROCESO: { nombre: 'En proceso', descripcion: 'Un operador de Mesa de ayuda lo está atendiendo.', icono: 'reloj' },
     BLOQUEADO: { nombre: 'Bloqueado', descripcion: 'Detenido por un factor externo, por ejemplo un proveedor o una respuesta de la agencia.', icono: 'pausa' },
-    CERRADO: { nombre: 'Cerrado', descripcion: 'Resuelto, con la solución aplicada registrada.', icono: 'check' },
+    CERRADO: { nombre: 'Cerrado', descripcion: 'Resuelto, con su resolución registrada.', icono: 'check' },
   };
 
   /** Estados en los que el ticket está en curso (no borrador ni cerrado). */
@@ -30,7 +30,7 @@
 
   const ROLES = {
     OPERADOR: { nombre: 'Operador', descripcion: 'Mesa de ayuda de ORMEN: ve y resuelve tickets.' },
-    ADMINISTRADOR: { nombre: 'Administrador', descripcion: 'Gestión de ORMEN: usuarios, localidades y base de soluciones.' },
+    ADMINISTRADOR: { nombre: 'Administrador', descripcion: 'Gestión de ORMEN: usuarios, localidades y soluciones reutilizables.' },
     CLIENTE: { nombre: 'Cliente', descripcion: 'Banca o agencia: crea tickets y ve los de su localidad.' },
   };
 
@@ -51,13 +51,13 @@
     BLOQUEO: 'Ticket bloqueado',
     DESBLOQUEO: 'Ticket desbloqueado',
     DATOS: 'Modificación de datos del ticket',
-    CIERRE: 'Cierre de ticket',
+    CIERRE: 'Cierre de ticket con resolución',
     REAPERTURA: 'Reapertura de ticket',
-    SOLUCION_PROPUESTA: 'Borrador de solución propuesto',
-    SOLUCION_CREADA: 'Solución cargada en el catálogo',
-    SOLUCION_EDITADA: 'Solución modificada',
-    SOLUCION_APROBADA: 'Solución aprobada',
-    SOLUCION_RECHAZADA: 'Solución rechazada',
+    SOLUCION_PROPUESTA: 'Solución reutilizable propuesta',
+    SOLUCION_CREADA: 'Solución reutilizable cargada',
+    SOLUCION_EDITADA: 'Solución reutilizable modificada',
+    SOLUCION_APROBADA: 'Solución reutilizable aprobada',
+    SOLUCION_RECHAZADA: 'Solución reutilizable rechazada',
     USUARIO_ALTA: 'Alta de usuario',
     USUARIO_MODIF: 'Modificación de usuario',
     LOCALIDAD_ALTA: 'Alta de localidad',

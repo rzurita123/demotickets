@@ -154,12 +154,11 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
 }
 .marca { display: flex; align-items: center; gap: 12px; color: var(--tinta); flex: none; }
 .marca:hover { text-decoration: none; }
-.marca-circulo { width: 28px; height: 28px; border-radius: 999px; border: 3px solid var(--azul); flex: none; }
-.marca-nombre { font-family: var(--fuente-titulos); font-weight: 600; font-size: 21px; letter-spacing: .08em; }
+/* El logo es blanco: va siempre sobre fondo azul. */
+.marca-logo { height: 30px; width: auto; flex: none; }
 .marca-sep { width: 1px; height: 24px; background: var(--borde); }
 .marca-sistema { font-size: 15px; color: var(--texto-suave); white-space: nowrap; }
 .barra .marca { color: #fff; }
-.barra .marca-circulo { border-color: var(--dorado); }
 .barra .marca-sep { background: rgba(255, 255, 255, .28); }
 .barra .marca-sistema { color: rgba(255, 255, 255, .78); }
 .nav { display: flex; align-items: stretch; gap: 2px; height: 100%; margin-left: 4px; }
@@ -512,8 +511,7 @@ body.con-modal { overflow: hidden; }
 .login-panel::before { right: -180px; bottom: -180px; width: 560px; height: 560px; border: 64px solid rgba(214, 177, 105, .28); }
 .login-panel::after { right: 120px; bottom: 210px; width: 120px; height: 120px; border: 18px solid rgba(255, 255, 255, .1); }
 .login-panel .marca { color: #fff; position: relative; z-index: 1; }
-.login-panel .marca-circulo { border-color: var(--dorado); width: 34px; height: 34px; border-width: 4px; }
-.login-panel .marca-nombre { font-size: 26px; }
+.login-panel .marca-logo { height: 44px; }
 .login-panel h1 {
   color: #fff; font-size: clamp(44px, 5.4vw, 76px); line-height: 1; letter-spacing: -.02em; font-weight: 600;
   display: flex; flex-direction: column; gap: 18px; position: relative; z-index: 1; margin-bottom: 8vh;
@@ -551,7 +549,6 @@ body.con-modal { overflow: hidden; }
 
 /* ---------- Inicio ---------- */
 .saludo h1 { font-size: 34px; }
-.puertas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .puerta {
   display: flex; align-items: center; gap: 22px; padding: 30px 32px; border-radius: var(--radio-lg); min-height: 150px;
   text-align: left; border: 2px solid transparent; transition: transform .12s, box-shadow .12s;
@@ -559,19 +556,12 @@ body.con-modal { overflow: hidden; }
 .puerta:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--sombra-media); }
 .puerta .icono-caja { width: 72px; height: 72px; border-radius: 18px; display: grid; place-items: center; flex: none; }
 .puerta .icono-caja .icono { width: 34px; height: 34px; }
-.puerta .textos { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.puerta .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.puerta h2 { font-size: 28px; }
+.puerta h2 { font-size: 30px; }
 .puerta .ir { margin-left: auto; width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center; flex: none; }
 .puerta.azul { background: var(--azul); color: #fff; }
 .puerta.azul h2 { color: #fff; }
 .puerta.azul .icono-caja { background: rgba(255, 255, 255, .16); color: #fff; }
-.puerta.azul .eyebrow { color: rgba(255, 255, 255, .85); }
 .puerta.azul .ir { background: #fff; color: var(--azul-texto); }
-.puerta.dorada { background: var(--superficie); border-color: var(--dorado); color: var(--texto); }
-.puerta.dorada .icono-caja { background: var(--dorado-claro); color: var(--dorado-texto); }
-.puerta.dorada .eyebrow { color: var(--dorado-texto); }
-.puerta.dorada .ir { background: var(--tinta); color: #fff; }
 .buscador-rapido {
   display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 22px; background: var(--superficie);
   border: 2px solid var(--borde); border-radius: 999px;
@@ -804,7 +794,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; transform: transl
   .puerta .ir { display: none; }
   .login-panel h1 { font-size: 36px; }
   .main { padding-top: 22px; }
-  .grid-2, .grid-3, .puertas, .usuarios-demo, .login-form { grid-template-columns: minmax(0, 1fr); }
+  .grid-2, .grid-3, .usuarios-demo, .login-form { grid-template-columns: minmax(0, 1fr); }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .puerta { min-height: 0; }
   .puerta h2 { font-size: 22px; }
@@ -834,7 +824,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; transform: transl
 @media (max-width: 420px) {
   .grid-4 { grid-template-columns: minmax(0, 1fr); }
   .mosaico .valor { font-size: 28px; }
-  .marca-nombre { font-size: 18px; }
+  .marca-logo { height: 26px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -916,11 +906,15 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; transform: transl
 /* Alta de ticket: modo de registro */
 .modo-registro { border: 0; padding: 0; margin: 0; }
 .modo-registro .segmentado { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.modo-registro > legend { font-family: var(--fuente-titulos); font-size: 21px; font-weight: 600; color: var(--tinta); margin-bottom: 14px; }
 .modo-registro .segmentado label > span {
-  width: 100%; min-height: 72px; justify-content: center; font-size: 18px; font-family: var(--fuente-titulos);
-  border-radius: var(--radio-lg); border-width: 2px; border-color: var(--borde); gap: 12px;
+  width: 100%; min-height: 96px; justify-content: flex-start; padding: 18px 22px; text-align: left;
+  border-radius: var(--radio-lg); border-width: 2px; border-color: var(--borde); gap: 16px;
 }
-.modo-registro .segmentado label > span .icono { width: 24px; height: 24px; }
+.modo-registro .segmentado label > span .icono { width: 30px; height: 30px; }
+.seg-textos { display: flex; flex-direction: column; gap: 4px; }
+.seg-textos strong { font-family: var(--fuente-titulos); font-size: 21px; font-weight: 600; line-height: 1.1; }
+.seg-textos small { font-size: 14.5px; font-weight: 500; opacity: .85; white-space: normal; }
 .modo-registro .segmentado label:last-child input:checked + span { background: var(--verde); border-color: var(--verde); }
 
 /* Detalle de ticket: título y flujo de estados */
@@ -953,6 +947,15 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; transform: transl
   .ticket-titular h1 { font-size: 24px; flex-basis: 100%; }
   .flujo li + li::before { width: 16px; margin: 0 6px; }
   .flujo li { font-size: 13px; }
-  .modo-registro .segmentado label > span { min-height: 56px; font-size: 16px; }
+  .modo-registro .segmentado { grid-template-columns: minmax(0, 1fr); }
+  .modo-registro .segmentado label > span { min-height: 72px; }
   .pestanas-estado { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
 }
+
+/* Resolución del ticket → solución reutilizable */
+.origina {
+  display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap;
+  margin-top: 4px; padding-top: 12px; border-top: 1px dashed #C5DECB;
+}
+.origina-flecha { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--verde); }
+.origina a { color: var(--tinta); }

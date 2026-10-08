@@ -89,7 +89,7 @@
       tp: { etiqueta: 'Tipo de problema', valor: (t) => t.tipoProblemaId || 'tp-nodef', nombre: (v) => S.nombre('tiposProblema', v) },
       op: { etiqueta: 'Atiende', valor: (t) => t.operadorId || 'sin', nombre: (v) => (v === 'sin' ? 'Sin asignar' : nombreOperador(v)) },
       estado: { etiqueta: 'Estado', valor: (t) => t.estado, nombre: (v) => S.nombreEstado(v) },
-      sol: { etiqueta: 'Solución del catálogo', valor: (t) => (t.estado === 'CERRADO' && t.solucion && t.solucion.solucionCatalogoId) || '', nombre: (v) => S.nombre('soluciones', v) },
+      sol: { etiqueta: 'Solución reutilizable', valor: (t) => (t.estado === 'CERRADO' && t.solucion && t.solucion.solucionCatalogoId) || '', nombre: (v) => S.nombre('soluciones', v) },
       tramo: {
         etiqueta: 'Fecha',
         valor: (t) => (T.grano === 'dia' ? U.claveDia(t.creadoEn) : U.claveMes(t.creadoEn)),
@@ -274,7 +274,7 @@
         C.mosaico({ etiqueta: 'Cerrados', icono: 'check', valor: cerrados, detalle: U.porcentaje(cerrados, filtrados.length) + ' de los registrados' }),
       ];
       if (!esCliente) {
-        lista.push(C.mosaico({ etiqueta: 'Cerrados con el catálogo', icono: 'libro', valor: conCatalogo, detalle: U.porcentaje(conCatalogo, cerrados) + ' de los cerrados usó una solución del catálogo' }));
+        lista.push(C.mosaico({ etiqueta: 'Resueltos con solución reutilizable', icono: 'libro', valor: conCatalogo, detalle: U.porcentaje(conCatalogo, cerrados) + ' de los cerrados' }));
       }
       return h('div', { class: 'mosaicos', 'aria-live': 'polite' }, lista);
     }
@@ -368,11 +368,11 @@
             datos: contar('loc', sub(['loc'])),
           }),
           tarjetaBarras({
-            clave: 'sol', titulo: 'Soluciones del catálogo más aplicadas', columna: 'Solución', columnaPorcentaje: '% de estos cierres',
+            clave: 'sol', titulo: 'Soluciones reutilizables más usadas', columna: 'Solución reutilizable', columnaPorcentaje: '% de estos cierres',
             datos: contar('sol', cerradosCatalogo, { limite: 8 }),
             total: cerradosCatalogo.length,
             rotulosLargos: true,
-            textoVacio: 'Ningún ticket de este filtro se cerró con una solución del catálogo.',
+            textoVacio: 'Ninguna resolución de este filtro usó una solución reutilizable.',
           }));
       }
 

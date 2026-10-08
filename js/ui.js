@@ -226,7 +226,7 @@
 
   function badgeSolucion(estado) {
     if (estado === 'APROBADA') return h('span', { class: 'badge aprobada' }, icono('checkCirculo', 'i-sm'), 'Aprobada');
-    if (estado === 'PENDIENTE') return h('span', { class: 'badge pendiente-aprob', title: 'Borrador de solución: espera que un administrador lo revise y apruebe.' }, icono('borrador', 'i-sm'), 'Borrador · por revisar');
+    if (estado === 'PENDIENTE') return h('span', { class: 'badge pendiente-aprob', title: 'Espera que un administrador la apruebe.' }, icono('borrador', 'i-sm'), 'Por aprobar');
     return h('span', { class: 'badge rechazada' }, icono('xCirculo', 'i-sm'), 'Rechazada');
   }
 
@@ -245,7 +245,7 @@
   /** Destacado de un ticket del que surgió una solución aprobada. */
   function badgeOrigenSolucion(sol, enlace) {
     if (!sol) return null;
-    const contenido = [icono('libro', 'i-sm'), 'Originó una solución'];
+    const contenido = [icono('libro', 'i-sm'), 'Originó una solución reutilizable'];
     return enlace
       ? h('a', { class: 'badge origen-solucion', href: '#/soluciones/' + sol.id, title: '«' + sol.titulo + '»' }, contenido)
       : h('span', { class: 'badge origen-solucion', title: '«' + sol.titulo + '»' }, contenido);
@@ -341,7 +341,8 @@
     return h('div', { class: 'segmentado' },
       op.opciones.map((o) => h('label', null,
         h('input', { type: 'radio', name: op.nombre, value: o.valor, checked: op.valor === o.valor, onChange: () => op.onChange && op.onChange(o.valor) }),
-        h('span', null, o.punto && h('i', { class: ['cri-dot', o.punto], 'aria-hidden': 'true' }), o.icono && icono(o.icono, 'i-sm'), o.texto))));
+        h('span', null, o.punto && h('i', { class: ['cri-dot', o.punto], 'aria-hidden': 'true' }), o.icono && icono(o.icono, 'i-sm'),
+          o.detalle ? h('span', { class: 'seg-textos' }, h('strong', null, o.texto), h('small', null, o.detalle)) : o.texto))));
   }
 
   function valorRadio(raiz, nombre) {
@@ -614,10 +615,10 @@
   function fuenteSugerencia(r) {
     const S = App.store;
     if (r.tipo === 'catalogo') {
-      return [icono('libro', 'i-sm'), h('span', { class: 'origen' }, 'Catálogo de soluciones · ' + (r.usos ? 'Aplicada ' + U.plural(r.usos, 'vez', 'veces') : 'Todavía sin usos'))];
+      return [icono('libro', 'i-sm'), h('span', { class: 'origen' }, 'Solución reutilizable · ' + (r.usos ? 'usada ' + U.plural(r.usos, 'vez', 'veces') : 'sin usos'))];
     }
     const t = r.ticket;
-    return [icono('ticket', 'i-sm'), h('span', { class: 'origen' }, 'Ticket #' + t.numero + ' · ' + S.nombre('localidades', t.localidadId) + ' · cerrado el\u00a0' + U.fecha(t.cerradoEn))];
+    return [icono('ticket', 'i-sm'), h('span', { class: 'origen' }, 'Resolución del ticket #' + t.numero + ' · ' + S.nombre('localidades', t.localidadId) + ' · ' + U.fecha(t.cerradoEn))];
   }
 
   function motivos(r) {
@@ -635,7 +636,7 @@
       motivos(r),
       h('div', { class: 'acciones' },
         h('button', { type: 'button', class: 'btn btn-neutro btn-sm', onClick: () => modalSugerencia(r, o) }, 'Ver detalle'),
-        o.alUsar && h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => o.alUsar(r) }, icono('check', 'i-sm'), o.textoUsar || 'Usar esta solución')));
+        o.alUsar && h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => o.alUsar(r) }, icono('check', 'i-sm'), o.textoUsar || 'Usar en la resolución')));
   }
 
   function modalSugerencia(r, op) {
@@ -657,22 +658,22 @@
         h('span', null, 'Cerrado: ', h('strong', null, U.fechaHora(t.cerradoEn))),
         h('span', null, 'Por: ', h('strong', null, (S.usuario(t.solucion.autorId) || {}).nombre || '—'))));
       partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Problema'), h('div', { class: 'bloque-texto' }, t.descripcion)));
-      partes.push(h('div', { class: 'solucion-ticket' }, h('h3', null, icono('checkCirculo'), 'Solución aplicada'), h('div', { class: 'bloque-texto' }, t.solucion.texto),
+      partes.push(h('div', { class: 'solucion-ticket' }, h('h3', null, icono('checkCirculo'), 'Resolución'), h('div', { class: 'bloque-texto' }, t.solucion.texto),
         galeria(t.solucion.adjuntos),
-        t.solucion.solucionCatalogoId && h('p', { class: 'chico' }, 'Usó la solución del catálogo «', S.nombre('soluciones', t.solucion.solucionCatalogoId, ''), '».')));
+        t.solucion.solucionCatalogoId && h('p', { class: 'chico' }, 'Basada en la solución reutilizable «', S.nombre('soluciones', t.solucion.solucionCatalogoId, ''), '».')));
       if (r.palabras.length) partes.push(h('p', { class: 'chico suave' }, 'Palabras en común: ', r.palabras.join(', ')));
     }
     partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Por qué aparece (' + r.puntaje + ' pts)'), motivos(r)));
     const enlace = r.tipo === 'catalogo' ? '#/soluciones/' + r.id : '#/tickets/' + r.ticket.numero;
     const m = modal({
-      antetitulo: r.tipo === 'catalogo' ? 'Catálogo de soluciones' : 'Ticket anterior #' + r.ticket.numero,
+      antetitulo: r.tipo === 'catalogo' ? 'Solución reutilizable' : 'Resolución del ticket #' + r.ticket.numero,
       titulo: r.titulo,
       tamano: 'ancho',
       cuerpo: partes,
       acciones: [
         { texto: 'Cerrar', clase: 'btn-neutro' },
-        { texto: r.tipo === 'catalogo' ? 'Abrir en el catálogo' : 'Abrir el ticket', clase: 'btn-secundario', fn: () => { location.hash = enlace; } },
-        o.alUsar && { texto: o.textoUsar || 'Usar esta solución', clase: 'btn-primario', icono: 'check', fn: () => { o.alUsar(r); } },
+        { texto: r.tipo === 'catalogo' ? 'Abrir la solución' : 'Abrir el ticket', clase: 'btn-secundario', fn: () => { location.hash = enlace; } },
+        o.alUsar && { texto: o.textoUsar || 'Usar en la resolución', clase: 'btn-primario', icono: 'check', fn: () => { o.alUsar(r); } },
       ].filter(Boolean),
     });
     return m;

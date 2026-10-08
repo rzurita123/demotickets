@@ -17,16 +17,16 @@
   R.registrar('/', { vista: V.inicio, titulo: 'Inicio' });
 
   R.registrar('/tickets', { vista: V.tickets, titulo: 'Tickets' });
-  R.registrar('/tickets/nuevo', { vista: V.ticketNuevo, titulo: 'Nuevo ticket', roles: ['OPERADOR', 'CLIENTE'] });
+  R.registrar('/tickets/nuevo', { vista: V.ticketNuevo, titulo: 'Crear ticket', roles: ['OPERADOR', 'CLIENTE'] });
   R.registrar('/tickets/:numero', { vista: V.ticketDetalle, titulo: 'Ticket' });
 
   R.registrar('/borradores', { vista: V.borradores, titulo: 'Borradores', roles: ['OPERADOR'] });
   R.registrar('/borradores/:id', { vista: V.borrador, titulo: 'Borrador', roles: ['OPERADOR'] });
 
-  R.registrar('/soluciones', { vista: V.soluciones, titulo: 'Soluciones', roles: ORMEN });
+  R.registrar('/soluciones', { vista: V.soluciones, titulo: 'Soluciones reutilizables', roles: ORMEN });
   R.registrar('/soluciones/buscar', { vista: V.buscarSoluciones, titulo: 'Buscar una solución', roles: ORMEN });
-  R.registrar('/soluciones/nueva', { vista: V.solucionForm, titulo: 'Nueva solución', roles: ORMEN });
-  R.registrar('/soluciones/:id', { vista: V.solucion, titulo: 'Solución', roles: ORMEN });
+  R.registrar('/soluciones/nueva', { vista: V.solucionForm, titulo: 'Nueva solución reutilizable', roles: ORMEN });
+  R.registrar('/soluciones/:id', { vista: V.solucion, titulo: 'Solución reutilizable', roles: ORMEN });
   R.registrar('/soluciones/:id/editar', { vista: V.solucionForm, titulo: 'Editar solución', roles: ['ADMINISTRADOR'] });
 
   R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR', 'CLIENTE'] });

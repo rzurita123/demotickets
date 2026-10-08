@@ -31,7 +31,7 @@
         icono: 'borrador',
         titulo: 'No tenés borradores',
         texto: 'Mientras cargás un ticket podés guardarlo como borrador y terminarlo después.',
-        accion: h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket'),
+        accion: h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket'),
       }));
     } else {
       const filas = lista.map((b) => {
@@ -58,7 +58,7 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         titulo: 'Mis borradores',
-        acciones: [h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket')],
+        acciones: [h('a', { class: 'btn btn-primario', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')],
       }),
       contenido);
   };

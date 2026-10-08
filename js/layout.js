@@ -15,7 +15,7 @@
       return [
         { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
         { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo' },
-        { href: '#/tickets/nuevo', texto: 'Nuevo ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo' },
+        { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo' },
         { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
       ];
     }
@@ -27,14 +27,14 @@
         { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo', contador: sinAsignar, contadorTitulo: U.plural(sinAsignar, 'ticket sin asignar', 'tickets sin asignar') },
         { href: '#/borradores', texto: 'Borradores', icono: 'borrador', activo: empieza('/borradores'), contador: borradores, contadorTitulo: U.plural(borradores, 'borrador', 'borradores') },
         { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones') },
-        { href: '#/tickets/nuevo', texto: 'Nuevo ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
+        { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
       ];
     }
     const pendientes = S.soluciones({ estado: 'PENDIENTE' }).length;
     return [
       { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
       { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: empieza('/tickets') },
-      { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones'), contador: pendientes, contadorTitulo: U.plural(pendientes, 'solución pendiente de aprobación', 'soluciones pendientes de aprobación') },
+      { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones'), contador: pendientes, contadorTitulo: U.plural(pendientes, 'solución reutilizable por aprobar', 'soluciones reutilizables por aprobar') },
       { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
       { href: '#/admin/usuarios', texto: 'Administración', icono: 'ajustes', activo: empieza('/admin') },
       { href: '#/auditoria', texto: 'Auditoría', icono: 'escudo', activo: empieza('/auditoria') },
@@ -51,8 +51,7 @@
 
   function marca() {
     return h('a', { class: 'marca', href: '#/', 'aria-label': 'ORMEN · Sistema de tickets, ir al inicio' },
-      h('span', { class: 'marca-circulo', 'aria-hidden': 'true' }),
-      h('span', { class: 'marca-nombre', 'aria-hidden': 'true' }, 'ORMEN'),
+      h('img', { class: 'marca-logo', src: 'assets/logo-ormen.png', alt: '' }),
       h('span', { class: 'marca-sep', 'aria-hidden': 'true' }),
       h('span', { class: 'marca-sistema', 'aria-hidden': 'true' }, 'Sistema de tickets'));
   }
@@ -132,8 +131,9 @@
     const items = navegacion(u);
     interior.append(h('nav', { class: 'nav', 'aria-label': 'Principal' }, items.filter((i) => !i.soloMovil).map((i) => enlaceNav(i, ruta))));
     const acciones = h('div', { class: 'barra-acciones' });
-    if (u.rol === 'OPERADOR' && ruta !== '/tickets/nuevo') {
-      acciones.append(h('a', { class: 'btn btn-primario btn-sm solo-escritorio', href: '#/tickets/nuevo' }, App.ui.icono('mas', 'i-sm'), 'Nuevo ticket'));
+    // En el inicio el botón grande ya ocupa ese lugar.
+    if (u.rol === 'OPERADOR' && ruta !== '/tickets/nuevo' && ruta !== '/') {
+      acciones.append(h('a', { class: 'btn btn-primario btn-sm solo-escritorio', href: '#/tickets/nuevo' }, App.ui.icono('mas', 'i-sm'), 'Crear ticket'));
     }
     acciones.append(menuUsuario(u));
     const movil = h('nav', { class: 'menu-movil', id: 'menu-movil', 'aria-label': 'Principal' }, items.map((i) => enlaceNav(i, ruta, true)));

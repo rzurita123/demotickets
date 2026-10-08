@@ -165,7 +165,7 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         titulo: esCliente ? 'Tickets de ' + loc : 'Tickets',
-        acciones: App.auth.puede('tickets.crear', u) ? [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Nuevo ticket')] : null,
+        acciones: App.auth.puede('tickets.crear', u) ? [h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')] : null,
       }),
       h('div', { class: 'fila-entre' }, chips, barraLista),
       filtros,
