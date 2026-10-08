@@ -16,6 +16,7 @@
         { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
         { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo' },
         { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
+        { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
       ];
     }
     if (u.rol === 'OPERADOR') {
@@ -27,6 +28,7 @@
         { href: '#/borradores', texto: 'Borradores', icono: 'borrador', activo: empieza('/borradores'), contador: borradores, contadorTitulo: U.plural(borradores, 'borrador', 'borradores') },
         { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones') },
         { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
+        { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
       ];
     }
     const pendientes = S.soluciones({ estado: 'PENDIENTE' }).length;
@@ -37,6 +39,7 @@
       { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: empieza('/tickets') },
       { href: '#/admin/usuarios', texto: 'Administración', icono: 'ajustes', activo: empieza('/admin') },
       { href: '#/auditoria', texto: 'Auditoría', icono: 'escudo', activo: empieza('/auditoria') },
+      { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
     ];
   }
 
@@ -121,14 +124,24 @@
     return h('div', { class: 'desplegable' }, boton, menu);
   }
 
-  function barra(u, ruta) {
+  /** Buscador general: tickets para todos y, para ORMEN, también soluciones. */
+  function buscadorGlobal(u, ctx) {
+    const texto = u.rol === 'CLIENTE' ? 'Buscar tickets' : 'Buscar tickets o soluciones';
+    const input = h('input', { type: 'search', placeholder: texto, 'aria-label': texto, value: ctx.ruta === '/buscar' ? ctx.query.q || '' : '' });
+    const form = h('form', { class: 'buscador-barra solo-escritorio', role: 'search' }, App.ui.icono('buscar', 'i-sm'), input);
+    form.addEventListener('submit', (e) => { e.preventDefault(); App.buscar.ir(input.value); });
+    return form;
+  }
+
+  function barra(u, ctx) {
+    const ruta = ctx.ruta;
     const interior = h('div', { class: 'contenedor barra-interior' }, marca(), estadoGuardado());
     if (!u) {
       interior.append(h('div', { class: 'barra-acciones' }, h('a', { class: 'btn btn-primario btn-sm', href: '#/ingresar' }, 'Ingresar')));
       return h('header', { class: 'barra' }, interior);
     }
     const items = navegacion(u);
-    interior.append(h('nav', { class: 'nav', 'aria-label': 'Principal' }, items.filter((i) => !i.soloMovil).map((i) => enlaceNav(i, ruta))));
+    interior.append(h('nav', { class: 'nav', 'aria-label': 'Principal' }, items.filter((i) => !i.soloMovil).map((i) => enlaceNav(i, ruta))), buscadorGlobal(u, ctx));
     const acciones = h('div', { class: 'barra-acciones' });
     // En el inicio el botón grande ya ocupa ese lugar.
     if ((u.rol === 'OPERADOR' || u.rol === 'CLIENTE') && ruta !== '/tickets/nuevo' && ruta !== '/') {
@@ -177,7 +190,7 @@
     }
     const main = h('main', { id: 'contenido', class: 'main', tabindex: '-1' }, h('div', { class: 'contenedor' }, nodo));
     const saltar = h('button', { type: 'button', class: 'skip-link', onClick: () => { const t = document.getElementById('titulo-pagina') || main; t.focus(); } }, 'Saltar al contenido');
-    app.append(saltar, barra(info.usuario, info.ctx.ruta), main);
+    app.append(saltar, barra(info.usuario, info.ctx), main);
   }
 
   // Cerrar menús al hacer clic afuera o con Escape.

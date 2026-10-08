@@ -970,6 +970,32 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .filtros-cola { padding: 14px 18px; border-bottom: 1px solid var(--borde); grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)); }
 @media (max-width: 760px) { .filtros-cola { grid-template-columns: minmax(0, 1fr); } }
 
+/* Buscador general en la barra superior */
+.buscador-barra {
+  display: flex; align-items: center; gap: 8px; flex: 0 1 300px; min-width: 170px; height: 38px; padding: 0 14px; margin-left: auto;
+  border-radius: 999px; background: rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .78); transition: background-color .15s;
+}
+.buscador-barra:hover { background: rgba(255, 255, 255, .18); }
+.buscador-barra:focus-within { background: #fff; color: var(--texto-suave); outline: 3px solid var(--dorado); outline-offset: 1px; }
+.buscador-barra input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: #fff; font-size: 14.5px; }
+.buscador-barra input::placeholder { color: rgba(255, 255, 255, .72); }
+.buscador-barra:focus-within input { color: var(--tinta); }
+.buscador-barra:focus-within input::placeholder { color: var(--texto-suave); }
+.barra .buscador-barra + .barra-acciones { margin-left: 0; }
+/* «Crear ticket» como acción principal del inicio */
+.btn-crear-principal { min-height: 58px; padding: 0 34px; font-size: 18px; gap: 10px; }
+.btn-crear-principal .icono { width: 22px; height: 22px; }
+.resultados-busqueda { padding: 16px 18px; }
+.buscar-pagina { display: none; }
+@media (max-width: 920px) { .buscar-pagina { display: flex; } }
+/* Con el buscador en la barra, el subtítulo de la marca se oculta antes. */
+@media (max-width: 1360px) {
+  .barra .marca-sistema, .barra .marca-sep { display: none; }
+  /* El nombre del usuario sigue en su menú; en la barra queda el avatar. */
+  .boton-usuario .datos { display: none; }
+  .nav a { padding: 0 11px; }
+}
+
 /* Inicio del administrador: soluciones por aprobar */
 .por-aprobar { display: flex; flex-direction: column; }
 .por-aprobar-item { display: flex; align-items: center; gap: 12px 16px; padding: 12px 0; border-bottom: 1px solid var(--borde-suave); }

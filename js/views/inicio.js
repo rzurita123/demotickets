@@ -1,7 +1,7 @@
 /* ==========================================================================
    Inicio de cada rol.
    - Cliente: crear ticket y los tickets de su localidad, en una cola con pestañas.
-   - Operador: crear ticket, buscador de soluciones y su cola de trabajo.
+   - Operador: crear ticket y su cola de trabajo (la búsqueda está en la barra).
    - Administrador: soluciones reutilizables por aprobar y analíticas.
    ========================================================================== */
 (function (App) {
@@ -57,7 +57,7 @@
       : ui.vacio({ icono: 'checkCirculo', titulo: vacio }));
 
     return h('div', { class: 'pila-lg' },
-      saludo(u, h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')),
+      saludo(u, h('a', { class: 'btn btn-primario btn-crear-principal', href: '#/tickets/nuevo' }, ui.icono('mas'), 'Crear ticket')),
       C.cola({
         id: 'cola-cliente',
         etiqueta: 'Tickets de ' + loc,
@@ -91,16 +91,6 @@
       } catch (e) { ui.mostrarError(e); }
     }
 
-    const buscador = h('input', { type: 'search', id: 'buscar-solucion', placeholder: 'Buscar una solución: «la impresora no imprime»', 'aria-label': 'Describí el problema para buscar una solución' });
-    const formBuscar = h('form', { class: 'buscador-rapido', role: 'search' },
-      ui.icono('buscar'),
-      buscador,
-      h('button', { type: 'submit', class: 'btn btn-oscuro' }, 'Buscar'));
-    formBuscar.addEventListener('submit', (e) => {
-      e.preventDefault();
-      App.router.ir('/soluciones/buscar' + (buscador.value.trim() ? '?q=' + encodeURIComponent(buscador.value.trim()) : ''));
-    });
-
     const pie = (n, href) => (n > 12 ? h('div', { class: 'cola-pie' }, verTodos(href, 'Ver los ' + n)) : null);
     const tablaBorradores = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
       h('thead', null, h('tr', null, ['Borrador', 'Localidad', 'Guardado', ''].map((t) => h('th', { scope: 'col' }, t)))),
@@ -111,7 +101,7 @@
         ui.celda('', h('a', { class: 'btn btn-secundario btn-sm', href: '#/borradores/' + b.id }, 'Continuar'), 'derecha sin-label'))))));
 
     return h('div', { class: 'pila-lg' },
-      saludo(u, [formBuscar, h('a', { class: 'btn btn-primario btn-lg', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')]),
+      saludo(u, h('a', { class: 'btn btn-primario btn-crear-principal', href: '#/tickets/nuevo' }, ui.icono('mas'), 'Crear ticket')),
       C.cola({
         id: 'cola-operador',
         etiqueta: 'Mi trabajo',

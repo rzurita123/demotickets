@@ -37,6 +37,7 @@
   R.registrar('/admin/catalogos', { vista: V.adminCatalogos, titulo: 'Catálogos', roles: ['ADMINISTRADOR'] });
   R.registrar('/auditoria', { vista: V.auditoria, titulo: 'Auditoría', roles: ['ADMINISTRADOR'] });
 
+  R.registrar('/buscar', { vista: V.buscar, titulo: 'Buscar' });
   R.registrar('/correos', { vista: V.correos, titulo: 'Correos simulados' });
 
   function hayModalAbierto() {
