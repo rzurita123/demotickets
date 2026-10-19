@@ -21,6 +21,7 @@
     editar: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/>',
     circulo: '<circle cx="12" cy="12" r="7.5"/>',
     reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    estrella: '<path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>',
     pausa: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
     recorrido: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h5a5 5 0 0 1 5 5M17 13a5 5 0 0 1-5 5H7"/>',
     elevar: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
@@ -254,6 +255,37 @@
     return alClic
       ? h('button', { type: 'button', class: 'badge elevado', title: 'Ver el recorrido del ticket', onClick: alClic }, contenido)
       : h('span', { class: 'badge elevado' }, contenido);
+  }
+
+  /**
+   * Estrella para marcar un ticket o una solución como favorito (sólo
+   * operadores). Con `conTexto` es un botón con rótulo (encabezados); si no,
+   * sólo el ícono (filas de las listas).
+   */
+  function botonFavorito(tipo, id, op) {
+    const o = op || {};
+    const S = App.store;
+    const u = App.auth.usuarioActual();
+    if (!u || !App.auth.puede('favoritos', u)) return null;
+    const b = h('button', { type: 'button', class: ['favorito', o.conTexto ? 'btn btn-neutro' : 'btn-favorito'] });
+    function pintar(activo) {
+      const accion = activo ? 'Quitar de favoritos' : 'Agregar a favoritos';
+      b.setAttribute('aria-pressed', String(activo));
+      b.title = accion;
+      U.vaciar(b).append(icono('estrella', o.conTexto ? 'i-sm' : null));
+      if (o.conTexto) b.append(activo ? 'En favoritos' : 'Agregar a favoritos');
+      else b.setAttribute('aria-label', accion + (o.etiqueta ? ': ' + o.etiqueta : ''));
+    }
+    pintar(S.esFavorito(u, tipo, id));
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try {
+        const activo = S.alternarFavorito(u, tipo, id);
+        pintar(activo);
+        toast(activo ? 'Agregado a favoritos. Lo ves en Inicio › Favoritos.' : 'Quitado de favoritos.');
+      } catch (err) { mostrarError(err); }
+    });
+    return b;
   }
 
   /** Destacado de un ticket del que surgió una solución aprobada. */
@@ -575,6 +607,174 @@
     };
   }
 
+  // ----------------------------------------------- Texto con imágenes ---
+
+  const PARTIR_IMAGENES = /\[\[imagen:([A-Za-z0-9_-]+)\]\]/;
+  const MAX_IMAGENES_TEXTO = 12;
+
+  /**
+   * Campo de texto donde las imágenes se pegan (Ctrl+V) o se arrastran y
+   * quedan en el lugar del cursor, como en un procesador de texto (así
+   * funciona el sistema actual de ORMEN). No hay botón de adjuntar.
+   * Devuelve { el, valor() → { texto, adjuntos }, cargar(texto, adjuntos), textoPlano() }.
+   */
+  function editorTexto(op) {
+    const o = op || {};
+    const imagenes = new Map();
+    const el = h('div', {
+      id: o.id, class: 'control editor-texto', contenteditable: 'true', role: 'textbox', 'aria-multiline': 'true',
+      'aria-label': o.etiqueta || null, 'data-placeholder': o.placeholder || '', spellcheck: 'true',
+      style: '--filas:' + (o.filas || 5),
+    });
+
+    function avisar() {
+      // Un editor vaciado deja un <br>: se limpia para que se vea el texto de ejemplo.
+      if (!el.textContent.trim() && !el.querySelector('img')) U.vaciar(el);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (o.alCambiar) o.alCambiar();
+    }
+
+    function nodoImagen(a) {
+      imagenes.set(a.id, a);
+      return h('img', { src: a.dataUrl, alt: a.nombre || 'Imagen', class: 'img-en-texto', 'data-id': a.id, draggable: 'false' });
+    }
+
+    function cargar(texto, adjuntos) {
+      U.vaciar(el);
+      imagenes.clear();
+      const porId = new Map((adjuntos || []).map((a) => [a.id, a]));
+      const partes = String(texto || '').split(PARTIR_IMAGENES);
+      partes.forEach((p, i) => {
+        if (i % 2 === 0) { if (p) el.append(document.createTextNode(p)); return; }
+        const a = porId.get(p);
+        if (a) el.append(nodoImagen(a));
+      });
+      // Las imágenes guardadas sin lugar en el texto (datos anteriores) van al final.
+      const usados = new Set(U.idsImagenes(texto));
+      (adjuntos || []).filter((a) => a.id && !usados.has(a.id)).forEach((a) => el.append(document.createTextNode('\n'), nodoImagen(a)));
+    }
+
+    function serializar(nodo) {
+      let s = '';
+      nodo.childNodes.forEach((n) => {
+        if (n.nodeType === 3) s += n.nodeValue;
+        else if (n.nodeName === 'BR') s += '\n';
+        else if (n.nodeName === 'IMG') { if (n.dataset.id && imagenes.has(n.dataset.id)) s += U.marcaImagen(n.dataset.id); }
+        else if (n.nodeType === 1) {
+          if (/^(DIV|P|LI|H\d)$/.test(n.nodeName) && s && !s.endsWith('\n')) s += '\n';
+          s += serializar(n);
+        }
+      });
+      return s;
+    }
+
+    function valor() {
+      const texto = serializar(el).replace(/ /g, ' ').replace(/\s+$/, '');
+      const adjuntos = U.idsImagenes(texto).map((id) => imagenes.get(id)).filter(Boolean).map((a) => Object.assign({}, a));
+      return { texto, adjuntos };
+    }
+
+    // Selección guardada: leer una imagen es asíncrono y el cursor puede moverse.
+    function rangoActual() {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && el.contains(sel.getRangeAt(0).commonAncestorContainer)) return sel.getRangeAt(0).cloneRange();
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      return r;
+    }
+
+    function insertarEn(rango, nodos) {
+      rango.deleteContents();
+      nodos.forEach((n) => { rango.insertNode(n); rango.setStartAfter(n); rango.collapse(true); });
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(rango);
+    }
+
+    async function agregarImagenes(archivos, rango) {
+      const lista = Array.from(archivos).filter((f) => /^image\//.test(f.type));
+      for (const f of lista) {
+        if (el.querySelectorAll('img').length >= MAX_IMAGENES_TEXTO) { toast('Podés pegar hasta ' + MAX_IMAGENES_TEXTO + ' imágenes en un mismo texto.', { tipo: 'aviso' }); break; }
+        try {
+          const dataUrl = await procesarImagen(f);
+          insertarEn(rango, [nodoImagen({ id: U.uid('img'), nombre: nombreArchivo(f), dataUrl })]);
+        } catch (e) {
+          toast(e.message === 'grande' ? 'La imagen es demasiado grande.' : 'No se pudo leer la imagen.', { tipo: 'error' });
+        }
+      }
+      avisar();
+    }
+
+    el.addEventListener('paste', (e) => {
+      const cd = e.clipboardData;
+      if (!cd) return;
+      e.preventDefault();
+      const archivos = Array.from(cd.files || []).filter((f) => /^image\//.test(f.type));
+      if (archivos.length) { agregarImagenes(archivos, rangoActual()); return; }
+      // Sólo texto: el formato que traiga (Word, una página web) no se copia.
+      const texto = cd.getData('text/plain');
+      if (texto) { document.execCommand('insertText', false, texto); avisar(); }
+    });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('arrastrando'); });
+    el.addEventListener('dragleave', () => el.classList.remove('arrastrando'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('arrastrando');
+      const dt = e.dataTransfer;
+      let rango = null;
+      if (document.caretRangeFromPoint) rango = document.caretRangeFromPoint(e.clientX, e.clientY);
+      else if (document.caretPositionFromPoint) {
+        const p = document.caretPositionFromPoint(e.clientX, e.clientY);
+        if (p) { rango = document.createRange(); rango.setStart(p.offsetNode, p.offset); rango.collapse(true); }
+      }
+      if (!rango || !el.contains(rango.commonAncestorContainer)) rango = rangoActual();
+      if (dt.files && dt.files.length) { agregarImagenes(dt.files, rango); return; }
+      const texto = dt.getData('text/plain');
+      if (texto) { insertarEn(rango, [document.createTextNode(texto)]); avisar(); }
+    });
+    // Enter agrega un salto de línea simple (sin bloques con formato).
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); document.execCommand('insertLineBreak'); avisar(); }
+    });
+    el.addEventListener('input', (e) => { if (e.isTrusted && o.alCambiar) o.alCambiar(); });
+    // La etiqueta del campo enfoca el editor (un <label for> no lo hace con un div).
+    el.addEventListener('focus', () => el.classList.add('con-foco'));
+    el.addEventListener('blur', () => el.classList.remove('con-foco'));
+
+    cargar(o.valor || '', o.adjuntos || []);
+    return {
+      el,
+      valor,
+      cargar,
+      textoPlano: () => U.textoPlano(valor().texto),
+      enfocar: () => el.focus(),
+    };
+  }
+
+  /**
+   * Muestra un texto con sus imágenes en el lugar donde se pegaron. Las
+   * imágenes que no tienen lugar en el texto (datos anteriores) quedan como
+   * miniaturas al final.
+   */
+  function textoConImagenes(texto, adjuntos, op) {
+    const o = op || {};
+    const lista = adjuntos || [];
+    const porId = new Map(lista.map((a) => [a.id, a]));
+    const usados = new Set();
+    const cont = h('div', { class: o.clase || 'bloque-texto' });
+    String(texto || '').split(PARTIR_IMAGENES).forEach((p, i) => {
+      if (i % 2 === 0) { if (p) cont.append(document.createTextNode(p)); return; }
+      const a = porId.get(p);
+      if (!a) return;
+      usados.add(a.id);
+      cont.append(h('button', { type: 'button', class: 'img-en-texto-boton', 'aria-label': 'Ver ' + (a.nombre || 'imagen') + ' en grande', onClick: () => lightbox(lista, lista.indexOf(a)) },
+        h('img', { src: a.dataUrl, alt: a.nombre || 'Imagen', class: 'img-en-texto', loading: 'lazy' })));
+    });
+    const sueltas = lista.filter((a) => !usados.has(a.id));
+    return [cont, galeria(sueltas, o)];
+  }
+
   /** Miniaturas que abren la imagen en grande. */
   function galeria(adjuntos, op) {
     const lista = adjuntos || [];
@@ -642,7 +842,7 @@
       h('div', { class: 'fuente' }, fuenteSugerencia(r)),
       r.parecidos ? h('p', { class: 'parecidos' }, 'También se resolvió así en ' + U.plural(r.parecidos, 'caso más', 'casos más') + '.') : null,
       h('h4', null, r.titulo),
-      h('p', { class: 'resumen' }, r.texto),
+      h('p', { class: 'resumen' }, U.textoPlano(r.texto)),
       motivos(r),
       h('div', { class: 'acciones' },
         h('button', { type: 'button', class: 'btn btn-neutro btn-sm', onClick: () => modalSugerencia(r, o) }, 'Ver detalle'),
@@ -656,8 +856,7 @@
     if (r.tipo === 'catalogo') {
       const s = r.solucion;
       partes.push(h('div', { class: 'fila-sm' }, badgeSolucion(s.estado), h('span', { class: 'chico suave' }, clasificacion(s.sistemaId, s.subsistemaId))));
-      partes.push(h('div', { class: 'pasos' }, s.descripcion));
-      if (s.adjuntos.length) partes.push(galeria(s.adjuntos, { grande: true }));
+      partes.push(textoConImagenes(s.descripcion, s.adjuntos, { clase: 'pasos', grande: true }));
       partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Palabras clave'),
         h('div', { class: 'chips' }, s.palabrasClave.map((p) => h('span', { class: ['palabra-clave', r.palabras.includes(p) && 'coincide'] }, p)))));
     } else {
@@ -667,9 +866,8 @@
         h('span', null, 'Sistema: ', h('strong', null, clasificacion(t.sistemaId, t.subsistemaId))),
         h('span', null, 'Cerrado: ', h('strong', null, U.fechaHora(t.cerradoEn))),
         h('span', null, 'Por: ', h('strong', null, (S.usuario(t.solucion.autorId) || {}).nombre || '—'))));
-      partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Problema'), h('div', { class: 'bloque-texto' }, t.descripcion)));
-      partes.push(h('div', { class: 'solucion-ticket' }, h('h3', null, icono('checkCirculo'), 'Resolución'), h('div', { class: 'bloque-texto' }, t.solucion.texto),
-        galeria(t.solucion.adjuntos),
+      partes.push(h('div', { class: 'pila-sm' }, h('span', { class: 'chico fuerte' }, 'Problema'), textoConImagenes(t.descripcion, t.adjuntos)));
+      partes.push(h('div', { class: 'solucion-ticket' }, h('h3', null, icono('checkCirculo'), 'Resolución'), textoConImagenes(t.solucion.texto, S.adjuntosSolucion(t)),
         t.solucion.solucionCatalogoId && h('p', { class: 'chico' }, 'Basada en la solución «', S.nombre('soluciones', t.solucion.solucionCatalogoId, ''), '».')));
       if (r.palabras.length) partes.push(h('p', { class: 'chico suave' }, 'Palabras en común: ', r.palabras.join(', ')));
     }
@@ -711,10 +909,10 @@
 
   App.ui = {
     ICONOS, icono, toast, mostrarError, modal, cerrarModales, confirmar,
-    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion,
+    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion, botonFavorito,
     pendiente, avisoPendiente, aviso, nombreRol, avatar, vacio, tiempo, cabecera,
     campo, grupo, select, segmentado, valorRadio, limpiarErrores, mostrarErrores, entradaPalabras,
-    selectorImagenes, galeria, lightbox,
+    selectorImagenes, galeria, lightbox, editorTexto, textoConImagenes,
     clasificacion, tarjetaSugerencia, modalSugerencia,
     paginador, celda,
   };

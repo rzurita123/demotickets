@@ -11,17 +11,17 @@
 
   const POR_PAGINA = 15;
 
+  // Primero los cerrados: el listado sirve sobre todo para consultar lo resuelto; lo pendiente está en Inicio.
   const ESTADOS_FILTRO = [
+    { clave: 'CERRADO', texto: 'Cerrados', tono: 'verde', fn: (t) => t.estado === 'CERRADO' },
     { clave: 'en-curso', texto: 'En curso', fn: (t) => D.ESTADOS_ACTIVOS.includes(t.estado) },
     { clave: 'ABIERTO', texto: 'Abiertos', fn: (t) => t.estado === 'ABIERTO' },
     { clave: 'EN_PROCESO', texto: 'En proceso', fn: (t) => t.estado === 'EN_PROCESO' },
     { clave: 'BLOQUEADO', texto: 'Bloqueados', tono: 'rojo', fn: (t) => t.estado === 'BLOQUEADO' },
-    { clave: 'elevados', texto: 'Elevados en curso', fn: (t) => !!t.elevadoA && D.ESTADOS_ACTIVOS.includes(t.estado) },
-    { clave: 'CERRADO', texto: 'Cerrados', tono: 'verde', fn: (t) => t.estado === 'CERRADO' },
     { clave: 'todos', texto: 'Todos', fn: () => true },
   ];
 
-  const DEFECTOS = { estado: 'en-curso', orden: 'recientes' };
+  const DEFECTOS = { estado: 'CERRADO', orden: 'recientes' };
 
   App.vistas.tickets = function (ctx) {
     const S = App.store;
@@ -162,8 +162,6 @@
     return h('div', { class: 'pila' },
       ui.cabecera({
         titulo: esCliente ? 'Tickets de ' + loc : 'Tickets',
-        // Operador y cliente tienen «Crear ticket» en la barra; para el administrador no es lo principal.
-        acciones: u.rol === 'ADMINISTRADOR' ? [h('a', { class: 'btn btn-neutro', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')] : null,
       }),
       h('section', { class: 'cola', 'aria-label': 'Listado de tickets' },
         h('div', { class: 'cola-cabeza' }, chips, barraLista),

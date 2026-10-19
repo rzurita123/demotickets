@@ -96,7 +96,7 @@
       const relevante = hayTexto ? claves.length > 0 || mismoSub : mismoSistema && (!subsistemaId || mismoSub || !s.subsistemaId);
       if (!relevante || puntaje <= 0) continue;
       resultados.push({
-        tipo: 'catalogo', id: s.id, solucion: s, titulo: s.titulo, texto: s.descripcion,
+        tipo: 'catalogo', id: s.id, solucion: s, titulo: s.titulo, texto: s.descripcion, adjuntos: s.adjuntos || [],
         sistemaId: s.sistemaId, subsistemaId: s.subsistemaId,
         puntaje, motivos, palabras: claves, usos: usos.get(s.id) || 0, fecha: s.revisadaEn || s.creadaEn,
       });
@@ -128,7 +128,7 @@
       }
       if (puntaje <= 0) continue;
       const r = {
-        tipo: 'ticket', id: t.id, ticket: t, titulo: t.titulo, texto: t.solucion.texto,
+        tipo: 'ticket', id: t.id, ticket: t, titulo: t.titulo, texto: t.solucion.texto, adjuntos: App.store.adjuntosSolucion(t),
         sistemaId: t.sistemaId, subsistemaId: t.subsistemaId,
         puntaje, motivos, palabras: comunes, mismaLocalidad, mismoSistema,
         solucionCatalogoId: t.solucion.solucionCatalogoId, fecha: t.cerradoEn, parecidos: 0,

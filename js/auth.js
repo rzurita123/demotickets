@@ -78,6 +78,7 @@
     borradores: ['OPERADOR'],
     'soluciones.ver': ['OPERADOR', 'ADMINISTRADOR'],
     'soluciones.proponer': ['OPERADOR'],
+    favoritos: ['OPERADOR'],
     'soluciones.gestionar': ['ADMINISTRADOR'],
     estadisticas: ['ADMINISTRADOR'],
     administracion: ['ADMINISTRADOR'],

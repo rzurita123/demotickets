@@ -36,6 +36,7 @@
     const autor = S.usuario(s.creadaPorId);
     const extra = s.palabrasClave.length > 3 ? s.palabrasClave.length - 3 : 0;
     const tr = h('tr', { class: 'clic' },
+      App.auth.puede('favoritos', u) ? ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav sin-label') : null,
       ui.celda('Solución', h('div', { class: 'titulo-celda' },
         h('a', { href: '#/soluciones/' + s.id }, s.titulo),
         h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
@@ -60,10 +61,27 @@
     const usos = S.contarUsos();
     const todas = S.soluciones();
 
-    const inBuscar = h('input', { id: 's-buscar', class: 'control', type: 'search', placeholder: 'Título, pasos o palabras clave', value: q.q || '' });
+    const inBuscar = h('input', { id: 's-buscar', class: 'control', type: 'search', placeholder: 'Buscar por título, pasos o palabras clave', 'aria-label': 'Buscar soluciones reutilizables', value: q.q || '' });
     const selSis = ui.select({ id: 's-sis', vacio: 'Todos', valor: q.sis, opciones: [{ valor: 'general', texto: 'General (sin sistema)' }].concat(S.sistemas().map((s) => ({ valor: s.id, texto: s.nombre }))) });
     const selOrigen = ui.select({ id: 's-origen', vacio: 'Todos', valor: q.origen, opciones: [{ valor: 'ticket', texto: 'Desde un ticket' }, { valor: 'directa', texto: 'Cargadas sin ticket' }] });
     const selOrden = ui.select({ id: 's-orden', valor: q.orden || 'usos', opciones: [{ valor: 'usos', texto: 'Más aplicadas' }, { valor: 'recientes', texto: 'Más recientes' }, { valor: 'titulo', texto: 'Título (A-Z)' }] });
+    const controles = { sis: selSis, origen: selOrigen };
+    const ETIQUETAS = { sis: 'Sistema', origen: 'Origen' };
+
+    // Como en Tickets: buscador y botón "Filtros" en una barra; Sistema y Origen se despliegan aparte y el orden va a la derecha.
+    const filtros = h('div', { class: 'filtros filtros-grilla filtros-panel', id: 'panel-filtros-sol', role: 'search', 'aria-label': 'Filtros de soluciones reutilizables' },
+      Object.keys(controles).map((k) => ui.campo({ nombre: k, id: controles[k].id, etiqueta: ETIQUETAS[k], control: controles[k] })));
+    filtros.hidden = !(q.sis || q.origen);
+    const cuentaFiltros = h('span', { class: 'contador' });
+    const btnFiltros = h('button', { type: 'button', class: 'btn btn-neutro', 'aria-controls': 'panel-filtros-sol', 'aria-expanded': String(!filtros.hidden), onClick: () => {
+      filtros.hidden = !filtros.hidden;
+      btnFiltros.setAttribute('aria-expanded', String(!filtros.hidden));
+    } }, ui.icono('filtro', 'i-sm'), 'Filtros', cuentaFiltros);
+    const barraLista = h('div', { class: 'barra-lista' },
+      h('div', { class: 'buscar-lista' }, ui.icono('buscar'), inBuscar),
+      btnFiltros,
+      h('label', { class: 'orden-lista', for: 's-orden' }, h('span', null, 'Ordenar'), selOrden));
+    const activos = h('div', { class: 'filtros-activos' });
 
     const pestanas = h('div', { class: 'cola-pestanas', role: 'group', 'aria-label': 'Estado de las soluciones' });
     const resultados = h('div', { id: 'panel-soluciones', 'aria-live': 'polite' });
@@ -84,6 +102,29 @@
         pestanas.append(h('button', { type: 'button', 'aria-pressed': String(q.estado === p.estado), dataset: { tono: p.tono || null }, onClick: () => cambiar('estado', p.estado) },
           h('span', null, p.texto), h('span', { class: 'cuenta' }, n)));
       });
+      // Filtros activos, como etiquetas que se quitan.
+      const nFiltros = Object.keys(controles).filter((k) => q[k]).length;
+      cuentaFiltros.textContent = nFiltros || '';
+      cuentaFiltros.hidden = !nFiltros;
+      U.vaciar(activos);
+      activos.hidden = !nFiltros && !q.q;
+      const quitables = [];
+      if (q.q) quitables.push(['q', 'Búsqueda: «' + q.q + '»']);
+      Object.keys(controles).forEach((k) => {
+        if (!q[k]) return;
+        const opt = Array.from(controles[k].options).find((o) => o.value === q[k]);
+        quitables.push([k, ETIQUETAS[k] + ': ' + (opt ? opt.textContent : q[k])]);
+      });
+      quitables.forEach(([k, texto]) => activos.append(h('span', { class: 'chip-activo' }, texto,
+        h('button', { type: 'button', 'aria-label': 'Quitar filtro ' + texto, onClick: () => { if (k === 'q') inBuscar.value = ''; else controles[k].value = ''; cambiar(k, ''); } }, ui.icono('x', 'i-sm')))));
+      if (quitables.length > 1) {
+        activos.append(h('button', { type: 'button', class: 'enlace-boton chico', onClick: () => {
+          inBuscar.value = '';
+          Object.keys(controles).forEach((k) => { controles[k].value = ''; q[k] = ''; });
+          cambiar('q', '');
+        } }, 'Limpiar filtros'));
+      }
+
       U.vaciar(resultados);
       const orden = q.orden || 'usos';
       const lista = filtrar().sort((a, b) =>
@@ -100,7 +141,9 @@
       const columnas = ['Solución', 'Palabras clave', q.estado === 'APROBADA' ? 'Usos' : 'Propuesta', 'Origen'];
       resultados.append(h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
         h('caption', { class: 'sr-only' }, 'Soluciones reutilizables'),
-        h('thead', null, h('tr', null, columnas.map((c) => h('th', { scope: 'col', class: c === 'Usos' ? 'numero' : null }, c)))),
+        h('thead', null, h('tr', null,
+          App.auth.puede('favoritos', u) ? h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Favorito')) : null,
+          columnas.map((c) => h('th', { scope: 'col', class: c === 'Usos' ? 'numero' : null }, c)))),
         h('tbody', null, lista.map((s) => filaSolucion(s, usos.get(s.id) || 0, u))))));
     }
 
@@ -127,12 +170,9 @@
         ],
       }),
       h('section', { class: 'cola', 'aria-label': 'Soluciones reutilizables' },
-        h('div', { class: 'cola-cabeza' }, pestanas),
-        h('div', { class: 'filtros filtros-grilla filtros-cola' },
-          ui.campo({ nombre: 'q', id: 's-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),
-          ui.campo({ nombre: 'sis', id: 's-sis', etiqueta: 'Sistema', control: selSis }),
-          ui.campo({ nombre: 'origen', id: 's-origen', etiqueta: 'Origen', control: selOrigen }),
-          ui.campo({ nombre: 'orden', id: 's-orden', etiqueta: 'Orden', control: selOrden })),
+        h('div', { class: 'cola-cabeza' }, pestanas, barraLista),
+        filtros,
+        activos,
         resultados));
   };
 
@@ -194,8 +234,7 @@
     const principal = h('div', { class: 'pila-lg' },
       h('section', { class: 'card pila', 'aria-labelledby': 'sec-pasos' },
         h('h2', { id: 'sec-pasos' }, 'Pasos a seguir'),
-        h('div', { class: 'pasos' }, s.descripcion),
-        ui.galeria(s.adjuntos, { grande: true })),
+        ui.textoConImagenes(s.descripcion, s.adjuntos, { clase: 'pasos', grande: true })),
       h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-claves' },
         h('h2', { id: 'sec-claves' }, 'Palabras clave'),
         h('div', { class: 'chips' }, s.palabrasClave.map((p) => h('span', { class: 'palabra-clave' }, p)))),
@@ -247,6 +286,7 @@
       ui.cabecera({
         migas: [{ href: '#/soluciones' + (s.estado !== 'APROBADA' ? '?estado=' + s.estado : ''), texto: 'Soluciones' }, { texto: U.truncar(s.titulo, 40) }],
         titulo: s.titulo,
+        acciones: ui.botonFavorito('solucion', s.id, { conTexto: true }),
       }),
       h('div', { class: 'dos-columnas' }, principal, lateral));
   };
@@ -277,9 +317,10 @@
     }
     cargarSubs(existente ? existente.subsistemaId : '');
     selSis.addEventListener('change', () => cargarSubs(''));
-    const inDesc = h('textarea', { id: 'sol-descripcion', class: 'control', rows: '9', value: existente ? existente.descripcion : '', placeholder: '1. Primer paso…\n2. Segundo paso…' });
+    // Las capturas de los pasos se pegan dentro del texto, en el lugar del paso.
+    const editorDesc = ui.editorTexto({ id: 'sol-descripcion', filas: 9, etiqueta: 'Pasos a seguir', valor: existente ? existente.descripcion : '', adjuntos: existente ? existente.adjuntos : [], placeholder: '1. Primer paso…  2. Segundo paso…  Podés pegar capturas acá mismo.' });
+    const inDesc = editorDesc.el;
     const palabras = ui.entradaPalabras({ id: 'sol-palabras', valor: existente ? existente.palabrasClave : [], alCambiar: () => { marcar(); probar(); } });
-    const imagenes = ui.selectorImagenes({ inicial: existente ? existente.adjuntos : [], pegarEn: [inDesc], etiqueta: 'Imágenes de los pasos', alCambiar: marcar });
     const resumen = h('div');
 
     // Probador de palabras clave
@@ -308,7 +349,6 @@
           ui.campo({ nombre: 'sistemaId', id: 'sol-sistema', etiqueta: 'Sistema o servicio', opcional: true, control: selSis }),
           ui.campo({ nombre: 'subsistemaId', id: 'sol-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub })),
         ui.campo({ nombre: 'descripcion', id: 'sol-descripcion', etiqueta: 'Pasos a seguir', requerido: true, control: inDesc }),
-        h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el),
         ui.campo({ nombre: 'palabrasClave', id: 'sol-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el })),
       h('div', { class: 'fila' },
         h('button', { type: 'submit', class: 'btn btn-primario btn-lg' }, ui.icono(aprobarAlGuardar ? 'checkCirculo' : 'check', 'i-sm'),
@@ -318,7 +358,7 @@
     form.addEventListener('change', marcar);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const datos = { titulo: inTitulo.value, sistemaId: selSis.value, subsistemaId: selSub.value, descripcion: inDesc.value, palabrasClave: palabras.valor(), adjuntos: imagenes.valor() };
+      const datos = { titulo: inTitulo.value, sistemaId: selSis.value, subsistemaId: selSub.value, descripcion: editorDesc.valor().texto, palabrasClave: palabras.valor(), adjuntos: editorDesc.valor().adjuntos };
       try {
         let s;
         if (aprobarAlGuardar) {

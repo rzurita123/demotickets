@@ -491,7 +491,6 @@
     if (!limpio(datos.titulo)) e.titulo = 'Escribí un título.';
     else if (limpio(datos.titulo).length > 120) e.titulo = 'El título puede tener hasta 120 caracteres.';
     if (!limpio(datos.descripcion)) e.descripcion = 'Describí el problema.';
-    if (op.registroDirecto && !limpio(op.solucionTexto)) e.solucionTexto = 'Escribí la resolución.';
     return e;
   }
 
@@ -516,7 +515,7 @@
   }
 
   function copiarAdjuntos(lista, autorId, fecha) {
-    return (lista || []).map((a) => ({ id: U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId, fecha }));
+    return (lista || []).map((a) => ({ id: a.id || U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId, fecha }));
   }
 
   function datosTicket(datos, u) {
@@ -547,7 +546,7 @@
       revisadaEn: null,
       motivoRechazo: null,
       actualizadaEn: fecha,
-      adjuntos: (adjuntos || []).map((a) => Object.assign({}, a, { id: U.uid('img') })),
+      adjuntos: (adjuntos || []).map((a) => Object.assign({}, a, { id: a.id || U.uid('img') })),
     };
     db.soluciones.push(s);
     evento(t, { tipo: 'propuesta', autorId: u.id, solucionId: s.id });
@@ -560,13 +559,14 @@
   /**
    * Crea un ticket: En proceso, atendido por quien lo carga, si lo crea un
    * operador; Abierto y sin asignar si lo crea un cliente o un administrador.
-   * Con `registroDirecto` (cualquier rol que crea tickets) queda Cerrado con su
+   * Con `registroDirecto` (sólo ORMEN; el cliente siempre lo crea Abierto) queda Cerrado con su
    * resolución. Si viene `borradorId`, el borrador se convierte en el ticket.
    */
   function crearTicket(datos, u, opciones) {
     const op = opciones || {};
     exigir(u && ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'].includes(u.rol), 'Tu rol no puede crear tickets.');
     exigir(!op.proponer || u.rol !== 'CLIENTE', 'Sólo ORMEN puede proponer soluciones reutilizables.');
+    exigir(!op.registroDirecto || u.rol !== 'CLIENTE', 'El ticket de un cliente siempre queda Abierto.');
     let errores = validarTicket(datos, u, op);
     if (op.registroDirecto && op.proponer) errores = Object.assign(errores, validarPropuesta(op.proponer));
     if (op.solucionCatalogoId) {
@@ -597,13 +597,16 @@
       }
       db.tickets.push(t);
       if (op.registroDirecto) {
-        const adj = copiarAdjuntos(op.solucionAdjuntos, u.id, ahora);
+        // Al crear un ticket ya resuelto todo va en la descripción (como en el sistema actual):
+        // la resolución usa ese mismo texto y sus imágenes, sin copiarlas.
+        const enDescripcion = !limpio(op.solucionTexto);
+        const adj = enDescripcion ? [] : copiarAdjuntos(op.solucionAdjuntos, u.id, ahora);
         t.estado = 'CERRADO';
         t.cerradoEn = ahora;
-        t.solucion = { texto: limpio(op.solucionTexto), adjuntos: adj, solucionCatalogoId: op.solucionCatalogoId || null, autorId: u.id, fecha: ahora };
+        t.solucion = { texto: enDescripcion ? t.descripcion : limpio(op.solucionTexto), adjuntos: adj, enDescripcion, solucionCatalogoId: op.solucionCatalogoId || null, autorId: u.id, fecha: ahora };
         t.actividad.push({ id: U.uid('a'), tipo: 'cierre', fecha: ahora, autorId: u.id, de: null, registroDirecto: true });
         auditar(u.id, 'TICKET_CERRADO_DIRECTO', t.id, '#' + numero + ' · ' + t.titulo);
-        if (op.proponer) crearPropuesta(t, u, op.proponer, op.solucionTexto, adj, ahora);
+        if (op.proponer) crearPropuesta(t, u, op.proponer, t.solucion.texto, adjuntosSolucion(t), ahora);
       } else {
         auditar(u.id, 'TICKET_CREADO', t.id, '#' + numero + ' · ' + t.titulo + (op.borradorId ? ' (desde un borrador)' : ''));
       }
@@ -641,7 +644,7 @@
       }
       // Las imágenes ya guardadas conservan su id; las nuevas se agregan.
       const previas = new Map(b.adjuntos.map((a) => [a.id, a]));
-      b.adjuntos = (datos.adjuntos || []).map((a) => previas.get(a.id) || { id: U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId: u.id, fecha: ahora });
+      b.adjuntos = (datos.adjuntos || []).map((a) => previas.get(a.id) || { id: a.id || U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId: u.id, fecha: ahora });
       b.actualizadoEn = ahora;
       auditar(u.id, 'BORRADOR_GUARDADO', null, b.titulo || U.truncar(b.descripcion, 60) || 'Sin título');
       return b;
@@ -970,6 +973,12 @@
 
   // ------------------------------------------- Del ticket a la solución ---
 
+  /** Imágenes de la resolución: si se registró ya resuelto, son las de la descripción. */
+  function adjuntosSolucion(t) {
+    if (!t || !t.solucion) return [];
+    return t.solucion.enDescripcion ? t.adjuntos || [] : t.solucion.adjuntos || [];
+  }
+
   /** Borrador o solución aprobada que surgió del ticket (las rechazadas no cuentan). */
   function propuestaDeTicket(t) {
     return db.soluciones.find((s) => s.ticketOrigenId === t.id && s.estado !== 'RECHAZADA') || null;
@@ -995,7 +1004,49 @@
     const e = validarPropuesta({ titulo: datos.titulo, palabrasClave: datos.palabrasClave });
     if (!limpio(datos.descripcion)) e.propuestaDescripcion = 'Escribí la solución (los pasos a seguir).';
     if (Object.keys(e).length) throw errorDeCampos(e);
-    return mutar(() => crearPropuesta(t, u, datos, datos.descripcion, t.solucion.adjuntos, U.isoAhora()));
+    return mutar(() => crearPropuesta(t, u, datos, datos.descripcion, datos.adjuntos || adjuntosSolucion(t), U.isoAhora()));
+  }
+
+  // ---------------------------------------------------------- Favoritos ---
+
+  /**
+   * Favoritos de cada operador: tickets y soluciones reutilizables marcados
+   * con la estrella. Son personales y no van a la auditoría. Se guardan en la
+   * base (db.favoritos[usuarioId]), así que con la base compartida lo siguen
+   * en cualquier computadora.
+   */
+  function listaFavoritos(u) {
+    return (u && db.favoritos && db.favoritos[u.id]) || [];
+  }
+
+  function esFavorito(u, tipo, id) {
+    return listaFavoritos(u).some((f) => f.tipo === tipo && f.id === id);
+  }
+
+  /** Favoritos que todavía existen y el usuario puede ver, del más nuevo al más viejo. */
+  function favoritosDe(u) {
+    return listaFavoritos(u)
+      .map((f) => Object.assign({}, f, { item: f.tipo === 'ticket' ? ticket(f.id) : solucion(f.id) }))
+      .filter((f) => f.item && (f.tipo !== 'ticket' || (f.item.estado !== 'BORRADOR' && puedeVerTicket(f.item, u))))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }
+
+  /** Agrega o quita un favorito; devuelve si quedó marcado. */
+  function alternarFavorito(u, tipo, id) {
+    exigir(u && u.rol === 'OPERADOR', 'Los favoritos son de Mesa de ayuda.');
+    exigir(tipo === 'ticket' || tipo === 'solucion', 'Sólo se marcan tickets o soluciones reutilizables.');
+    exigir(tipo === 'ticket' ? ticket(id) : solucion(id), 'Ya no existe.');
+    return mutar(() => {
+      if (!db.favoritos) db.favoritos = {};
+      const lista = db.favoritos[u.id] || (db.favoritos[u.id] = []);
+      const i = lista.findIndex((f) => f.tipo === tipo && f.id === id);
+      if (i >= 0) {
+        lista.splice(i, 1);
+        return false;
+      }
+      lista.push({ tipo, id, fecha: U.isoAhora() });
+      return true;
+    });
   }
 
   // --------------------------------------------------------- Soluciones ---
@@ -1060,7 +1111,7 @@
         const previas = new Map(existente.adjuntos.map((a) => [a.id, a]));
         Object.assign(existente, campos, {
           actualizadaEn: ahora,
-          adjuntos: (datos.adjuntos || []).map((a) => previas.get(a.id) || { id: U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId: u.id, fecha: ahora }),
+          adjuntos: (datos.adjuntos || []).map((a) => previas.get(a.id) || { id: a.id || U.uid('img'), nombre: a.nombre || 'imagen', dataUrl: a.dataUrl, autorId: u.id, fecha: ahora }),
         });
         auditar(u.id, 'SOLUCION_EDITADA', existente.ticketOrigenId, existente.titulo);
         return existente;
@@ -1291,6 +1342,7 @@
     actividadVisible, imagenesVisibles, correosPara,
     grupoSoporte, nombreDestino, recorrido, nombreResponsable,
     soluciones, usosDeSolucion, contarUsos, propuestaDeTicket, solucionOriginadaPor,
+    esFavorito, favoritosDe, alternarFavorito, adjuntosSolucion,
     validarTicket, normalizarPalabras,
     // tickets
     crearTicket, guardarBorrador, descartarBorrador,

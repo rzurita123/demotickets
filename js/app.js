@@ -31,9 +31,8 @@
 
   R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR'] });
 
-  R.registrar('/admin', { vista: V.adminUsuarios, titulo: 'Usuarios', roles: ['ADMINISTRADOR'] });
-  R.registrar('/admin/usuarios', { vista: V.adminUsuarios, titulo: 'Usuarios', roles: ['ADMINISTRADOR'] });
-  R.registrar('/admin/localidades', { vista: V.adminLocalidades, titulo: 'Localidades', roles: ['ADMINISTRADOR'] });
+  // Catálogos se abre desde el menú del usuario administrador; /admin/catalogos queda por los enlaces viejos.
+  R.registrar('/catalogos', { vista: V.adminCatalogos, titulo: 'Catálogos', roles: ['ADMINISTRADOR'] });
   R.registrar('/admin/catalogos', { vista: V.adminCatalogos, titulo: 'Catálogos', roles: ['ADMINISTRADOR'] });
   R.registrar('/auditoria', { vista: V.auditoria, titulo: 'Auditoría', roles: ['ADMINISTRADOR'] });
 

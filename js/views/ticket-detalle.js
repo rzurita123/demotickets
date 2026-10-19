@@ -109,7 +109,9 @@
         ui.badgeCriticidad(t.criticidadId, true),
         t.registroDirecto ? h('span', { class: 'badge contorno' }, ui.icono('checkCirculo', 'i-sm'), 'Registrado ya resuelto') : null),
       h('div', { class: 'ticket-titular' },
-        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, h('span', { class: 'numero' }, '#' + t.numero), ' ', t.titulo),
+        h('div', { class: 'titulo-favorito' },
+          h('h1', { id: 'titulo-pagina', tabindex: '-1' }, h('span', { class: 'numero' }, '#' + t.numero), ' ', t.titulo),
+          ui.botonFavorito('ticket', t.id, { etiqueta: 'ticket #' + t.numero })),
         flujoEstado(t.estado)),
       h('dl', { class: 'meta-ticket' },
         [['Localidad', loc], ['Atiende', textoAtiende], ['Creado por', creador ? creador.nombre : '—'], ['Creado', U.fechaHora(t.creadoEn)]]
@@ -118,8 +120,7 @@
     // --------------------------------------------------------- Descripción ---
     const descripcion = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-desc' },
       h('h2', { id: 'sec-desc' }, 'Descripción del problema'),
-      h('div', { class: 'bloque-texto' }, t.descripcion),
-      ui.galeria(t.adjuntos, { grande: true }));
+      ui.textoConImagenes(t.descripcion, t.adjuntos, { grande: true }));
 
     // ----------------------------------------------------------- Solución ---
     let solucion = null;
@@ -132,8 +133,9 @@
         h('div', { class: 'fila-entre' },
           h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Resolución del ticket'),
           h('span', { class: 'badge contorno' }, ui.icono('candado', 'i-sm'), 'Sólo ORMEN')),
-        h('div', { class: 'bloque-texto' }, t.solucion.texto),
-        ui.galeria(t.solucion.adjuntos),
+        t.solucion.enDescripcion
+          ? h('p', { class: 'chico' }, 'Se registró ya resuelto: el problema y la resolución están en la descripción.')
+          : ui.textoConImagenes(t.solucion.texto, t.solucion.adjuntos),
         cat ? h('p', { class: 'chico' }, ui.icono('libro', 'i-sm'), ' Basada en la solución reutilizable ', h('a', { href: '#/soluciones/' + cat.id }, '«' + cat.titulo + '»')) : null,
         h('span', { class: 'chico suave' }, autor ? autor.nombre : '—', ' · ', U.fechaHora(t.solucion.fecha)),
         propuesta || puedeProponer ? h('div', { class: 'origina' },
@@ -322,7 +324,8 @@
 
     function abrirProponer() {
       const inTit = h('input', { id: 'prop-titulo', class: 'control', type: 'text', maxlength: '120', value: t.titulo });
-      const inDesc = h('textarea', { id: 'prop-descripcion', class: 'control', rows: '7', value: t.solucion ? t.solucion.texto : '' });
+      const editorDesc = ui.editorTexto({ id: 'prop-descripcion', filas: 7, etiqueta: 'Pasos a seguir', valor: t.solucion ? t.solucion.texto : '', adjuntos: S.adjuntosSolucion(t) });
+      const inDesc = editorDesc.el;
       const pal = ui.entradaPalabras({ id: 'prop-palabras' });
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         h('ol', { class: 'pasos-flujo', 'aria-label': 'Flujo' },
@@ -339,16 +342,17 @@
         enfocar: '#prop-titulo',
         acciones: [
           { texto: 'Cancelar' },
-          { texto: 'Proponer', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: inDesc.value, palabrasClave: pal.valor() }), 'Solución reutilizable propuesta: queda por aprobar.') },
+          { texto: 'Proponer', clase: 'btn-primario', icono: 'libro', fn: () => enVentana(cuerpo, () => S.proponerSolucion(t.id, u, { titulo: inTit.value, descripcion: editorDesc.valor().texto, adjuntos: editorDesc.valor().adjuntos, palabrasClave: pal.valor() }), 'Solución reutilizable propuesta: queda por aprobar.') },
         ],
       });
     }
 
     function abrirCierre(sugerida) {
       let catId = sugerida ? (sugerida.tipo === 'catalogo' ? sugerida.id : sugerida.solucionCatalogoId || null) : null;
-      const texto = h('textarea', { id: 'cierre-texto', class: 'control', rows: '6', value: sugerida ? sugerida.texto : '' });
+      // La resolución lleva sus imágenes pegadas dentro del texto.
+      const editor = ui.editorTexto({ id: 'cierre-texto', filas: 6, etiqueta: 'Resolución', valor: sugerida ? sugerida.texto : '', adjuntos: sugerida ? sugerida.adjuntos : [], placeholder: 'Qué se hizo para resolverlo. Podés pegar capturas acá mismo.' });
+      const texto = editor.el;
       const basada = h('div', { class: 'fila-sm' });
-      const imgs = ui.selectorImagenes({ pegarEn: [texto], etiqueta: 'Imágenes de la resolución' });
       const selTp = ui.select({ id: 'cierre-tipo', valor: t.tipoProblemaId || 'tp-nodef', opciones: S.catalogo('tiposProblema', true).map((x) => ({ valor: x.id, texto: x.nombre })) });
       const mensaje = h('textarea', { id: 'cierre-mensaje', class: 'control', rows: '2', placeholder: 'Por ejemplo: quedó resuelto, cualquier cosa nos avisás.' });
       const chk = h('input', { type: 'checkbox', id: 'cierre-proponer' });
@@ -374,7 +378,7 @@
       const opcionesSug = sugeridas.length ? h('div', { class: 'pila-sm' },
         h('span', { class: 'chico fuerte' }, 'Partir de una sugerencia'),
         h('div', { class: 'chips' }, sugeridas.map((s) => h('button', { type: 'button', class: 'chip', onClick: () => {
-          texto.value = s.texto;
+          editor.cargar(s.texto, s.adjuntos);
           catId = s.tipo === 'catalogo' ? s.id : s.solucionCatalogoId || null;
           pintarBasada();
           texto.focus();
@@ -383,7 +387,6 @@
         opcionesSug,
         basada,
         ui.campo({ nombre: 'solucionTexto', id: 'cierre-texto', etiqueta: 'Resolución (privada)', requerido: true, control: texto }),
-        imgs.el,
         h('div', { class: 'grid-2' },
           ui.campo({ nombre: 'tipoProblemaId', id: 'cierre-tipo', etiqueta: 'Tipo de problema', control: selTp }),
           ui.campo({ nombre: 'mensajePublico', id: 'cierre-mensaje', etiqueta: 'Mensaje para la localidad', opcional: true, control: mensaje })),
@@ -401,8 +404,8 @@
           {
             texto: 'Cerrar ticket', clase: 'btn-exito', icono: 'check',
             fn: () => enVentana(cuerpo, () => S.cerrar(t.id, u, {
-              texto: texto.value,
-              adjuntos: imgs.valor(),
+              texto: editor.valor().texto,
+              adjuntos: editor.valor().adjuntos,
               solucionCatalogoId: catId,
               tipoProblemaId: selTp.value,
               mensajePublico: mensaje.value,

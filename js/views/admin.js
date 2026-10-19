@@ -1,30 +1,18 @@
 /* ==========================================================================
-   Administración (rol Administrador):
-   - Usuarios: alta, modificación y desactivación (RF5). Alcance a confirmar
-     con el tutor; ORMEN acepta una lista de usuarios predefinida.
-   - Localidades: cada cliente pertenece a una y ve sus tickets.
-   - Catálogos: sistemas, subsistemas, tipos de problema, criticidades y
-     grupos de soporte.
+   Catálogos (rol Administrador): sistemas, subsistemas, tipos de problema,
+   criticidades y grupos de soporte. Se entra desde el menú del usuario; la
+   sección Administración (usuarios y localidades) ya no existe.
    ========================================================================== */
 (function (App) {
   'use strict';
 
   const U = App.util;
   const h = U.h;
-  const D = App.dominio;
-
-  const SECCIONES = [
-    { clave: 'usuarios', texto: 'Usuarios' },
-    { clave: 'localidades', texto: 'Localidades' },
-    { clave: 'catalogos', texto: 'Catálogos' },
-  ];
 
   function marco(ctx, op) {
     ctx.titulo(op.titulo);
     return h('div', { class: 'pila' },
       App.ui.cabecera({ titulo: op.titulo, acciones: op.acciones }),
-      h('nav', { class: 'subnav', 'aria-label': 'Secciones de administración', style: 'margin-bottom: 4px' },
-        SECCIONES.map((s) => h('a', { href: '#/admin/' + s.clave, 'aria-current': s.clave === op.seccion ? 'page' : null }, s.texto))),
       op.contenido);
   }
 
@@ -34,7 +22,7 @@
     const cuerpo = h('form', { class: 'pila', novalidate: true }, op.campos);
     const m = ui.modal({
       titulo: op.titulo,
-      antetitulo: op.antetitulo || 'Administración',
+      antetitulo: op.antetitulo || 'Catálogos',
       cuerpo,
       tamano: op.tamano,
       acciones: [
@@ -56,253 +44,6 @@
     cuerpo.addEventListener('submit', (e) => { e.preventDefault(); m.botones[m.botones.length - 1].click(); });
     return m;
   }
-
-  /** "Valeria Pereira" -> "vpereira", como los usuarios de la demo. */
-  function sugerirUsuario(nombre) {
-    const p = U.normalizar(nombre).split(' ').filter(Boolean);
-    if (!p.length) return '';
-    return (p.length > 1 ? p[0][0] + p[p.length - 1] : p[0]).slice(0, 30);
-  }
-
-  // ----------------------------------------------------------- Usuarios ---
-
-  const ROLES_FILTRO = [
-    { clave: 'todos', texto: 'Todos' },
-    { clave: 'OPERADOR', texto: 'Operadores' },
-    { clave: 'ADMINISTRADOR', texto: 'Administradores' },
-    { clave: 'CLIENTE', texto: 'Clientes' },
-  ];
-
-  App.vistas.adminUsuarios = function (ctx) {
-    const S = App.store;
-    const ui = App.ui;
-    const u = ctx.usuario;
-    const q = Object.assign({ rol: 'todos' }, ctx.query);
-    if (!ROLES_FILTRO.some((r) => r.clave === q.rol)) q.rol = 'todos';
-
-    const inBuscar = h('input', { id: 'u-buscar', class: 'control', type: 'search', placeholder: 'Nombre, usuario o correo', value: q.q || '' });
-    const selLoc = ui.select({ id: 'u-loc', vacio: 'Todas', valor: q.loc, opciones: S.localidades().map((l) => ({ valor: l.id, texto: l.nombre })) });
-    const selEstado = ui.select({ id: 'u-estado', vacio: 'Activos e inactivos', valor: q.estado, opciones: [{ valor: 'activos', texto: 'Sólo activos' }, { valor: 'inactivos', texto: 'Sólo inactivos' }] });
-    const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'Rol' });
-    const resultados = h('div');
-    const total = h('p', { class: 'chico suave', 'aria-live': 'polite' });
-
-    function filtrar(sinRol) {
-      const texto = U.normalizar(q.q);
-      return S.usuarios().filter((x) =>
-        (sinRol || q.rol === 'todos' || x.rol === q.rol) &&
-        (!texto || U.normalizar(x.nombre + ' ' + x.usuario + ' ' + x.email).indexOf(texto) >= 0) &&
-        (!q.loc || x.localidadId === q.loc) &&
-        (!q.estado || (q.estado === 'activos' ? x.activo !== false : x.activo === false)));
-    }
-
-    function cambiar(k, v) {
-      q[k] = v || '';
-      const limpio = {};
-      ['q', 'rol', 'loc', 'estado'].forEach((c) => { if (q[c] && !(c === 'rol' && q[c] === 'todos')) limpio[c] = q[c]; });
-      App.router.actualizarQuery(limpio);
-      pintar();
-    }
-
-    async function alternarActivo(x) {
-      const activar = x.activo === false;
-      if (!activar) {
-        const ok = await ui.confirmar({
-          titulo: 'Desactivar a ' + x.nombre,
-          mensaje: 'No va a poder ingresar al sistema. Sus tickets, comentarios y soluciones se conservan, y lo podés volver a activar cuando quieras.',
-          textoConfirmar: 'Desactivar',
-          peligro: true,
-        });
-        if (!ok) return;
-      }
-      try {
-        S.cambiarActivoUsuario(x.id, u, activar);
-        ui.toast(x.nombre + (activar ? ' puede volver a ingresar.' : ' ya no puede ingresar.'));
-        ctx.refrescar();
-      } catch (e) { ui.mostrarError(e); }
-    }
-
-    function abrirFormulario(existente) {
-      const inNombre = h('input', { id: 'f-nombre', class: 'control', type: 'text', autocomplete: 'off', value: existente ? existente.nombre : '' });
-      const inUsuario = h('input', { id: 'f-usuario', class: 'control', type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'none', value: existente ? existente.usuario : '' });
-      const inEmail = h('input', { id: 'f-email', class: 'control', type: 'email', autocomplete: 'off', value: existente ? existente.email : '' });
-      const inCargo = h('input', { id: 'f-cargo', class: 'control', type: 'text', autocomplete: 'off', value: existente ? existente.cargo || '' : '', placeholder: 'Por ejemplo: Encargado, Mesa de ayuda' });
-      const selLocF = ui.select({
-        id: 'f-localidad', vacio: 'Elegí la localidad', valor: existente ? existente.localidadId : '',
-        opciones: S.localidades().filter((l) => l.activa !== false || (existente && existente.localidadId === l.id)).map((l) => ({ valor: l.id, texto: l.nombre })),
-      });
-      const campoLoc = ui.campo({ nombre: 'localidadId', id: 'f-localidad', etiqueta: 'Localidad', requerido: true, control: selLocF });
-      function alCambiarRol(v) {
-        campoLoc.hidden = v !== 'CLIENTE';
-      }
-      const segRol = ui.segmentado({
-        nombre: 'f-rol', valor: existente ? existente.rol : '',
-        opciones: Object.keys(D.ROLES).map((k) => ({ valor: k, texto: D.ROLES[k].nombre })),
-        onChange: alCambiarRol,
-      });
-      alCambiarRol(existente ? existente.rol : '');
-      let usuarioTocado = !!existente;
-      inUsuario.addEventListener('input', () => { usuarioTocado = true; });
-      inNombre.addEventListener('input', () => { if (!usuarioTocado) inUsuario.value = sugerirUsuario(inNombre.value); });
-
-      modalFormulario({
-        titulo: existente ? 'Editar usuario' : 'Nuevo usuario',
-        textoGuardar: existente ? 'Guardar cambios' : 'Crear usuario',
-        campos: [
-          ui.campo({ nombre: 'nombre', id: 'f-nombre', etiqueta: 'Nombre y apellido', requerido: true, control: inNombre }),
-          h('div', { class: 'grid-2' },
-            ui.campo({ nombre: 'usuario', id: 'f-usuario', etiqueta: 'Usuario', requerido: true, control: inUsuario }),
-            ui.campo({ nombre: 'email', id: 'f-email', etiqueta: 'Correo', requerido: true, control: inEmail })),
-          ui.grupo({ nombre: 'rol', etiqueta: 'Rol', requerido: true, control: segRol }),
-          campoLoc,
-          ui.campo({ nombre: 'cargo', id: 'f-cargo', etiqueta: 'Cargo', opcional: true, control: inCargo }),
-        ],
-        guardar: () => {
-          const datos = {
-            nombre: inNombre.value, usuario: inUsuario.value, email: inEmail.value,
-            rol: ui.valorRadio(segRol, 'f-rol'), localidadId: selLocF.value, cargo: inCargo.value,
-          };
-          const r = S.guardarUsuario(datos, u, existente ? existente.id : null);
-          ui.toast(existente ? 'Cambios guardados.' : 'Usuario «' + r.usuario + '» creado. Ingresa con la contraseña «demo».');
-          ctx.refrescar();
-        },
-      });
-    }
-
-    function pintar() {
-      U.vaciar(chips);
-      const base = filtrar(true);
-      ROLES_FILTRO.forEach((r) => {
-        const n = r.clave === 'todos' ? base.length : base.filter((x) => x.rol === r.clave).length;
-        chips.append(h('button', { type: 'button', class: 'chip', 'aria-pressed': String(q.rol === r.clave), onClick: () => cambiar('rol', r.clave) }, r.texto, h('span', { class: 'cuenta' }, n)));
-      });
-      const lista = filtrar(false);
-      total.textContent = U.plural(lista.length, 'usuario', 'usuarios');
-      U.vaciar(resultados);
-      if (!lista.length) {
-        resultados.append(ui.vacio({ icono: 'usuarios', titulo: 'No hay usuarios con estos filtros' }));
-        return;
-      }
-      const filas = lista.map((x) => {
-        const inactivo = x.activo === false;
-        const esYo = x.id === u.id;
-        return h('tr', null,
-          ui.celda('Usuario', h('div', { class: 'fila-sm', style: 'flex-wrap: nowrap' },
-            ui.avatar(x),
-            h('div', { class: 'titulo-celda', style: 'min-width: 0' },
-              h('span', null, x.nombre, esYo ? h('span', { class: 'badge contorno', style: 'margin-left: 8px' }, 'Vos') : null),
-              h('span', { class: 'sub', style: 'overflow-wrap: anywhere' }, x.usuario + ' · ' + x.email))), 'sin-label'),
-          ui.celda('Rol', h('div', null, ui.nombreRol(x), x.cargo ? h('span', { class: 'sub suave chico', style: 'display: block' }, x.cargo) : null)),
-          ui.celda('Localidad', x.rol === 'CLIENTE' ? S.nombre('localidades', x.localidadId) : h('span', { class: 'suave' }, 'Todas')),
-          ui.celda('Estado', inactivo ? h('span', { class: 'badge inactivo' }, 'Inactivo') : h('span', { class: 'badge aprobada' }, 'Activo')),
-          ui.celda('', h('div', { class: 'fila-sm', style: 'justify-content: flex-end; flex-wrap: nowrap' },
-            h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => abrirFormulario(x), 'aria-label': 'Editar a ' + x.nombre }, ui.icono('editar', 'i-sm'), 'Editar'),
-            esYo
-              ? h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', style: 'min-width: 104px', 'aria-disabled': 'true', title: 'No podés desactivar tu propio usuario', onClick: () => ui.toast('No podés desactivar tu propio usuario.', { tipo: 'aviso' }) }, 'Desactivar')
-              : h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', style: 'min-width: 104px', onClick: () => alternarActivo(x), 'aria-label': (inactivo ? 'Activar a ' : 'Desactivar a ') + x.nombre }, inactivo ? 'Activar' : 'Desactivar')), 'derecha sin-label'));
-      });
-      resultados.append(h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
-        h('caption', { class: 'sr-only' }, 'Usuarios'),
-        h('thead', null, h('tr', null, ['Usuario', 'Rol', 'Localidad', 'Estado', ''].map((t) => h('th', { scope: 'col' }, t || h('span', { class: 'sr-only' }, 'Acciones'))))),
-        h('tbody', null, filas))));
-    }
-
-    inBuscar.addEventListener('input', U.debounce(() => cambiar('q', inBuscar.value.trim()), 200));
-    selLoc.addEventListener('change', () => cambiar('loc', selLoc.value));
-    selEstado.addEventListener('change', () => cambiar('estado', selEstado.value));
-    pintar();
-
-    return marco(ctx, {
-      seccion: 'usuarios',
-      titulo: 'Usuarios',
-      acciones: [h('button', { type: 'button', class: 'btn btn-primario', onClick: () => abrirFormulario(null) }, ui.icono('usuarioMas', 'i-sm'), 'Nuevo usuario')],
-      contenido: [
-        h('section', { class: 'card sin-padding', 'aria-label': 'Listado de usuarios' },
-          h('div', { style: 'padding: 18px 20px 6px' },
-            h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de usuarios' },
-              ui.campo({ nombre: 'q', id: 'u-buscar', etiqueta: 'Buscar', control: inBuscar, clase: 'buscar' }),
-              ui.campo({ nombre: 'loc', id: 'u-loc', etiqueta: 'Localidad', control: selLoc }),
-              ui.campo({ nombre: 'estado', id: 'u-estado', etiqueta: 'Estado', control: selEstado })),
-            h('div', { class: 'fila-entre', style: 'margin-bottom: 12px' }, chips, total)),
-          resultados),
-      ],
-    });
-  };
-
-  // -------------------------------------------------------- Localidades ---
-
-  App.vistas.adminLocalidades = function (ctx) {
-    const S = App.store;
-    const ui = App.ui;
-    const u = ctx.usuario;
-    const db = S.datos;
-    const registrados = db.tickets.filter((t) => t.estado !== 'BORRADOR');
-    const tickets = U.contarPor(registrados, (t) => t.localidadId);
-    const enCurso = U.contarPor(registrados.filter((t) => D.ESTADOS_ACTIVOS.includes(t.estado)), (t) => t.localidadId);
-    const clientes = U.contarPor(db.usuarios.filter((x) => x.rol === 'CLIENTE' && x.activo !== false), (x) => x.localidadId);
-
-    function abrir(existente) {
-      const inNombre = h('input', { id: 'l-nombre', class: 'control', type: 'text', autocomplete: 'off', value: existente ? existente.nombre : '' });
-      modalFormulario({
-        titulo: existente ? 'Renombrar localidad' : 'Nueva localidad',
-        tamano: 'angosto',
-        textoGuardar: existente ? 'Guardar' : 'Crear localidad',
-        campos: [ui.campo({ nombre: 'nombre', id: 'l-nombre', etiqueta: 'Nombre', requerido: true, control: inNombre })],
-        guardar: () => {
-          const l = S.guardarLocalidad({ nombre: inNombre.value }, u, existente ? existente.id : null);
-          ui.toast(existente ? 'Localidad renombrada.' : 'Localidad «' + l.nombre + '» creada.');
-          ctx.refrescar();
-        },
-      });
-    }
-
-    async function alternar(l) {
-      const activar = l.activa === false;
-      if (!activar) {
-        const ok = await ui.confirmar({
-          titulo: 'Desactivar ' + l.nombre,
-          mensaje: 'No se va a poder elegir en tickets ni usuarios nuevos, y sus usuarios no van a poder crear tickets. Los ' + U.plural(tickets.get(l.id) || 0, 'ticket', 'tickets') + ' que tiene se conservan.',
-          textoConfirmar: 'Desactivar',
-          peligro: true,
-        });
-        if (!ok) return;
-      }
-      try {
-        S.cambiarActivaLocalidad(l.id, u, activar);
-        ui.toast(l.nombre + (activar ? ' está activa.' : ' quedó inactiva.'));
-        ctx.refrescar();
-      } catch (e) { ui.mostrarError(e); }
-    }
-
-    const filas = S.localidades().map((l) => {
-      const inactiva = l.activa === false;
-      return h('tr', null,
-        ui.celda('Localidad', h('span', { class: 'titulo-celda' }, l.nombre), 'sin-label'),
-        ui.celda('Usuarios cliente', h('span', { class: 'mono' }, U.formatoNumero(clientes.get(l.id) || 0)), 'numero'),
-        ui.celda('Tickets', h('span', { class: 'mono' }, U.formatoNumero(tickets.get(l.id) || 0)), 'numero'),
-        ui.celda('En curso', h('span', { class: 'mono' }, U.formatoNumero(enCurso.get(l.id) || 0)), 'numero'),
-        ui.celda('Estado', inactiva ? h('span', { class: 'badge inactivo' }, 'Inactiva') : h('span', { class: 'badge aprobada' }, 'Activa')),
-        ui.celda('', h('div', { class: 'fila-sm', style: 'justify-content: flex-end; flex-wrap: nowrap' },
-          h('button', { type: 'button', class: 'btn btn-secundario btn-sm', 'aria-label': 'Renombrar ' + l.nombre, onClick: () => abrir(l) }, ui.icono('editar', 'i-sm'), 'Renombrar'),
-          h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', onClick: () => alternar(l) }, inactiva ? 'Activar' : 'Desactivar')), 'derecha sin-label'));
-    });
-
-    return marco(ctx, {
-      seccion: 'localidades',
-      titulo: 'Localidades',
-      acciones: [h('button', { type: 'button', class: 'btn btn-primario', onClick: () => abrir(null) }, ui.icono('mas', 'i-sm'), 'Nueva localidad')],
-      contenido: h('section', { class: 'card sin-padding', 'aria-label': 'Localidades' }, h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
-        h('caption', { class: 'sr-only' }, 'Localidades'),
-        h('thead', null, h('tr', null,
-          h('th', { scope: 'col' }, 'Localidad'),
-          h('th', { scope: 'col', class: 'numero' }, 'Usuarios cliente'),
-          h('th', { scope: 'col', class: 'numero' }, 'Tickets'),
-          h('th', { scope: 'col', class: 'numero' }, 'En curso'),
-          h('th', { scope: 'col' }, 'Estado'),
-          h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Acciones')))),
-        h('tbody', null, filas)))),
-    });
-  };
 
   // ---------------------------------------------------------- Catálogos ---
 

@@ -20,11 +20,10 @@
     const eligeLocalidad = u.rol !== 'CLIENTE';
     const b = op.borrador || null;
     const pre = op.prefill || {}; // datos que llegan desde la búsqueda de soluciones
-    // El operador decide primero si el ticket queda Abierto ('nuevo') o Cerrado ('resuelto').
-    // Quien crea el ticket decide primero si queda Abierto ('nuevo') o Cerrado ('resuelto').
-    let modo = b ? 'nuevo' : op.modoInicial === 'resuelto' ? 'resuelto' : null;
-    // Proponer una solución reutilizable es cosa de ORMEN.
-    const puedeProponer = u.rol !== 'CLIENTE';
+    // ORMEN elige si el ticket queda Cerrado ('resuelto', lo más común: se resolvió en la llamada)
+    // o Pendiente ('nuevo'). El cliente no elige: su ticket siempre queda Abierto.
+    const esCliente = u.rol === 'CLIENTE';
+    let modo = b || esCliente || op.modoInicial === 'nuevo' ? 'nuevo' : 'resuelto';
     let solucionCatalogoId = null;
     let ticketOrigen = null; // número del ticket del que se copió la solución (sólo informativo)
     const marcar = () => ctx.marcarSucio(true);
@@ -49,35 +48,26 @@
     const segCri = ui.segmentado({ nombre: 'criticidad', valor: b ? b.criticidadId : '', opciones: S.catalogo('criticidades', true).map((c) => ({ valor: c.id, texto: c.nombre, punto: c.clase })) });
     const selTipoProblema = esOperador ? ui.select({ id: 't-tipo-problema', valor: (b && b.tipoProblemaId) || 'tp-nodef', opciones: S.catalogo('tiposProblema', true).map((x) => ({ valor: x.id, texto: x.nombre })) }) : null;
     const inTitulo = h('input', { id: 't-titulo', class: 'control', type: 'text', maxlength: '120', autocomplete: 'off', value: b ? b.titulo : pre.titulo || '', placeholder: 'Por ejemplo: la impresora de la terminal no imprime' });
-    const inDesc = h('textarea', { id: 't-descripcion', class: 'control', rows: '6', value: b ? b.descripcion : pre.descripcion || '', placeholder: esOperador ? 'Qué cuenta la agencia: qué pasa, desde cuándo, qué mensaje aparece…' : 'Contanos qué pasa, desde cuándo y qué mensaje aparece en pantalla.' });
-    const imagenes = ui.selectorImagenes({ inicial: b ? b.adjuntos : [], pegarEn: [inDesc], etiqueta: 'Imágenes del problema', alCambiar: () => { marcar(); } });
-
-    // Resolución (ticket Cerrado)
-    const inSolucion = h('textarea', { id: 't-solucion', class: 'control', rows: '5', placeholder: 'Qué se hizo para resolverlo, paso a paso.' });
-    const basadaEn = h('div', { class: 'fila-sm' });
-    const imgSolucion = ui.selectorImagenes({ pegarEn: [inSolucion], etiqueta: 'Imágenes de la resolución', alCambiar: marcar });
-    const chkProponer = h('input', { type: 'checkbox', id: 't-proponer' });
-    const inPropTitulo = h('input', { id: 't-prop-titulo', class: 'control', type: 'text', maxlength: '120' });
-    const palabras = ui.entradaPalabras({ id: 't-prop-palabras', alCambiar: marcar });
-    const bloqueProponer = h('div', { class: 'pila', hidden: true },
-      ui.campo({ nombre: 'propuestaTitulo', id: 't-prop-titulo', etiqueta: 'Título de la solución reutilizable', requerido: true, control: inPropTitulo }),
-      ui.campo({ nombre: 'propuestaPalabras', id: 't-prop-palabras', etiqueta: 'Palabras clave', requerido: true, control: palabras.el }));
-    chkProponer.addEventListener('change', () => {
-      bloqueProponer.hidden = !chkProponer.checked;
-      if (chkProponer.checked && !inPropTitulo.value.trim()) inPropTitulo.value = inTitulo.value.trim();
+    // Las imágenes se pegan dentro del texto, como en el sistema actual (sin botón de adjuntar).
+    const editorDesc = ui.editorTexto({
+      id: 't-descripcion', filas: 6, etiqueta: 'Descripción del problema',
+      valor: b ? b.descripcion : pre.descripcion || '', adjuntos: b ? b.adjuntos : [],
+      placeholder: (esOperador ? 'Qué cuenta la agencia: qué pasa, desde cuándo, qué mensaje aparece…' : 'Contanos qué pasa, desde cuándo y qué mensaje aparece en pantalla.') + ' Podés pegar capturas acá mismo.',
     });
+    const inDesc = editorDesc.el;
+
+    // Si se resolvió en la llamada, la resolución también va en la descripción (no hay sección aparte).
+    const ayudaDesc = h('p', { class: 'chico suave' });
+    const basadaEn = h('div', { class: 'fila-sm' });
 
     function pintarBasadaEn() {
       U.vaciar(basadaEn);
-      chkProponer.disabled = !!solucionCatalogoId;
       if (solucionCatalogoId) {
-        chkProponer.checked = false;
-        bloqueProponer.hidden = true;
         const s = S.solucion(solucionCatalogoId);
         basadaEn.append(h('span', { class: 'chip-activo' }, ui.icono('libro', 'i-sm'), 'Basada en la solución reutilizable «' + (s ? s.titulo : '') + '»',
           h('button', { type: 'button', 'aria-label': 'Quitar la referencia a la solución reutilizable', onClick: () => { solucionCatalogoId = null; pintarBasadaEn(); marcar(); } }, ui.icono('x', 'i-sm'))));
       } else if (ticketOrigen) {
-        basadaEn.append(h('span', { class: 'chip-activo' }, ui.icono('ticket', 'i-sm'), 'Copiada de la resolución del ticket #' + ticketOrigen));
+        basadaEn.append(h('span', { class: 'chip-activo' }, ui.icono('ticket', 'i-sm'), 'Se agregó la resolución del ticket #' + ticketOrigen));
       }
     }
     pintarBasadaEn();
@@ -86,17 +76,22 @@
     const tituloPagina = h('h1', { id: 'titulo-pagina', tabindex: '-1' });
 
     // ------------------------------------------------------- Secciones ---
-    const segModo = !b ? h('fieldset', { class: 'modo-registro' },
-      h('legend', null, '¿Cómo queda el ticket?'),
-      ui.segmentado({
-        nombre: 'modo',
-        valor: modo,
-        opciones: [
-          { valor: 'nuevo', texto: 'Abierto', detalle: 'Tarea en curso, pendiente de resolución', icono: 'circulo' },
-          { valor: 'resuelto', texto: 'Cerrado', detalle: 'La tarea se solucionó durante la llamada', icono: 'checkCirculo' },
-        ],
-        onChange: (v) => cambiarModo(v),
-      })) : null;
+    // Cerrado va primero y como opción principal; Pendiente, del mismo tamaño, como secundaria.
+    // El cliente ve el estado con el que queda su ticket, sin poder cambiarlo.
+    const segModo = b ? null : esCliente
+      ? h('div', { class: 'modo-fijo' },
+        h('strong', null, 'Abierto'), h('span', null, 'Mesa de ayuda lo va a tomar y te avisamos por correo cuando haya novedades.'))
+      : h('fieldset', { class: 'modo-registro modo-ormen' },
+        h('legend', { class: 'sr-only' }, '¿Cómo queda el ticket?'),
+        ui.segmentado({
+          nombre: 'modo',
+          valor: modo,
+          opciones: [
+            { valor: 'resuelto', texto: 'Cerrado', detalle: 'Se resolvió durante la llamada', icono: 'checkCirculo' },
+            { valor: 'nuevo', texto: 'Pendiente', detalle: 'Todavía no está resuelto', icono: 'reloj' },
+          ],
+          onChange: (v) => cambiarModo(v),
+        }));
 
     const cardDatos = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-datos' },
       h('h2', { id: 'sec-datos' }, 'Datos del ticket'),
@@ -111,17 +106,9 @@
     const cardProblema = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-problema' },
       h('h2', { id: 'sec-problema' }, 'Problema'),
       ui.campo({ nombre: 'titulo', id: 't-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
-      ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción del problema', requerido: true, control: inDesc }),
-      h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes ', h('span', { class: 'opcional' }, '(opcional)')), imagenes.el));
-
-    const cardSolucion = h('section', { class: 'hoja-seccion seccion-resolucion pila', 'aria-labelledby': 'sec-solucion', hidden: modo !== 'resuelto' },
-      h('div', { class: 'fila-entre' }, h('h2', { id: 'sec-solucion' }, 'Resolución')),
-      basadaEn,
-      ui.campo({ nombre: 'solucionTexto', id: 't-solucion', etiqueta: 'Qué se hizo', requerido: true, control: inSolucion }),
-      h('div', { class: 'campo' }, h('span', { class: 'etiqueta' }, 'Imágenes de la resolución ', h('span', { class: 'opcional' }, '(opcional)')), imgSolucion.el),
-      puedeProponer ? h('div', { class: 'pila-sm' },
-        h('label', { class: 'check', for: 't-proponer' }, chkProponer, h('strong', null, 'Proponer como solución reutilizable'))) : null,
-      puedeProponer ? bloqueProponer : null);
+      ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción', requerido: true, control: inDesc }),
+      ayudaDesc,
+      basadaEn);
 
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
     const btnBorrador = esOperador ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
@@ -131,11 +118,11 @@
       h('a', { class: 'btn btn-fantasma btn-lg', href: b ? '#/borradores' : '#/' }, 'Cancelar'),
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
-    // Los campos aparecen recién cuando el operador eligió Abierto o Cerrado.
-    const hojaForm = h('div', { class: 'hoja' }, cardProblema, cardDatos, cardSolucion, acciones);
+    // El formulario se ve desde el principio: el modo siempre tiene un valor.
+    const hojaForm = h('div', { class: 'hoja' }, cardProblema, cardDatos, acciones);
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
       resumen, segModo, hojaForm);
-    // Elegir Abierto o Cerrado no cuenta como un cambio sin guardar.
+    // Elegir Cerrado o Pendiente no cuenta como un cambio sin guardar.
     const marcarSalvoModo = (e) => { if (e.target.name !== 'modo') marcar(); };
     form.addEventListener('input', marcarSalvoModo);
     form.addEventListener('change', marcarSalvoModo);
@@ -145,7 +132,7 @@
     const listaSug = h('div', { class: 'sugerencias lista-scroll' });
     const estadoSug = h('p', { class: 'chico suave', 'aria-live': 'polite' });
     function actualizarSugerencias() {
-      const texto = inTitulo.value + ' ' + inDesc.value;
+      const texto = inTitulo.value + ' ' + editorDesc.textoPlano();
       const res = App.sugerencias.buscar({ texto, sistemaId: selSistema.value, subsistemaId: selSub.value, localidadId: eligeLocalidad ? selLocalidad.value : u.localidadId });
       U.vaciar(listaSug);
       if (!texto.trim() && !selSistema.value) {
@@ -157,32 +144,34 @@
         return;
       }
       estadoSug.textContent = U.plural(res.length, 'sugerencia', 'sugerencias');
-      res.forEach((r) => listaSug.append(ui.tarjetaSugerencia(r, { alUsar: usarSolucion })));
+      res.forEach((r) => listaSug.append(ui.tarjetaSugerencia(r, { alUsar: usarSolucion, textoUsar: 'Agregar a la descripción' })));
     }
     const actualizarDiferido = U.debounce(actualizarSugerencias, 250);
     [inTitulo, inDesc].forEach((el) => el.addEventListener('input', actualizarDiferido));
     [selSistema, selSub, selLocalidad].forEach((el) => el.addEventListener('change', actualizarSugerencias));
 
-    async function usarSolucion(r) {
-      const actual = inSolucion.value.trim();
-      if (actual && actual !== r.texto.trim()) {
-        const ok = await ui.confirmar({ titulo: 'Reemplazar la resolución', mensaje: 'Ya escribiste una resolución. ¿La reemplazás por la de la sugerencia?', textoConfirmar: 'Reemplazar' });
-        if (!ok) return;
-      }
+    /** Agrega la resolución sugerida al final de la descripción, con sus imágenes. */
+    function agregarADescripcion(texto, adjuntos) {
+      const actual = editorDesc.valor();
+      const junto = actual.texto.trim() ? actual.texto.replace(/\s+$/, '') + '\n\nResolución:\n' + texto : texto;
+      editorDesc.cargar(junto, actual.adjuntos.concat(adjuntos || []));
+    }
+
+    function usarSolucion(r) {
       ui.cerrarModales();
       if (modo !== 'resuelto') {
         cambiarModo('resuelto');
         const radio = form.querySelector('input[name="modo"][value="resuelto"]');
         if (radio) radio.checked = true;
-        ui.toast('El ticket pasó a Cerrado. Revisá la resolución antes de crearlo.', { tipo: 'aviso' });
+        ui.toast('El ticket pasó a Cerrado. Revisá la descripción antes de crearlo.', { tipo: 'aviso' });
       }
-      inSolucion.value = r.texto;
+      agregarADescripcion(r.texto, r.adjuntos);
       solucionCatalogoId = r.tipo === 'catalogo' ? r.id : r.solucionCatalogoId || null;
       ticketOrigen = r.tipo === 'ticket' ? r.ticket.numero : null;
       pintarBasadaEn();
       marcar();
-      cardSolucion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      inSolucion.focus({ preventScroll: true });
+      inDesc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      inDesc.focus({ preventScroll: true });
     }
 
     function cambiarModo(v) {
@@ -194,12 +183,13 @@
         lateral.hidden = !elegido;
         columnas.className = elegido ? 'dos-columnas-anchas' : 'columna-unica';
       }
-      cardSolucion.hidden = modo !== 'resuelto';
+      ayudaDesc.textContent = 'Contá el problema y qué se hizo para resolverlo, todo en el mismo texto.';
+      ayudaDesc.hidden = modo !== 'resuelto';
       if (btnBorrador) btnBorrador.hidden = modo === 'resuelto';
       U.vaciar(btnCrear).append(ui.icono(modo === 'resuelto' ? 'checkCirculo' : 'enviar', 'i-sm'), modo === 'resuelto' ? 'Crear ticket cerrado' : 'Crear ticket');
       tituloPagina.textContent = b ? 'Continuar borrador' : 'Crear ticket';
       ctx.titulo(tituloPagina.textContent);
-      if (!b && elegido) App.router.actualizarQuery(modo === 'resuelto' ? { modo: 'resuelto' } : {});
+      if (!b && !esCliente) App.router.actualizarQuery(modo === 'nuevo' ? { modo: 'pendiente' } : {});
     }
 
     // ----------------------------------------------------------- Acciones ---
@@ -211,8 +201,8 @@
         criticidadId: ui.valorRadio(form, 'criticidad'),
         tipoProblemaId: selTipoProblema ? selTipoProblema.value : null,
         titulo: inTitulo.value,
-        descripcion: inDesc.value,
-        adjuntos: imagenes.valor(),
+        descripcion: editorDesc.valor().texto,
+        adjuntos: editorDesc.valor().adjuntos,
       };
     }
 
@@ -221,17 +211,13 @@
       if (modo === 'resuelto') {
         Object.assign(opciones, {
           registroDirecto: true,
-          solucionTexto: inSolucion.value,
-          solucionAdjuntos: imgSolucion.valor(),
           solucionCatalogoId,
-          proponer: chkProponer.checked ? { titulo: inPropTitulo.value, palabrasClave: palabras.valor() } : null,
         });
       }
       try {
         const t = S.crearTicket(leer(), u, opciones);
         ctx.marcarSucio(false);
-        const prop = modo === 'resuelto' && chkProponer.checked ? ' Solución reutilizable propuesta: queda por aprobar.' : '';
-        ui.toast((modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado.' + (esOperador ? ' Queda En proceso, a tu nombre.' : '')) + prop);
+        ui.toast(modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado.' + (esOperador ? ' Queda En proceso, a tu nombre.' : ''));
         App.router.ir('/tickets/' + t.numero);
       } catch (e) {
         if (e.campos) ui.mostrarErrores(form, e.campos, resumen);
@@ -285,7 +271,7 @@
     const columnas = h('div', { class: lateral ? 'dos-columnas-anchas' : 'columna-unica' }, form, lateral);
     cambiarModo(modo);
     if (pre.usar && modo === 'resuelto') {
-      inSolucion.value = pre.usar.texto;
+      agregarADescripcion(pre.usar.texto, pre.usar.adjuntos || []);
       solucionCatalogoId = pre.usar.solucionCatalogoId || null;
       ticketOrigen = pre.usar.ticketNumero || null;
       pintarBasadaEn();
@@ -309,7 +295,8 @@
     const S = App.store;
     const q = ctx.query;
     const pre = { titulo: q.titulo || '', descripcion: q.descripcion || '', sistemaId: q.sis || '', subsistemaId: q.sub || '', localidadId: q.loc || '' };
-    let modoInicial = q.modo;
+    // Sin modo en la dirección, ORMEN arranca en Cerrado; ?modo=pendiente abre Pendiente.
+    let modoInicial = q.modo === 'pendiente' ? 'nuevo' : 'resuelto';
     if (q.usar && ctx.usuario.rol === 'OPERADOR') {
       const i = q.usar.indexOf(':');
       const tipo = q.usar.slice(0, i);
@@ -317,14 +304,14 @@
       if (tipo === 'catalogo') {
         const s = S.solucion(id);
         if (s && s.estado === 'APROBADA') {
-          pre.usar = { texto: s.descripcion, solucionCatalogoId: s.id };
+          pre.usar = { texto: s.descripcion, adjuntos: s.adjuntos || [], solucionCatalogoId: s.id };
           if (!pre.sistemaId && s.sistemaId) { pre.sistemaId = s.sistemaId; pre.subsistemaId = s.subsistemaId || ''; }
         }
       } else if (tipo === 'ticket') {
         const t = S.ticket(id);
         if (t && t.estado === 'CERRADO' && t.solucion) {
           const cat = t.solucion.solucionCatalogoId ? S.solucion(t.solucion.solucionCatalogoId) : null;
-          pre.usar = { texto: t.solucion.texto, solucionCatalogoId: cat && cat.estado === 'APROBADA' ? cat.id : null, ticketNumero: t.numero };
+          pre.usar = { texto: t.solucion.texto, adjuntos: S.adjuntosSolucion(t), solucionCatalogoId: cat && cat.estado === 'APROBADA' ? cat.id : null, ticketNumero: t.numero };
           if (!pre.sistemaId) { pre.sistemaId = t.sistemaId; pre.subsistemaId = t.subsistemaId || ''; }
         }
       }

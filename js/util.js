@@ -72,9 +72,27 @@
 
   // -------------------------------------------------------------- Texto ---
 
+  /**
+   * Imágenes dentro de un texto (descripción, resolución, pasos): se pegan en
+   * el lugar del cursor, como en un procesador de texto, y el texto guarda una
+   * marca [[imagen:<id>]] que apunta a un elemento de `adjuntos`.
+   */
+  const MARCA_IMAGEN = /\[\[imagen:([A-Za-z0-9_-]+)\]\]/g;
+  const marcaImagen = (id) => '[[imagen:' + id + ']]';
+
+  /** El texto sin las marcas de imagen (para buscar, resumir o comparar). */
+  function textoPlano(texto) {
+    return String(texto || '').replace(MARCA_IMAGEN, ' ').replace(/[ \t]{2,}/g, ' ');
+  }
+
+  /** Ids de las imágenes que aparecen en el texto, en orden. */
+  function idsImagenes(texto) {
+    return Array.from(String(texto || '').matchAll(MARCA_IMAGEN), (m) => m[1]);
+  }
+
   /** Minúsculas, sin tildes ni signos: "Liquidación diaria!" -> "liquidacion diaria". */
   function normalizar(texto) {
-    return String(texto || '')
+    return textoPlano(texto)
       .toLowerCase()
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
@@ -94,7 +112,7 @@
   }
 
   function truncar(texto, max) {
-    const t = String(texto || '').replace(/\s+/g, ' ').trim();
+    const t = textoPlano(texto).replace(/\s+/g, ' ').trim();
     return t.length > max ? t.slice(0, max - 1).trimEnd().replace(/[\s.,;:·-]+$/, '') + '…' : t;
   }
 
@@ -246,7 +264,7 @@
 
   App.util = {
     h, s, agregar, vaciar, $, $$,
-    normalizar, iniciales, plural, truncar, capitalizar, formatoNumero, porcentaje,
+    normalizar, textoPlano, idsImagenes, marcaImagen, iniciales, plural, truncar, capitalizar, formatoNumero, porcentaje,
     MIN, HORA, DIA, fecha, hora, fechaHora, mesCorto, mesLargo, diaMes, relativo, duracion,
     inicioDelDia, claveMes, claveDia, isoAhora,
     uid, prng, contarPor, agruparPor, copiar, debounce, parseQuery, buildQuery,

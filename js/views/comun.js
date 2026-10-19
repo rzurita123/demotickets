@@ -51,12 +51,15 @@
    * Tabla de tickets. columnas: lista de claves entre
    * numero, ticket, localidad, creador, estado, criticidad, atiende, actualizado, creado.
    */
-  function tablaTickets(tickets, columnas, op) {
+  function tablaTickets(tickets, columnasPedidas, op) {
     const S = App.store;
     const ui = App.ui;
     const o = op || {};
+    // La estrella de favoritos va primero en todas las listas, sólo para quien puede usarla.
+    const columnas = App.auth.puede('favoritos') && !columnasPedidas.includes('favorito') ? ['favorito'].concat(columnasPedidas) : columnasPedidas;
     const def = {
-      numero: { th: 'Nº', td: (t) => ui.celda('Nº', h('span', { class: 'num' }, '#' + t.numero), 'celda-num') },
+      favorito: { th: h('span', { class: 'sr-only' }, 'Favorito'), td: (t) => ui.celda('', ui.botonFavorito('ticket', t.id, { etiqueta: 'ticket #' + t.numero }), 'celda-fav sin-label') },
+      numero:{ th: 'Nº', td: (t) => ui.celda('Nº', h('span', { class: 'num' }, '#' + t.numero), 'celda-num') },
       ticket: {
         th: 'Ticket',
         td: (t) => ui.celda('Ticket', h('div', { class: 'titulo-celda' },

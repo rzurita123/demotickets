@@ -21,11 +21,9 @@
     }
     if (u.rol === 'OPERADOR') {
       const sinAsignar = S.ticketsVisibles(u).filter((t) => App.dominio.ESTADOS_ACTIVOS.includes(t.estado) && !t.operadorId).length;
-      const borradores = S.borradoresDe(u).length;
       return [
         { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
-        { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo', contador: sinAsignar, contadorTitulo: U.plural(sinAsignar, 'ticket sin asignar', 'tickets sin asignar') },
-        { href: '#/borradores', texto: 'Borradores', icono: 'borrador', activo: empieza('/borradores'), contador: borradores, contadorTitulo: U.plural(borradores, 'borrador', 'borradores') },
+        { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo', contador: sinAsignar, contadorTitulo: U.plural(sinAsignar, 'ticket pendiente', 'tickets pendientes') },
         { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones') },
         { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
         { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
@@ -37,8 +35,8 @@
       { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
       { href: '#/soluciones', texto: 'Soluciones', icono: 'libro', activo: empieza('/soluciones'), contador: pendientes, contadorTitulo: U.plural(pendientes, 'solución reutilizable por aprobar', 'soluciones reutilizables por aprobar') },
       { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: empieza('/tickets') },
-      { href: '#/admin/usuarios', texto: 'Administración', icono: 'ajustes', activo: empieza('/admin') },
       { href: '#/auditoria', texto: 'Auditoría', icono: 'escudo', activo: empieza('/auditoria') },
+      { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
       { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
     ];
   }
@@ -114,6 +112,7 @@
         h('div', { class: 'fuerte' }, u.nombre),
         h('div', { class: 'chico suave' }, App.ui.nombreRol(u) + ' · ' + detalle),
         h('div', { class: 'muy-chico suave' }, u.email)),
+      u.rol === 'ADMINISTRADOR' ? h('a', { href: '#/catalogos' }, App.ui.icono('capas'), 'Catálogos') : null,
       h('a', { href: '#/correos' }, App.ui.icono('correo'), 'Correos simulados'),
       h('div', { class: 'sep', role: 'separator' }),
       h('button', { type: 'button', onClick: () => { App.auth.salir(); App.router.ir('/ingresar', { reemplazar: true }); } }, App.ui.icono('usuarios'), 'Cambiar de usuario'),
@@ -143,8 +142,8 @@
     const items = navegacion(u);
     interior.append(h('nav', { class: 'nav', 'aria-label': 'Principal' }, items.filter((i) => !i.soloMovil).map((i) => enlaceNav(i, ruta))), buscadorGlobal(u, ctx));
     const acciones = h('div', { class: 'barra-acciones' });
-    // En el inicio el botón grande ya ocupa ese lugar.
-    if ((u.rol === 'OPERADOR' || u.rol === 'CLIENTE') && ruta !== '/tickets/nuevo' && ruta !== '/') {
+    // «Crear ticket» está siempre en la barra, igual para todos los roles: es el único botón para crear.
+    if (App.auth.puede('tickets.crear', u) && ruta !== '/tickets/nuevo') {
       acciones.append(h('a', { class: 'btn btn-primario btn-sm solo-escritorio', href: '#/tickets/nuevo' }, App.ui.icono('mas', 'i-sm'), 'Crear ticket'));
     }
     acciones.append(menuUsuario(u));

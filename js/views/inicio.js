@@ -57,14 +57,14 @@
       : ui.vacio({ icono: 'checkCirculo', titulo: vacio }));
 
     return h('div', { class: 'pila-lg' },
-      saludo(u, h('a', { class: 'btn btn-primario btn-crear-principal', href: '#/tickets/nuevo' }, ui.icono('mas'), 'Crear ticket')),
+      saludo(u),
       C.cola({
         id: 'cola-cliente',
         etiqueta: 'Tickets de ' + loc,
         activa: ctx.query.vista,
         alCambiar: (v) => App.router.actualizarQuery({ vista: v }),
         pestanas: [
-          { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista(enCurso, 'No hay tickets en curso', '#/tickets') },
+          { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista(enCurso, 'No hay tickets en curso', '#/tickets?estado=en-curso') },
           { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista(bloqueados, 'Ningún ticket espera tu respuesta', '#/tickets?estado=BLOQUEADO') },
           { clave: 'cerrados', texto: 'Cerrados en 30 días', cuenta: cerrados.length, tono: 'verde', contenido: () => lista(cerrados, 'No hay tickets cerrados en los últimos 30 días', '#/tickets?estado=CERRADO') },
         ],
@@ -79,9 +79,12 @@
     const C = App.comun;
     const u = ctx.usuario;
     const enCurso = S.ticketsVisibles(u).filter(activo);
-    const sinAsignar = enCurso.filter((t) => !t.operadorId).sort(C.ORDENES.criticidad.fn);
+    const pendientes = enCurso.filter((t) => !t.operadorId).sort(C.ORDENES.criticidad.fn);
     const mios = enCurso.filter((t) => t.operadorId === u.id).sort(C.ORDENES.actualizados.fn);
     const borradores = S.borradoresDe(u);
+    const favoritos = S.favoritosDe(u);
+    const favTickets = favoritos.filter((f) => f.tipo === 'ticket').map((f) => f.item);
+    const favSoluciones = favoritos.filter((f) => f.tipo === 'solucion').map((f) => f.item);
 
     function tomar(t) {
       try {
@@ -100,32 +103,55 @@
         ui.celda('Guardado', ui.tiempo(b.actualizadoEn)),
         ui.celda('', h('a', { class: 'btn btn-secundario btn-sm', href: '#/borradores/' + b.id }, 'Continuar'), 'derecha sin-label'))))));
 
+    // Favoritos: primero los tickets y después las soluciones reutilizables, cada grupo con su tabla.
+    const tablaSolucionesFav = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
+      h('caption', { class: 'sr-only' }, 'Soluciones reutilizables favoritas'),
+      h('thead', null, h('tr', null, [h('span', { class: 'sr-only' }, 'Favorito'), 'Solución', 'Estado', 'Usos'].map((t) => h('th', { scope: 'col' }, t)))),
+      h('tbody', null, favSoluciones.map((s) => {
+        const usos = S.usosDeSolucion(s.id).length;
+        const tr = h('tr', { class: 'clic' },
+          ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav sin-label'),
+          ui.celda('Solución', h('div', { class: 'titulo-celda' }, h('a', { href: '#/soluciones/' + s.id }, s.titulo), h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
+          ui.celda('Estado', ui.badgeSolucion(s.estado)),
+          ui.celda('Usos', usos ? U.plural(usos, 'vez', 'veces') : h('span', { class: 'suave' }, 'Sin usos')));
+        tr.addEventListener('click', (e) => { if (!e.target.closest('a, button')) App.router.ir('/soluciones/' + s.id); });
+        return tr;
+      }))));
+    // La cola sólo acepta una lista plana de nodos.
+    const contenidoFavoritos = () => (favoritos.length
+      ? [].concat(
+        favTickets.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(favTickets, ['numero', 'ticket', 'localidad', 'estado', 'actualizado'], { caption: 'Tickets favoritos' })] : [],
+        favSoluciones.length ? [h('h3', { class: 'cola-subtitulo' }, 'Soluciones reutilizables'), tablaSolucionesFav()] : [])
+      : ui.vacio({ icono: 'estrella', titulo: 'Todavía no tenés favoritos', texto: 'Marcá con la estrella los tickets o las soluciones reutilizables que consultás seguido y van a aparecer acá.' }));
+
     return h('div', { class: 'pila-lg' },
-      saludo(u, h('a', { class: 'btn btn-primario btn-crear-principal', href: '#/tickets/nuevo' }, ui.icono('mas'), 'Crear ticket')),
+      saludo(u),
       C.cola({
         id: 'cola-operador',
         etiqueta: 'Mi trabajo',
         activa: ctx.query.vista,
         alCambiar: (v) => App.router.actualizarQuery({ vista: v }),
         pestanas: [
+          // Lo principal es lo que nadie tomó todavía, de cualquier localidad.
+          {
+            clave: 'pendientes', texto: 'Pendientes', cuenta: pendientes.length, tono: 'dorado',
+            contenido: () => (pendientes.length
+              ? [C.tablaTickets(pendientes.slice(0, 12), ['numero', 'ticket', 'localidad', 'criticidad', 'creado', 'accion'], {
+                caption: 'Tickets pendientes: nadie de Mesa de ayuda los tomó',
+                accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
+              }), pie(pendientes.length, '#/tickets?estado=ABIERTO')]
+              : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets pendientes', texto: 'Todos los tickets en curso ya los tomó alguien de Mesa de ayuda.' })),
+          },
           {
             clave: 'mios', texto: 'Mis tickets', cuenta: mios.length,
             contenido: () => (mios.length
               ? [C.tablaTickets(mios.slice(0, 12), ['numero', 'ticket', 'localidad', 'estado', 'actualizado'], { caption: 'Mis tickets en curso' }), pie(mios.length, '#/tickets?atiende=' + u.id)]
               : ui.vacio({ titulo: 'No tenés tickets en curso' })),
           },
+          { clave: 'favoritos', texto: 'Favoritos', cuenta: favoritos.length, contenido: contenidoFavoritos },
           {
             clave: 'borradores', texto: 'Mis borradores', cuenta: borradores.length, tono: 'gris',
             contenido: () => (borradores.length ? tablaBorradores() : ui.vacio({ icono: 'borrador', titulo: 'No tenés borradores' })),
-          },
-          {
-            clave: 'sin', texto: 'Sin asignar', cuenta: sinAsignar.length, tono: 'dorado',
-            contenido: () => (sinAsignar.length
-              ? [C.tablaTickets(sinAsignar.slice(0, 12), ['numero', 'ticket', 'localidad', 'criticidad', 'creado', 'accion'], {
-                caption: 'Tickets sin asignar',
-                accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
-              }), pie(sinAsignar.length, '#/tickets?atiende=sin')]
-              : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets sin asignar' })),
           },
         ],
       }));
@@ -185,12 +211,12 @@
       : ui.vacio({ icono: 'checkCirculo', titulo: 'Nada por aprobar' });
 
     return h('div', { class: 'pila-lg' },
-      saludo(u, h('a', { class: 'btn btn-neutro', href: '#/tickets/nuevo' }, ui.icono('mas', 'i-sm'), 'Crear ticket')),
+      saludo(u),
       h('div', { class: 'mosaicos' },
         mosaico({ etiqueta: 'Por aprobar', icono: 'libro', valor: porAprobar.length, tono: 'tinta', href: '#/soluciones?estado=PENDIENTE' }),
         mosaico({ etiqueta: 'Registrados en 30 días', icono: 'ticket', valor: ultimos30.length, href: '#/estadisticas?periodo=30d' }),
         mosaico({ etiqueta: 'Cerrados en 30 días', icono: 'check', valor: cerrados30, tono: 'verde', href: '#/tickets?estado=CERRADO' }),
-        mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', href: '#/tickets' }),
+        mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', href: '#/tickets?estado=en-curso' }),
         mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar, tono: 'gris', href: '#/tickets?atiende=sin' })),
       h('div', { class: 'grid-2' },
         tarjeta('Soluciones reutilizables por aprobar', listaPorAprobar, porAprobar.length > 5 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
@@ -201,20 +227,13 @@
           tabla: { columnas: ['Mes', 'Tickets'], filas: meses.map((m) => [m.etiquetaLarga, U.formatoNumero(m.valor)]) },
           pie: verTodos('#/estadisticas', 'Ver todas las estadísticas'),
         })),
-      h('div', { class: 'grid-2' },
-        App.charts.tarjeta({
-          titulo: 'Sistemas con más tickets',
-          descripcion: 'Últimos 30 días',
-          grafico: App.charts.barras({ titulo: 'Sistemas con más tickets', datos: porSistema, total: ultimos30.length }),
-          tabla: { columnas: ['Sistema', 'Tickets'], filas: porSistema.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
-          vacio: porSistema.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en los últimos 30 días.'),
-        }),
-        tarjeta('Administración', h('div', { class: 'accesos' }, [
-          ['#/admin/usuarios', 'usuarios', 'Usuarios'],
-          ['#/admin/localidades', 'pin', 'Localidades'],
-          ['#/admin/catalogos', 'capas', 'Catálogos'],
-          ['#/auditoria', 'escudo', 'Auditoría'],
-        ].map(([href, ic, t]) => h('a', { href, class: 'acceso' }, ui.icono(ic), h('span', null, t)))))));
+      App.charts.tarjeta({
+        titulo: 'Sistemas con más tickets',
+        descripcion: 'Últimos 30 días',
+        grafico: App.charts.barras({ titulo: 'Sistemas con más tickets', datos: porSistema, total: ultimos30.length }),
+        tabla: { columnas: ['Sistema', 'Tickets'], filas: porSistema.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
+        vacio: porSistema.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en los últimos 30 días.'),
+      }));
   }
 
   App.vistas.inicio = function (ctx) {
