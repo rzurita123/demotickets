@@ -283,6 +283,9 @@
         const activo = S.alternarFavorito(u, tipo, id);
         pintar(activo);
         toast(activo ? 'Agregado a favoritos. Lo ves en Inicio › Favoritos.' : 'Quitado de favoritos.');
+        // Se vuelve a dibujar la pantalla (misma pestaña y scroll) para que la pestaña Favoritos
+        // y su contador se actualicen al momento. Si hay algo a medio escribir, no se toca.
+        if (!App.router.estaSucio()) App.router.refrescar();
       } catch (err) { mostrarError(err); }
     });
     return b;
