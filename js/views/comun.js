@@ -55,8 +55,11 @@
     const S = App.store;
     const ui = App.ui;
     const o = op || {};
-    // La estrella de favoritos va primero en todas las listas, sólo para quien puede usarla.
-    const columnas = App.auth.puede('favoritos') && !columnasPedidas.includes('favorito') ? ['favorito'].concat(columnasPedidas) : columnasPedidas;
+    // La estrella de favoritos va al final de la fila, sólo para quien puede usarla. Si la fila
+    // tiene una acción («Tomar»), la estrella va pegada a ese botón, en la misma celda.
+    const conEstrella = App.auth.puede('favoritos') && !columnasPedidas.includes('favorito');
+    const columnas = conEstrella && !columnasPedidas.includes('accion') ? columnasPedidas.concat('favorito') : columnasPedidas;
+    const estrella = (t) => (conEstrella ? ui.botonFavorito('ticket', t.id, { etiqueta: 'ticket #' + t.numero }) : null);
     const def = {
       favorito: { th: h('span', { class: 'sr-only' }, 'Favorito'), td: (t) => ui.celda('', ui.botonFavorito('ticket', t.id, { etiqueta: 'ticket #' + t.numero }), 'celda-fav sin-label') },
       numero:{ th: 'Nº', td: (t) => ui.celda('Nº', h('span', { class: 'num' }, '#' + t.numero), 'celda-num') },
@@ -74,7 +77,7 @@
       actualizado: { th: 'Actualizado', td: (t) => ui.celda('Actualizado', ui.tiempo(t.actualizadoEn)) },
       creado: { th: 'Creado', td: (t) => ui.celda('Creado', ui.tiempo(t.creadoEn)) },
       cerrado: { th: 'Cerrado', td: (t) => ui.celda('Cerrado', ui.tiempo(t.cerradoEn)) },
-      accion: { th: h('span', { class: 'sr-only' }, 'Acciones'), td: (t) => ui.celda('', o.accion ? o.accion(t) : null, 'derecha sin-label') },
+      accion: { th: h('span', { class: 'sr-only' }, 'Acciones'), td: (t) => ui.celda('', h('div', { class: 'acciones-fila' }, estrella(t), o.accion ? o.accion(t) : null), 'derecha sin-label') },
     };
     const filas = tickets.map((t) => {
       const tr = h('tr', { class: 'clic' }, columnas.map((c) => def[c].td(t)));

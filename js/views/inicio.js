@@ -106,14 +106,14 @@
     // Favoritos: primero los tickets y después las soluciones reutilizables, cada grupo con su tabla.
     const tablaSolucionesFav = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
       h('caption', { class: 'sr-only' }, 'Soluciones reutilizables favoritas'),
-      h('thead', null, h('tr', null, [h('span', { class: 'sr-only' }, 'Favorito'), 'Solución', 'Estado', 'Usos'].map((t) => h('th', { scope: 'col' }, t)))),
+      h('thead', null, h('tr', null, ['Solución', 'Estado', 'Usos', h('span', { class: 'sr-only' }, 'Favorito')].map((t) => h('th', { scope: 'col' }, t)))),
       h('tbody', null, favSoluciones.map((s) => {
         const usos = S.usosDeSolucion(s.id).length;
         const tr = h('tr', { class: 'clic' },
-          ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav sin-label'),
           ui.celda('Solución', h('div', { class: 'titulo-celda' }, h('a', { href: '#/soluciones/' + s.id }, s.titulo), h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
           ui.celda('Estado', ui.badgeSolucion(s.estado)),
-          ui.celda('Usos', usos ? U.plural(usos, 'vez', 'veces') : h('span', { class: 'suave' }, 'Sin usos')));
+          ui.celda('Usos', usos ? U.plural(usos, 'vez', 'veces') : h('span', { class: 'suave' }, 'Sin usos')),
+          ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav derecha sin-label'));
         tr.addEventListener('click', (e) => { if (!e.target.closest('a, button')) App.router.ir('/soluciones/' + s.id); });
         return tr;
       }))));

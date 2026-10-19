@@ -119,7 +119,8 @@
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
     // El formulario se ve desde el principio: el modo siempre tiene un valor.
-    const hojaForm = h('div', { class: 'hoja' }, cardProblema, cardDatos, acciones);
+    // Primero los datos del ticket (localidad, sistema, criticidad) y después el problema.
+    const hojaForm = h('div', { class: 'hoja' }, cardDatos, cardProblema, acciones);
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
       resumen, segModo, hojaForm);
     // Elegir Cerrado o Pendiente no cuenta como un cambio sin guardar.

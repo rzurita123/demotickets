@@ -36,7 +36,6 @@
     const autor = S.usuario(s.creadaPorId);
     const extra = s.palabrasClave.length > 3 ? s.palabrasClave.length - 3 : 0;
     const tr = h('tr', { class: 'clic' },
-      App.auth.puede('favoritos', u) ? ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav sin-label') : null,
       ui.celda('Solución', h('div', { class: 'titulo-celda' },
         h('a', { href: '#/soluciones/' + s.id }, s.titulo),
         h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
@@ -44,7 +43,8 @@
       s.estado === 'APROBADA'
         ? ui.celda('Usos', usos ? U.plural(usos, 'vez', 'veces') : h('span', { class: 'suave' }, 'Sin usos'), 'numero')
         : ui.celda('Propuesta', [autor ? (autor.id === u.id ? 'Vos' : autor.nombre) : '—', h('span', { class: 'sub' }, U.relativo(s.creadaEn))]),
-      ui.celda('Origen', origenTexto(s)));
+      ui.celda('Origen', origenTexto(s)),
+      App.auth.puede('favoritos', u) ? ui.celda('', ui.botonFavorito('solucion', s.id, { etiqueta: s.titulo }), 'celda-fav derecha sin-label') : null);
     tr.addEventListener('click', (e) => { if (!e.target.closest('a, button')) App.router.ir('/soluciones/' + s.id); });
     return tr;
   }
@@ -142,8 +142,8 @@
       resultados.append(h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
         h('caption', { class: 'sr-only' }, 'Soluciones reutilizables'),
         h('thead', null, h('tr', null,
-          App.auth.puede('favoritos', u) ? h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Favorito')) : null,
-          columnas.map((c) => h('th', { scope: 'col', class: c === 'Usos' ? 'numero' : null }, c)))),
+          columnas.map((c) => h('th', { scope: 'col', class: c === 'Usos' ? 'numero' : null }, c)),
+          App.auth.puede('favoritos', u) ? h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Favorito')) : null)),
         h('tbody', null, lista.map((s) => filaSolucion(s, usos.get(s.id) || 0, u))))));
     }
 

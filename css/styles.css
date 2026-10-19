@@ -1066,7 +1066,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .favorito:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
 .favorito[aria-pressed="true"] { color: var(--dorado-texto); }
 .favorito[aria-pressed="true"] .icono svg { fill: var(--dorado); stroke: var(--dorado-texto); }
-.celda-fav { width: 48px; padding-right: 0 !important; }
+.celda-fav { width: 56px; text-align: right; }
 .titulo-favorito { display: flex; align-items: flex-start; gap: 6px; flex: 1 1 420px; min-width: 0; }
 .titulo-favorito h1 { flex: 1 1 auto; min-width: 0; }
 .titulo-favorito .btn-favorito { width: 42px; height: 42px; margin-top: 2px; }
@@ -1088,3 +1088,4 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .editor-texto .img-en-texto:focus, .editor-texto img::selection { outline: 3px solid var(--foco); }
 .img-en-texto-boton { display: inline; padding: 0; border: 0; background: none; cursor: zoom-in; vertical-align: text-top; }
 .img-en-texto-boton:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; border-radius: var(--radio-sm); }
+.acciones-fila { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
