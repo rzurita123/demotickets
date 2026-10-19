@@ -51,13 +51,37 @@
     const desde = Date.now() - 30 * U.DIA;
     const cerrados = tickets.filter((t) => t.estado === 'CERRADO' && new Date(t.cerradoEn).getTime() >= desde)
       .sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
-    const cols = ['numero', 'ticket', 'creador', 'estado', 'actualizado'];
+    const cols = ['numero', 'ticket', 'creador', 'estado', 'duracion', 'actualizado'];
     const lista = (items, vacio, href) => (items.length
       ? [C.tablaTickets(items.slice(0, 12), cols, { caption: 'Tickets de ' + loc }), items.length > 12 ? h('div', { class: 'cola-pie' }, verTodos(href, 'Ver los ' + items.length)) : null]
       : ui.vacio({ icono: 'checkCirculo', titulo: vacio }));
 
+    // Estadísticas mínimas de la localidad: qué hay en curso, cuánto tarda la resolución y de qué sistemas.
+    const hace90 = Date.now() - 90 * U.DIA;
+    const resueltos90 = tickets.filter((t) => t.estado === 'CERRADO' && !t.registroDirecto && new Date(t.cerradoEn).getTime() >= hace90);
+    const promedio = resueltos90.length ? resueltos90.reduce((a, t) => a + S.duracionTicket(t), 0) / resueltos90.length : 0;
+    const masAntiguo = enCurso.slice().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))[0];
+    const ultimos90 = tickets.filter((t) => new Date(t.creadoEn).getTime() >= hace90);
+    const porSistema = Array.from(U.contarPor(ultimos90, (t) => t.sistemaId), ([clave, valor]) => ({ clave, valor, etiqueta: S.nombre('sistemas', clave) }))
+      .sort((a, b) => b.valor - a.valor).slice(0, 6);
+    const resumen = h('section', { class: 'pila', 'aria-labelledby': 'sec-resumen-loc' },
+      h('h2', { id: 'sec-resumen-loc', class: 'titulo-seccion' }, 'Resumen de ' + loc),
+      h('div', { class: 'mosaicos' },
+        C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', detalle: bloqueados.length ? U.plural(bloqueados.length, 'espera tu respuesta', 'esperan tu respuesta') : 'Ninguno espera tu respuesta' }),
+        C.mosaico({ etiqueta: 'Cerrados en 30 días', icono: 'check', valor: cerrados.length, tono: 'verde' }),
+        C.mosaico({ etiqueta: 'Resolución promedio', icono: 'historial', valor: resueltos90.length ? U.duracionCorta(promedio) : '—', detalle: 'Últimos 90 días · ' + U.plural(resueltos90.length, 'ticket', 'tickets') }),
+        C.mosaico({ etiqueta: 'Abierto hace más tiempo', icono: 'bandeja', valor: masAntiguo ? U.duracionCorta(S.duracionTicket(masAntiguo)) : '—', detalle: masAntiguo ? '#' + masAntiguo.numero + ' · ' + U.truncar(masAntiguo.titulo, 34) : 'No hay tickets en curso', href: masAntiguo ? '#/tickets/' + masAntiguo.numero : null })));
+    const graficoSistemas = App.charts.tarjeta({
+      titulo: 'Tickets por sistema',
+      descripcion: 'Últimos 90 días',
+      grafico: App.charts.barras({ titulo: 'Tickets por sistema', datos: porSistema, total: ultimos90.length }),
+      tabla: { columnas: ['Sistema', 'Tickets'], filas: porSistema.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
+      vacio: porSistema.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en los últimos 90 días.'),
+    });
+
     return h('div', { class: 'pila-lg' },
       saludo(u),
+      resumen,
       C.cola({
         id: 'cola-cliente',
         etiqueta: 'Tickets de ' + loc,
@@ -68,7 +92,8 @@
           { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista(bloqueados, 'Ningún ticket espera tu respuesta', '#/tickets?estado=BLOQUEADO') },
           { clave: 'cerrados', texto: 'Cerrados en 30 días', cuenta: cerrados.length, tono: 'verde', contenido: () => lista(cerrados, 'No hay tickets cerrados en los últimos 30 días', '#/tickets?estado=CERRADO') },
         ],
-      }));
+      }),
+      graficoSistemas);
   }
 
   // ------------------------------------------------------------ Operador ---
@@ -120,7 +145,7 @@
     // La cola sólo acepta una lista plana de nodos.
     const contenidoFavoritos = () => (favoritos.length
       ? [].concat(
-        favTickets.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(favTickets, ['numero', 'ticket', 'localidad', 'estado', 'actualizado'], { caption: 'Tickets favoritos' })] : [],
+        favTickets.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(favTickets, ['numero', 'ticket', 'localidad', 'estado', 'duracion', 'actualizado'], { caption: 'Tickets favoritos' })] : [],
         favSoluciones.length ? [h('h3', { class: 'cola-subtitulo' }, 'Soluciones reutilizables'), tablaSolucionesFav()] : [])
       : ui.vacio({ icono: 'estrella', titulo: 'Todavía no tenés favoritos', texto: 'Marcá con la estrella los tickets o las soluciones reutilizables que consultás seguido y van a aparecer acá.' }));
 
@@ -136,7 +161,7 @@
           {
             clave: 'pendientes', texto: 'Pendientes', cuenta: pendientes.length, tono: 'dorado',
             contenido: () => (pendientes.length
-              ? [C.tablaTickets(pendientes.slice(0, 12), ['numero', 'ticket', 'localidad', 'criticidad', 'creado', 'accion'], {
+              ? [C.tablaTickets(pendientes.slice(0, 12), ['numero', 'ticket', 'localidad', 'criticidad', 'duracion', 'accion'], {
                 caption: 'Tickets pendientes: nadie de Mesa de ayuda los tomó',
                 accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
               }), pie(pendientes.length, '#/tickets?estado=ABIERTO')]
@@ -145,7 +170,7 @@
           {
             clave: 'mios', texto: 'Mis tickets', cuenta: mios.length,
             contenido: () => (mios.length
-              ? [C.tablaTickets(mios.slice(0, 12), ['numero', 'ticket', 'localidad', 'estado', 'actualizado'], { caption: 'Mis tickets en curso' }), pie(mios.length, '#/tickets?atiende=' + u.id)]
+              ? [C.tablaTickets(mios.slice(0, 12), ['numero', 'ticket', 'localidad', 'estado', 'duracion', 'actualizado'], { caption: 'Mis tickets en curso' }), pie(mios.length, '#/tickets?atiende=' + u.id)]
               : ui.vacio({ titulo: 'No tenés tickets en curso' })),
           },
           { clave: 'favoritos', texto: 'Favoritos', cuenta: favoritos.length, contenido: contenidoFavoritos },

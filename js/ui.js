@@ -291,6 +291,23 @@
     return b;
   }
 
+  /**
+   * Duración del ticket: en curso, cuánto hace que está abierto (en dorado
+   * desde 1 día y en rojo desde 3 días); cerrado, en cuánto se resolvió.
+   */
+  function duracionTicket(t, op) {
+    const o = op || {};
+    const S = App.store;
+    const ms = S.duracionTicket(t);
+    const nivel = S.nivelDuracion(t);
+    if (nivel === 'cerrado') {
+      if (t.registroDirecto) return h('span', { class: 'duracion cerrado', title: 'Se registró ya resuelto' }, o.largo ? 'Resuelto en la llamada' : 'En la llamada');
+      return h('span', { class: 'duracion cerrado', title: 'Desde que se creó hasta que se cerró' }, (o.largo ? 'Resuelto en ' : '') + U.duracionCorta(ms));
+    }
+    const titulo = 'Abierto hace ' + U.duracionCorta(ms) + ' (desde el ' + U.fechaHora(t.creadoEn) + ')';
+    return h('span', { class: 'duracion', dataset: { nivel }, title: titulo }, icono('reloj', 'i-sm'), (o.largo ? 'Abierto hace ' : '') + U.duracionCorta(ms));
+  }
+
   /** Destacado de un ticket del que surgió una solución aprobada. */
   function badgeOrigenSolucion(sol, enlace) {
     if (!sol) return null;
@@ -610,21 +627,104 @@
     };
   }
 
-  // ----------------------------------------------- Texto con imágenes ---
-
-  const PARTIR_IMAGENES = /\[\[imagen:([A-Za-z0-9_-]+)\]\]/;
-  const MAX_IMAGENES_TEXTO = 12;
+  // ----------------------------------------------- Texto con formato ---
 
   /**
-   * Campo de texto donde las imágenes se pegan (Ctrl+V) o se arrastran y
-   * quedan en el lugar del cursor, como en un procesador de texto (así
-   * funciona el sistema actual de ORMEN). No hay botón de adjuntar.
-   * Devuelve { el, valor() → { texto, adjuntos }, cargar(texto, adjuntos), textoPlano() }.
+   * Formato del texto (descripción, resolución, pasos): se guarda como texto
+   * con marcas, nunca como HTML:
+   *   [b]…[/b] negrita · [i]…[/i] cursiva · [color=#rrggbb]…[/color]
+   *   [resaltado=#rrggbb]…[/resaltado] · [[imagen:<id>]] imagen pegada.
+   * Para mostrarlo se arman los nodos uno por uno (sin innerHTML).
+   */
+  const TOKEN_TEXTO = /\[\[imagen:([A-Za-z0-9_-]+)\]\]|\[(\/?)(b|i|color|resaltado)(?:=(#[0-9a-fA-F]{6}))?\]/g;
+  const MAX_IMAGENES_TEXTO = 12;
+  const COLORES_TEXTO = [
+    { nombre: 'Rojo', valor: '#B42318' },
+    { nombre: 'Azul', valor: '#1D78B4' },
+    { nombre: 'Verde', valor: '#2E6B3A' },
+    { nombre: 'Naranja', valor: '#B4530F' },
+    { nombre: 'Violeta', valor: '#6B3FA0' },
+  ];
+  const COLORES_RESALTADO = [
+    { nombre: 'Amarillo', valor: '#FFF1A6' },
+    { nombre: 'Verde', valor: '#D3F0D8' },
+    { nombre: 'Celeste', valor: '#D3E8F8' },
+    { nombre: 'Rosa', valor: '#F9D6D6' },
+  ];
+
+  function spanFormato(tag, valor) {
+    const s = document.createElement('span');
+    if (tag === 'b') s.style.fontWeight = 'bold';
+    else if (tag === 'i') s.style.fontStyle = 'italic';
+    else if (tag === 'color') s.style.color = valor;
+    else if (tag === 'resaltado') s.style.backgroundColor = valor;
+    s.dataset.formato = tag;
+    return s;
+  }
+
+  /** Arma los nodos de un texto con formato. `imagen(id)` devuelve el nodo de cada imagen. */
+  function nodosConFormato(texto, imagen) {
+    const raiz = document.createDocumentFragment();
+    const pila = [];
+    const actual = () => (pila.length ? pila[pila.length - 1].el : raiz);
+    const s = String(texto || '');
+    let ultimo = 0;
+    TOKEN_TEXTO.lastIndex = 0;
+    let m;
+    while ((m = TOKEN_TEXTO.exec(s))) {
+      if (m.index > ultimo) actual().append(document.createTextNode(s.slice(ultimo, m.index)));
+      ultimo = TOKEN_TEXTO.lastIndex;
+      if (m[1]) {
+        const n = imagen(m[1]);
+        if (n) actual().append(n);
+      } else if (m[2]) {
+        // Cierre: se cierra la marca abierta más cercana de ese tipo (las de adentro también).
+        const i = pila.map((x) => x.tag).lastIndexOf(m[3]);
+        if (i >= 0) pila.length = i;
+      } else if ((m[3] === 'color' || m[3] === 'resaltado') && !m[4]) {
+        // Marca sin color válido: se ignora.
+      } else {
+        const el = spanFormato(m[3], m[4]);
+        actual().append(el);
+        pila.push({ tag: m[3], el });
+      }
+    }
+    if (ultimo < s.length) actual().append(document.createTextNode(s.slice(ultimo)));
+    return raiz;
+  }
+
+  function aHex(color) {
+    const c = String(color || '').trim();
+    if (/^#[0-9a-f]{6}$/i.test(c)) return c.toUpperCase();
+    const m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/i);
+    if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return null;
+    return '#' + [m[1], m[2], m[3]].map((x) => Number(x).toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+
+  /** Marcas de formato que aporta un elemento del editor (negrita, cursiva, colores). */
+  function formatoDe(n) {
+    const st = n.style || {};
+    const marcas = [];
+    if (/^(B|STRONG)$/.test(n.nodeName) || /^(bold|[6-9]00)$/.test(st.fontWeight || '')) marcas.push(['b']);
+    if (/^(I|EM)$/.test(n.nodeName) || st.fontStyle === 'italic') marcas.push(['i']);
+    const color = aHex(n.nodeName === 'FONT' ? n.getAttribute('color') : st.color);
+    if (color) marcas.push(['color', color]);
+    const fondo = aHex(st.backgroundColor);
+    if (fondo) marcas.push(['resaltado', fondo]);
+    return marcas;
+  }
+
+  /**
+   * Campo de texto con formato básico (negrita, cursiva, color de texto y
+   * resaltado) e imágenes: se pegan con Ctrl+V, se arrastran o se adjuntan
+   * con el botón, y quedan en el lugar del cursor, como en un procesador de
+   * texto (así funciona el sistema actual de ORMEN).
+   * Devuelve { el (el campo con su barra), area, valor() → { texto, adjuntos }, cargar(texto, adjuntos), textoPlano(), enfocar() }.
    */
   function editorTexto(op) {
     const o = op || {};
     const imagenes = new Map();
-    const el = h('div', {
+    const area = h('div', {
       id: o.id, class: 'control editor-texto', contenteditable: 'true', role: 'textbox', 'aria-multiline': 'true',
       'aria-label': o.etiqueta || null, 'data-placeholder': o.placeholder || '', spellcheck: 'true',
       style: '--filas:' + (o.filas || 5),
@@ -632,8 +732,8 @@
 
     function avisar() {
       // Un editor vaciado deja un <br>: se limpia para que se vea el texto de ejemplo.
-      if (!el.textContent.trim() && !el.querySelector('img')) U.vaciar(el);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (!area.textContent.trim() && !area.querySelector('img')) U.vaciar(area);
+      area.dispatchEvent(new Event('input', { bubbles: true }));
       if (o.alCambiar) o.alCambiar();
     }
 
@@ -643,18 +743,13 @@
     }
 
     function cargar(texto, adjuntos) {
-      U.vaciar(el);
+      U.vaciar(area);
       imagenes.clear();
       const porId = new Map((adjuntos || []).map((a) => [a.id, a]));
-      const partes = String(texto || '').split(PARTIR_IMAGENES);
-      partes.forEach((p, i) => {
-        if (i % 2 === 0) { if (p) el.append(document.createTextNode(p)); return; }
-        const a = porId.get(p);
-        if (a) el.append(nodoImagen(a));
-      });
+      area.append(nodosConFormato(texto, (id) => (porId.has(id) ? nodoImagen(porId.get(id)) : null)));
       // Las imágenes guardadas sin lugar en el texto (datos anteriores) van al final.
       const usados = new Set(U.idsImagenes(texto));
-      (adjuntos || []).filter((a) => a.id && !usados.has(a.id)).forEach((a) => el.append(document.createTextNode('\n'), nodoImagen(a)));
+      (adjuntos || []).filter((a) => a.id && !usados.has(a.id)).forEach((a) => area.append(document.createTextNode('\n'), nodoImagen(a)));
     }
 
     function serializar(nodo) {
@@ -665,27 +760,38 @@
         else if (n.nodeName === 'IMG') { if (n.dataset.id && imagenes.has(n.dataset.id)) s += U.marcaImagen(n.dataset.id); }
         else if (n.nodeType === 1) {
           if (/^(DIV|P|LI|H\d)$/.test(n.nodeName) && s && !s.endsWith('\n')) s += '\n';
-          s += serializar(n);
+          const interior = serializar(n);
+          const marcas = interior ? formatoDe(n) : [];
+          s += marcas.map(([t, v]) => '[' + t + (v ? '=' + v : '') + ']').join('') + interior + marcas.slice().reverse().map(([t]) => '[/' + t + ']').join('');
         }
       });
       return s;
     }
 
     function valor() {
-      const texto = serializar(el).replace(/ /g, ' ').replace(/\s+$/, '');
+      const texto = serializar(area).replace(/ /g, ' ').replace(/\s+$/, '');
       const adjuntos = U.idsImagenes(texto).map((id) => imagenes.get(id)).filter(Boolean).map((a) => Object.assign({}, a));
       return { texto, adjuntos };
     }
 
     // Selección guardada: leer una imagen es asíncrono y el cursor puede moverse.
+    let ultimoRango = null;
     function rangoActual() {
       const sel = window.getSelection();
-      if (sel && sel.rangeCount && el.contains(sel.getRangeAt(0).commonAncestorContainer)) return sel.getRangeAt(0).cloneRange();
+      if (sel && sel.rangeCount && area.contains(sel.getRangeAt(0).commonAncestorContainer)) return sel.getRangeAt(0).cloneRange();
+      if (ultimoRango && area.contains(ultimoRango.commonAncestorContainer)) return ultimoRango.cloneRange();
       const r = document.createRange();
-      r.selectNodeContents(el);
+      r.selectNodeContents(area);
       r.collapse(false);
       return r;
     }
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && area.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        ultimoRango = sel.getRangeAt(0).cloneRange();
+        pintarEstado();
+      }
+    });
 
     function insertarEn(rango, nodos) {
       rango.deleteContents();
@@ -698,7 +804,7 @@
     async function agregarImagenes(archivos, rango) {
       const lista = Array.from(archivos).filter((f) => /^image\//.test(f.type));
       for (const f of lista) {
-        if (el.querySelectorAll('img').length >= MAX_IMAGENES_TEXTO) { toast('Podés pegar hasta ' + MAX_IMAGENES_TEXTO + ' imágenes en un mismo texto.', { tipo: 'aviso' }); break; }
+        if (area.querySelectorAll('img').length >= MAX_IMAGENES_TEXTO) { toast('Podés agregar hasta ' + MAX_IMAGENES_TEXTO + ' imágenes en un mismo texto.', { tipo: 'aviso' }); break; }
         try {
           const dataUrl = await procesarImagen(f);
           insertarEn(rango, [nodoImagen({ id: U.uid('img'), nombre: nombreArchivo(f), dataUrl })]);
@@ -709,7 +815,60 @@
       avisar();
     }
 
-    el.addEventListener('paste', (e) => {
+    // ---- Barra de formato ----
+    function aplicar(comando, valorCmd) {
+      area.focus();
+      const sel = window.getSelection();
+      if (ultimoRango && sel && (!sel.rangeCount || !area.contains(sel.getRangeAt(0).commonAncestorContainer))) {
+        sel.removeAllRanges();
+        sel.addRange(ultimoRango);
+      }
+      document.execCommand('styleWithCSS', false, true);
+      if (comando === 'hiliteColor' && !document.execCommand('hiliteColor', false, valorCmd)) document.execCommand('backColor', false, valorCmd);
+      else if (comando !== 'hiliteColor') document.execCommand(comando, false, valorCmd);
+      pintarEstado();
+      avisar();
+    }
+    // Los botones no se llevan el foco: así no se pierde la selección del texto.
+    const sinFoco = (e) => e.preventDefault();
+    function botonBarra(icono_, titulo, fn, extra) {
+      return h('button', Object.assign({ type: 'button', class: 'editor-boton', title: titulo, 'aria-label': titulo, onMousedown: sinFoco, onClick: fn }, extra || {}), icono_);
+    }
+    const btnNegrita = botonBarra(h('b', null, 'N'), 'Negrita (Ctrl+B)', () => aplicar('bold'), { 'aria-pressed': 'false' });
+    const btnCursiva = botonBarra(h('i', null, 'K'), 'Cursiva (Ctrl+I)', () => aplicar('italic'), { 'aria-pressed': 'false' });
+    function pintarEstado() {
+      try {
+        btnNegrita.setAttribute('aria-pressed', String(document.queryCommandState('bold')));
+        btnCursiva.setAttribute('aria-pressed', String(document.queryCommandState('italic')));
+      } catch { /* sin estado disponible */ }
+    }
+
+    function menuColores(titulo, muestra, colores, comando, textoQuitar) {
+      const panel = h('div', { class: 'editor-colores', role: 'group', 'aria-label': titulo, hidden: true },
+        colores.map((c) => h('button', {
+          type: 'button', class: 'editor-muestra', title: c.nombre, 'aria-label': titulo + ': ' + c.nombre, style: '--muestra:' + c.valor,
+          onMousedown: sinFoco, onClick: () => { panel.hidden = true; aplicar(comando, c.valor); },
+        })),
+        h('button', { type: 'button', class: 'editor-quitar', onMousedown: sinFoco, onClick: () => { panel.hidden = true; aplicar(comando, comando === 'foreColor' ? '#1C3A5A' : 'transparent'); } }, textoQuitar));
+      const boton = botonBarra(muestra, titulo, () => { panel.hidden = !panel.hidden; }, { 'aria-haspopup': 'true' });
+      document.addEventListener('mousedown', (e) => { if (!panel.hidden && !panel.contains(e.target) && e.target !== boton && !boton.contains(e.target)) panel.hidden = true; });
+      return h('span', { class: 'editor-menu' }, boton, panel);
+    }
+
+    const inputArchivo = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'sr-only', tabindex: '-1', 'aria-hidden': 'true' });
+    inputArchivo.addEventListener('change', () => { const r = rangoActual(); agregarImagenes(inputArchivo.files, r); inputArchivo.value = ''; });
+
+    const barra = h('div', { class: 'editor-barra', role: 'toolbar', 'aria-label': 'Formato' + (o.etiqueta ? ' de ' + o.etiqueta.toLowerCase() : '') },
+      btnNegrita, btnCursiva,
+      h('span', { class: 'editor-sep', 'aria-hidden': 'true' }),
+      menuColores('Color del texto', h('span', { class: 'editor-a' }, 'A'), COLORES_TEXTO, 'foreColor', 'Color normal'),
+      menuColores('Resaltado', icono('editar', 'i-sm'), COLORES_RESALTADO, 'hiliteColor', 'Sin resaltado'),
+      botonBarra(icono('x', 'i-sm'), 'Quitar formato', () => aplicar('removeFormat')),
+      h('span', { class: 'editor-sep', 'aria-hidden': 'true' }),
+      h('button', { type: 'button', class: 'editor-boton editor-adjuntar', onMousedown: sinFoco, onClick: () => inputArchivo.click() }, icono('clip', 'i-sm'), 'Adjuntar imagen'),
+      inputArchivo);
+
+    area.addEventListener('paste', (e) => {
       const cd = e.clipboardData;
       if (!cd) return;
       e.preventDefault();
@@ -719,11 +878,11 @@
       const texto = cd.getData('text/plain');
       if (texto) { document.execCommand('insertText', false, texto); avisar(); }
     });
-    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('arrastrando'); });
-    el.addEventListener('dragleave', () => el.classList.remove('arrastrando'));
-    el.addEventListener('drop', (e) => {
+    area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('arrastrando'); });
+    area.addEventListener('dragleave', () => area.classList.remove('arrastrando'));
+    area.addEventListener('drop', (e) => {
       e.preventDefault();
-      el.classList.remove('arrastrando');
+      area.classList.remove('arrastrando');
       const dt = e.dataTransfer;
       let rango = null;
       if (document.caretRangeFromPoint) rango = document.caretRangeFromPoint(e.clientX, e.clientY);
@@ -731,34 +890,34 @@
         const p = document.caretPositionFromPoint(e.clientX, e.clientY);
         if (p) { rango = document.createRange(); rango.setStart(p.offsetNode, p.offset); rango.collapse(true); }
       }
-      if (!rango || !el.contains(rango.commonAncestorContainer)) rango = rangoActual();
+      if (!rango || !area.contains(rango.commonAncestorContainer)) rango = rangoActual();
       if (dt.files && dt.files.length) { agregarImagenes(dt.files, rango); return; }
       const texto = dt.getData('text/plain');
       if (texto) { insertarEn(rango, [document.createTextNode(texto)]); avisar(); }
     });
-    // Enter agrega un salto de línea simple (sin bloques con formato).
-    el.addEventListener('keydown', (e) => {
+    area.addEventListener('keydown', (e) => {
+      // Enter agrega un salto de línea simple (sin bloques).
       if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); document.execCommand('insertLineBreak'); avisar(); }
     });
-    el.addEventListener('input', (e) => { if (e.isTrusted && o.alCambiar) o.alCambiar(); });
-    // La etiqueta del campo enfoca el editor (un <label for> no lo hace con un div).
-    el.addEventListener('focus', () => el.classList.add('con-foco'));
-    el.addEventListener('blur', () => el.classList.remove('con-foco'));
+    area.addEventListener('focus', () => { try { document.execCommand('styleWithCSS', false, true); } catch { /* navegador sin soporte */ } });
+    area.addEventListener('input', (e) => { if (e.isTrusted && o.alCambiar) o.alCambiar(); });
 
     cargar(o.valor || '', o.adjuntos || []);
+    const el = h('div', { class: 'editor' }, barra, area);
     return {
       el,
+      area,
       valor,
       cargar,
       textoPlano: () => U.textoPlano(valor().texto),
-      enfocar: () => el.focus(),
+      enfocar: () => area.focus(),
     };
   }
 
   /**
-   * Muestra un texto con sus imágenes en el lugar donde se pegaron. Las
-   * imágenes que no tienen lugar en el texto (datos anteriores) quedan como
-   * miniaturas al final.
+   * Muestra un texto con su formato y sus imágenes en el lugar donde se
+   * pegaron. Las imágenes sin lugar en el texto (datos anteriores) quedan
+   * como miniaturas al final.
    */
   function textoConImagenes(texto, adjuntos, op) {
     const o = op || {};
@@ -766,14 +925,13 @@
     const porId = new Map(lista.map((a) => [a.id, a]));
     const usados = new Set();
     const cont = h('div', { class: o.clase || 'bloque-texto' });
-    String(texto || '').split(PARTIR_IMAGENES).forEach((p, i) => {
-      if (i % 2 === 0) { if (p) cont.append(document.createTextNode(p)); return; }
-      const a = porId.get(p);
-      if (!a) return;
+    cont.append(nodosConFormato(texto, (id) => {
+      const a = porId.get(id);
+      if (!a) return null;
       usados.add(a.id);
-      cont.append(h('button', { type: 'button', class: 'img-en-texto-boton', 'aria-label': 'Ver ' + (a.nombre || 'imagen') + ' en grande', onClick: () => lightbox(lista, lista.indexOf(a)) },
-        h('img', { src: a.dataUrl, alt: a.nombre || 'Imagen', class: 'img-en-texto', loading: 'lazy' })));
-    });
+      return h('button', { type: 'button', class: 'img-en-texto-boton', 'aria-label': 'Ver ' + (a.nombre || 'imagen') + ' en grande', onClick: () => lightbox(lista, lista.indexOf(a)) },
+        h('img', { src: a.dataUrl, alt: a.nombre || 'Imagen', class: 'img-en-texto', loading: 'lazy' }));
+    }));
     const sueltas = lista.filter((a) => !usados.has(a.id));
     return [cont, galeria(sueltas, o)];
   }
@@ -912,7 +1070,7 @@
 
   App.ui = {
     ICONOS, icono, toast, mostrarError, modal, cerrarModales, confirmar,
-    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion, botonFavorito,
+    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion, botonFavorito, duracionTicket,
     pendiente, avisoPendiente, aviso, nombreRol, avatar, vacio, tiempo, cabecera,
     campo, grupo, select, segmentado, valorRadio, limpiarErrores, mostrarErrores, entradaPalabras,
     selectorImagenes, galeria, lightbox, editorTexto, textoConImagenes,

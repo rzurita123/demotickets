@@ -172,7 +172,7 @@
       pintarBasadaEn();
       marcar();
       inDesc.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      inDesc.focus({ preventScroll: true });
+      editorDesc.area.focus({ preventScroll: true });
     }
 
     function cambiarModo(v) {

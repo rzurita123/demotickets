@@ -268,10 +268,58 @@
       return h('div', { class: 'mosaicos', 'aria-live': 'polite' }, lista);
     }
 
+    /**
+     * Tiempos de atención del filtro: cuánto tarda la resolución (sin contar
+     * los registrados ya resueltos en la llamada) y cuánto llevan abiertos
+     * los tickets en curso.
+     */
+    function tiempos(filtrados) {
+      const resueltos = filtrados.filter((t) => t.estado === 'CERRADO' && !t.registroDirecto);
+      const ms = resueltos.map((t) => S.duracionTicket(t)).sort((a, b) => a - b);
+      const promedio = ms.length ? ms.reduce((a, b) => a + b, 0) / ms.length : 0;
+      const mediana = ms.length ? (ms.length % 2 ? ms[(ms.length - 1) / 2] : (ms[ms.length / 2 - 1] + ms[ms.length / 2]) / 2) : 0;
+      const enCurso = filtrados.filter((t) => D.ESTADOS_ACTIVOS.includes(t.estado));
+      const demorados = enCurso.filter((t) => S.duracionTicket(t) >= S.UMBRALES_DURACION.critico);
+      const masAntiguo = enCurso.slice().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))[0];
+
+      // Promedio de resolución por sistema, en horas.
+      const porSis = new Map();
+      resueltos.forEach((t) => { const x = porSis.get(t.sistemaId) || { suma: 0, n: 0 }; x.suma += S.duracionTicket(t); x.n++; porSis.set(t.sistemaId, x); });
+      const datosSis = Array.from(porSis, ([clave, x]) => ({ clave, etiqueta: S.nombre('sistemas', clave), valor: Math.round(x.suma / x.n / U.HORA), n: x.n }))
+        .sort((a, b) => b.valor - a.valor);
+
+      // Antigüedad de los tickets en curso.
+      const TRAMOS = [['menos-1', 'Menos de 1 día', 0, U.DIA], ['1-3', '1 a 3 días', U.DIA, 3 * U.DIA], ['3-7', '3 a 7 días', 3 * U.DIA, 7 * U.DIA], ['mas-7', 'Más de 7 días', 7 * U.DIA, Infinity]];
+      const datosAntig = TRAMOS.map(([clave, etiqueta, desde, hasta]) => ({ clave, etiqueta, valor: enCurso.filter((t) => { const d = S.duracionTicket(t); return d >= desde && d < hasta; }).length }));
+
+      return h('section', { class: 'pila', 'aria-labelledby': 'sec-tiempos' },
+        h('h2', { id: 'sec-tiempos', class: 'titulo-seccion' }, 'Tiempos de atención'),
+        h('div', { class: 'mosaicos' },
+          C.mosaico({ etiqueta: 'Resolución promedio', icono: 'historial', valor: ms.length ? U.duracionCorta(promedio) : '—', detalle: U.plural(ms.length, 'ticket resuelto', 'tickets resueltos') + ' (sin los registrados ya resueltos)' }),
+          C.mosaico({ etiqueta: 'Resolución mediana', icono: 'historial', valor: ms.length ? U.duracionCorta(mediana) : '—', detalle: 'La mitad se resolvió en menos de eso' }),
+          C.mosaico({ etiqueta: 'En curso hace más de 3 días', icono: 'alerta', valor: demorados.length, tono: demorados.length ? 'rojo' : null, detalle: 'de ' + U.plural(enCurso.length, 'ticket en curso', 'tickets en curso') }),
+          C.mosaico({ etiqueta: 'Abierto hace más tiempo', icono: 'reloj', valor: masAntiguo ? U.duracionCorta(S.duracionTicket(masAntiguo)) : '—', detalle: masAntiguo ? '#' + masAntiguo.numero + ' · ' + S.nombre('localidades', masAntiguo.localidadId) : 'No hay tickets en curso', href: masAntiguo ? '#/tickets/' + masAntiguo.numero : null })),
+        h('div', { class: 'grid-graficos' },
+          App.charts.tarjeta({
+            titulo: 'Resolución promedio por sistema',
+            descripcion: 'En horas, desde que se crea hasta que se cierra',
+            grafico: App.charts.barras({ titulo: 'Resolución promedio por sistema', datos: datosSis, total: 0, unidad: ['hora', 'horas'], seleccion: q.sis || null, alSeleccionar: (v) => cambiar('sis', v) }),
+            tabla: { columnas: ['Sistema', 'Promedio', 'Tickets resueltos'], filas: datosSis.map((d) => [d.etiqueta, U.duracionCorta(d.valor * U.HORA), U.formatoNumero(d.n)]) },
+            vacio: datosSis.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets resueltos con estos filtros.'),
+          }),
+          App.charts.tarjeta({
+            titulo: 'Antigüedad de los tickets en curso',
+            descripcion: 'Cuánto hace que están abiertos',
+            grafico: App.charts.barras({ titulo: 'Antigüedad de los tickets en curso', datos: datosAntig, total: enCurso.length }),
+            tabla: { columnas: ['Antigüedad', 'Tickets'], filas: datosAntig.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
+            vacio: enCurso.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en curso con estos filtros.'),
+          })));
+    }
+
     function tarjetaDetalle(filtrados) {
       const lista = filtrados.slice().sort(C.ORDENES.recientes.fn);
       const cont = h('div');
-      const cols = ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'creado'];
+      const cols = ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'duracion', 'creado'];
       const idTitulo = 'sec-detalle';
       function pintarTabla() {
         U.vaciar(cont);
@@ -361,6 +409,8 @@
 
       U.vaciar(cuerpo).append(
         indicadores(filtrados),
+        tiempos(filtrados),
+        h('h2', { class: 'titulo-seccion' }, 'Volumen y clasificación'),
         h('div', { class: 'grid-graficos' }, tarjetaFecha(enPeriodo), tarjetas),
         tarjetaDetalle(filtrados));
       restaurarFoco(foco);

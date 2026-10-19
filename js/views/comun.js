@@ -76,6 +76,7 @@
       atiende: { th: 'Atiende', td: (t) => ui.celda('Atiende', atiende(t)) },
       actualizado: { th: 'Actualizado', td: (t) => ui.celda('Actualizado', ui.tiempo(t.actualizadoEn)) },
       creado: { th: 'Creado', td: (t) => ui.celda('Creado', ui.tiempo(t.creadoEn)) },
+      duracion: { th: 'Duración', td: (t) => ui.celda('Duración', ui.duracionTicket(t)) },
       cerrado: { th: 'Cerrado', td: (t) => ui.celda('Cerrado', ui.tiempo(t.cerradoEn)) },
       accion: { th: h('span', { class: 'sr-only' }, 'Acciones'), td: (t) => ui.celda('', h('div', { class: 'acciones-fila' }, estrella(t), o.accion ? o.accion(t) : null), 'derecha sin-label') },
     };
@@ -97,7 +98,7 @@
   function mosaico(op) {
     return h(op.href ? 'a' : 'div', { class: 'mosaico', href: op.href || null, dataset: op.tono ? { tono: op.tono } : null },
       h('span', { class: 'etiqueta' }, op.icono && App.ui.icono(op.icono, 'i-sm'), op.etiqueta),
-      h('span', { class: 'valor' }, U.formatoNumero(op.valor)),
+      h('span', { class: 'valor' }, typeof op.valor === 'number' ? U.formatoNumero(op.valor) : op.valor),
       op.detalle && h('span', { class: 'detalle' }, op.detalle));
   }
 

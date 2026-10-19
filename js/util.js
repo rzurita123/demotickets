@@ -79,10 +79,12 @@
    */
   const MARCA_IMAGEN = /\[\[imagen:([A-Za-z0-9_-]+)\]\]/g;
   const marcaImagen = (id) => '[[imagen:' + id + ']]';
+  /** Marcas de formato: [b], [i], [color=#rrggbb], [resaltado=#rrggbb] y sus cierres. */
+  const MARCA_FORMATO = /\[\/?(?:b|i|color|resaltado)(?:=#[0-9a-fA-F]{6})?\]/g;
 
   /** El texto sin las marcas de imagen (para buscar, resumir o comparar). */
   function textoPlano(texto) {
-    return String(texto || '').replace(MARCA_IMAGEN, ' ').replace(/[ \t]{2,}/g, ' ');
+    return String(texto || '').replace(MARCA_IMAGEN, ' ').replace(MARCA_FORMATO, '').replace(/[ \t]{2,}/g, ' ');
   }
 
   /** Ids de las imágenes que aparecen en el texto, en orden. */
@@ -178,6 +180,16 @@
     return d + (d === 1 ? ' día' : ' días');
   }
 
+  /** Duración compacta para tablas: "35 min", "4 h 10 min", "2 d 5 h", "12 días". */
+  function duracionCorta(ms) {
+    const v = Math.max(0, ms || 0);
+    if (v < DIA) return duracion(Math.max(v, MIN));
+    const d = Math.floor(v / DIA);
+    if (d >= 7) return d + ' días';
+    const hs = Math.floor((v - d * DIA) / HORA);
+    return d + ' d' + (hs ? ' ' + hs + ' h' : '');
+  }
+
   /** Clave de mes "2026-10" (hora local). */
   function claveMes(v) {
     const d = aFecha(v);
@@ -265,7 +277,7 @@
   App.util = {
     h, s, agregar, vaciar, $, $$,
     normalizar, textoPlano, idsImagenes, marcaImagen, iniciales, plural, truncar, capitalizar, formatoNumero, porcentaje,
-    MIN, HORA, DIA, fecha, hora, fechaHora, mesCorto, mesLargo, diaMes, relativo, duracion,
+    MIN, HORA, DIA, fecha, hora, fechaHora, mesCorto, mesLargo, diaMes, relativo, duracion, duracionCorta,
     inicioDelDia, claveMes, claveDia, isoAhora,
     uid, prng, contarPor, agruparPor, copiar, debounce, parseQuery, buildQuery,
   };

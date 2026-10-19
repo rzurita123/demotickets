@@ -1089,3 +1089,36 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .img-en-texto-boton { display: inline; padding: 0; border: 0; background: none; cursor: zoom-in; vertical-align: text-top; }
 .img-en-texto-boton:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; border-radius: var(--radio-sm); }
 .acciones-fila { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
+/* Barra de formato del campo de texto */
+.editor { display: flex; flex-direction: column; min-width: 0; }
+.editor-barra {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 6px;
+  border: 1px solid var(--borde-control); border-bottom: 0; border-radius: var(--radio-sm) var(--radio-sm) 0 0; background: var(--superficie-2);
+}
+.editor .editor-texto { border-top-left-radius: 0; border-top-right-radius: 0; }
+.editor-boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 32px; height: 32px; padding: 0 8px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--tinta); font: 600 15px var(--fuente); cursor: pointer;
+}
+.editor-boton:hover { background: var(--gris-claro); }
+.editor-boton[aria-pressed="true"] { background: var(--azul-claro); color: var(--azul-texto); }
+.editor-boton:focus-visible, .editor-muestra:focus-visible, .editor-quitar:focus-visible { outline: 3px solid var(--foco); outline-offset: 1px; }
+.editor-boton b { font-weight: 800; }
+.editor-a { font-weight: 800; text-decoration: underline; text-decoration-color: #B42318; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+.editor-sep { width: 1px; height: 20px; background: var(--borde); margin: 0 6px; }
+.editor-adjuntar { margin-left: auto; font-size: 14px; color: var(--azul-texto); }
+.editor-menu { position: relative; display: inline-flex; }
+.editor-colores {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; width: 176px;
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-sm); box-shadow: var(--sombra-media);
+}
+.editor-colores[hidden] { display: none; }
+.editor-muestra { width: 26px; height: 26px; border-radius: 999px; border: 1px solid rgba(28, 58, 90, .2); background: var(--muestra); cursor: pointer; }
+.editor-quitar { flex-basis: 100%; border: 0; background: none; padding: 2px 0; text-align: left; font-size: 13px; color: var(--azul-texto); cursor: pointer; }
+/* Títulos de sección dentro de una pantalla (resumen de la localidad, tiempos de atención) */
+.titulo-seccion { font-size: 19px; color: var(--tinta); }
+/* Duración de un ticket: en curso pasa a dorado al día y a rojo a los 3 días */
+.duracion { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--texto); }
+.duracion[data-nivel="atencion"] { color: var(--dorado-oscuro); font-weight: 600; }
+.duracion[data-nivel="critico"] { color: var(--rojo); font-weight: 700; }
+.duracion.cerrado { color: var(--texto-suave); }

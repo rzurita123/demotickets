@@ -114,7 +114,7 @@
           ui.botonFavorito('ticket', t.id, { etiqueta: 'ticket #' + t.numero })),
         flujoEstado(t.estado)),
       h('dl', { class: 'meta-ticket' },
-        [['Localidad', loc], ['Atiende', textoAtiende], ['Creado por', creador ? creador.nombre : '—'], ['Creado', U.fechaHora(t.creadoEn)]]
+        [['Localidad', loc], ['Atiende', textoAtiende], ['Creado por', creador ? creador.nombre : '—'], ['Creado', U.fechaHora(t.creadoEn)], ['Duración', ui.duracionTicket(t, { largo: true })]]
           .map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, v)))));
 
     // --------------------------------------------------------- Descripción ---
@@ -381,7 +381,7 @@
           editor.cargar(s.texto, s.adjuntos);
           catId = s.tipo === 'catalogo' ? s.id : s.solucionCatalogoId || null;
           pintarBasada();
-          texto.focus();
+          editor.enfocar();
         } }, s.tipo === 'catalogo' ? ui.icono('libro', 'i-sm') : ui.icono('ticket', 'i-sm'), U.truncar(s.titulo, 48))))) : null;
       const cuerpo = h('form', { class: 'pila', novalidate: true },
         opcionesSug,

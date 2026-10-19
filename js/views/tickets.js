@@ -147,8 +147,8 @@
         return;
       }
       const cols = esCliente
-        ? ['numero', 'ticket', 'creador', 'estado', 'criticidad', 'actualizado']
-        : ['numero', 'ticket', 'localidad', 'estado', 'criticidad', 'atiende', 'actualizado'];
+        ? ['numero', 'ticket', 'creador', 'estado', 'criticidad', 'duracion', 'actualizado']
+        : ['numero', 'ticket', 'localidad', 'estado', 'criticidad', 'atiende', 'duracion', 'actualizado'];
       resultados.append(
         C.tablaTickets(pag, cols, { caption: 'Tickets' }),
         ui.paginador({ total: lista.length, pagina, porPagina: POR_PAGINA, alCambiar: (p) => { cambiar('p', String(p)); document.getElementById('titulo-pagina').scrollIntoView({ block: 'start' }); } }));

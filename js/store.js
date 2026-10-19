@@ -973,6 +973,23 @@
 
   // ------------------------------------------- Del ticket a la solución ---
 
+  /**
+   * Duración de un ticket: desde que se creó hasta que se cerró o, si sigue
+   * en curso, hasta ahora. Los umbrales marcan los que llevan mucho abiertos.
+   */
+  const UMBRALES_DURACION = { atencion: U.DIA, critico: 3 * U.DIA };
+
+  function duracionTicket(t) {
+    const fin = t.estado === 'CERRADO' && t.cerradoEn ? new Date(t.cerradoEn).getTime() : Date.now();
+    return Math.max(0, fin - new Date(t.creadoEn).getTime());
+  }
+
+  function nivelDuracion(t) {
+    if (t.estado === 'CERRADO') return 'cerrado';
+    const ms = duracionTicket(t);
+    return ms >= UMBRALES_DURACION.critico ? 'critico' : ms >= UMBRALES_DURACION.atencion ? 'atencion' : 'ok';
+  }
+
   /** Imágenes de la resolución: si se registró ya resuelto, son las de la descripción. */
   function adjuntosSolucion(t) {
     if (!t || !t.solucion) return [];
@@ -1342,7 +1359,7 @@
     actividadVisible, imagenesVisibles, correosPara,
     grupoSoporte, nombreDestino, recorrido, nombreResponsable,
     soluciones, usosDeSolucion, contarUsos, propuestaDeTicket, solucionOriginadaPor,
-    esFavorito, favoritosDe, alternarFavorito, adjuntosSolucion,
+    esFavorito, favoritosDe, alternarFavorito, adjuntosSolucion, duracionTicket, nivelDuracion, UMBRALES_DURACION,
     validarTicket, normalizarPalabras,
     // tickets
     crearTicket, guardarBorrador, descartarBorrador,
