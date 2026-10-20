@@ -53,6 +53,7 @@
     DATOS: 'Modificación de datos del ticket',
     CIERRE: 'Cierre de ticket con resolución',
     REAPERTURA: 'Reapertura de ticket',
+    PRIVACIDAD: 'Cambio de privacidad del ticket',
     SOLUCION_PROPUESTA: 'Solución reutilizable propuesta',
     SOLUCION_CREADA: 'Solución reutilizable cargada',
     SOLUCION_EDITADA: 'Solución reutilizable modificada',

@@ -42,6 +42,7 @@
     const u = App.auth.usuarioActual();
     const sol = u && u.rol !== 'CLIENTE' ? S.solucionOriginadaPor(t) : null;
     return [
+      t.privado ? [' · ', h('span', { class: 'marca-fila priv', title: 'Sólo lo ve ORMEN' }, ui.icono('candado', 'i-sm'), 'Privado')] : null,
       t.elevadoA ? [' · ', h('span', { class: 'marca-fila elev', title: 'Elevado a ' + S.nombreDestino(t.elevadoA) }, ui.icono('elevar', 'i-sm'), 'Elevado a ' + S.nombreDestino(t.elevadoA))] : null,
       sol ? [' · ', h('span', { class: 'marca-fila sol', title: '«' + sol.titulo + '»' }, ui.icono('libro', 'i-sm'), 'Originó una solución reutilizable')] : null,
     ];
@@ -81,7 +82,7 @@
       accion: { th: h('span', { class: 'sr-only' }, 'Acciones'), td: (t) => ui.celda('', h('div', { class: 'acciones-fila' }, estrella(t), o.accion ? o.accion(t) : null), 'derecha sin-label') },
     };
     const filas = tickets.map((t) => {
-      const tr = h('tr', { class: 'clic' }, columnas.map((c) => def[c].td(t)));
+      const tr = h('tr', { class: ['clic', t.privado && 'fila-privada'] }, columnas.map((c) => def[c].td(t)));
       tr.addEventListener('click', (e) => {
         if (e.target.closest('a, button')) return;
         App.router.ir('/tickets/' + t.numero);

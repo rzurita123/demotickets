@@ -85,8 +85,21 @@
     if (selPara) selPara.addEventListener('change', () => cambiar('para', selPara.value));
     pintar();
 
+    // Aviso de que esta pantalla es sólo de la demo. Se puede cerrar y queda cerrado en este navegador.
+    const CLAVE_AVISO = 'ormen-tickets-demo:aviso-correos-cerrado';
+    let avisoCerrado = false;
+    try { avisoCerrado = localStorage.getItem(CLAVE_AVISO) === '1'; } catch { /* sin almacenamiento: se muestra */ }
+    const avisoDemo = avisoCerrado ? null : h('div', { class: 'aviso amarillo', role: 'note' },
+      ui.icono('info'),
+      h('div', { class: 'crecer' }, 'Esta sección no existiría en el producto final, hoy existe para simular los mails que el usuario recibiría en su casilla de correo con el uso del portal.'),
+      h('button', { type: 'button', class: 'aviso-cerrar', 'aria-label': 'Cerrar este aviso', onClick: (e) => {
+        try { localStorage.setItem(CLAVE_AVISO, '1'); } catch { /* se cierra sólo por ahora */ }
+        e.currentTarget.closest('.aviso').remove();
+      } }, ui.icono('x', 'i-sm')));
+
     ctx.titulo(esCliente ? 'Mis avisos por correo' : 'Correos simulados');
     return h('div', { class: 'pila' },
+      avisoDemo,
       ui.cabecera({ titulo: esCliente ? 'Mis avisos por correo' : 'Correos simulados' }),
       h('section', { class: 'card compacta', 'aria-label': 'Filtros' },
         h('div', { class: 'filtros', role: 'search', 'aria-label': 'Filtros de correos', style: 'margin-bottom: 0' },

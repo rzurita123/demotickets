@@ -308,6 +308,17 @@
     return h('span', { class: 'duracion', dataset: { nivel }, title: titulo }, icono('reloj', 'i-sm'), (o.largo ? 'Abierto hace ' : '') + U.duracionCorta(ms));
   }
 
+  /** Marca de lo privado (sólo lo ve ORMEN): misma etiqueta y color en todas las pantallas. */
+  function badgePrivado(texto) {
+    return h('span', { class: 'badge privado', title: 'Sólo lo ven Mesa de ayuda y administración. La localidad no se entera.' }, icono('candado', 'i-sm'), texto || 'Privado');
+  }
+
+  /** Texto privado dentro de la actividad (motivos, notas), resaltado y con la etiqueta «Privado». */
+  function notaPrivada(etiqueta, texto) {
+    if (!texto) return null;
+    return h('span', { class: 'nota-privada' }, badgePrivado(), h('span', null, etiqueta + ': «' + texto + '»'));
+  }
+
   /** Destacado de un ticket del que surgió una solución aprobada. */
   function badgeOrigenSolucion(sol, enlace) {
     if (!sol) return null;
@@ -639,6 +650,7 @@
   const TOKEN_TEXTO = /\[\[imagen:([A-Za-z0-9_-]+)\]\]|\[(\/?)(b|i|color|resaltado)(?:=(#[0-9a-fA-F]{6}))?\]/g;
   const MAX_IMAGENES_TEXTO = 12;
   const COLORES_TEXTO = [
+    { nombre: 'Negro', valor: '#000000' },
     { nombre: 'Rojo', valor: '#B42318' },
     { nombre: 'Azul', valor: '#1D78B4' },
     { nombre: 'Verde', valor: '#2E6B3A' },
@@ -849,7 +861,7 @@
           type: 'button', class: 'editor-muestra', title: c.nombre, 'aria-label': titulo + ': ' + c.nombre, style: '--muestra:' + c.valor,
           onMousedown: sinFoco, onClick: () => { panel.hidden = true; aplicar(comando, c.valor); },
         })),
-        h('button', { type: 'button', class: 'editor-quitar', onMousedown: sinFoco, onClick: () => { panel.hidden = true; aplicar(comando, comando === 'foreColor' ? '#1C3A5A' : 'transparent'); } }, textoQuitar));
+        textoQuitar ? h('button', { type: 'button', class: 'editor-quitar', onMousedown: sinFoco, onClick: () => { panel.hidden = true; aplicar(comando, 'transparent'); } }, textoQuitar) : null);
       const boton = botonBarra(muestra, titulo, () => { panel.hidden = !panel.hidden; }, { 'aria-haspopup': 'true' });
       document.addEventListener('mousedown', (e) => { if (!panel.hidden && !panel.contains(e.target) && e.target !== boton && !boton.contains(e.target)) panel.hidden = true; });
       return h('span', { class: 'editor-menu' }, boton, panel);
@@ -861,11 +873,11 @@
     const barra = h('div', { class: 'editor-barra', role: 'toolbar', 'aria-label': 'Formato' + (o.etiqueta ? ' de ' + o.etiqueta.toLowerCase() : '') },
       btnNegrita, btnCursiva,
       h('span', { class: 'editor-sep', 'aria-hidden': 'true' }),
-      menuColores('Color del texto', h('span', { class: 'editor-a' }, 'A'), COLORES_TEXTO, 'foreColor', 'Color normal'),
+      menuColores('Color del texto', h('span', { class: 'editor-a' }, 'A'), COLORES_TEXTO, 'foreColor'),
       menuColores('Resaltado', icono('editar', 'i-sm'), COLORES_RESALTADO, 'hiliteColor', 'Sin resaltado'),
       botonBarra(icono('x', 'i-sm'), 'Quitar formato', () => aplicar('removeFormat')),
       h('span', { class: 'editor-sep', 'aria-hidden': 'true' }),
-      h('button', { type: 'button', class: 'editor-boton editor-adjuntar', onMousedown: sinFoco, onClick: () => inputArchivo.click() }, icono('clip', 'i-sm'), 'Adjuntar imagen'),
+      botonBarra(icono('imagen', 'i-sm'), 'Adjuntar imagen', () => inputArchivo.click()),
       inputArchivo);
 
     area.addEventListener('paste', (e) => {
@@ -1070,7 +1082,7 @@
 
   App.ui = {
     ICONOS, icono, toast, mostrarError, modal, cerrarModales, confirmar,
-    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion, botonFavorito, duracionTicket,
+    badgeEstado, pistaEstado, badgeCriticidad, badgeVisibilidad, badgeSolucion, badgeElevado, badgeOrigenSolucion, botonFavorito, duracionTicket, badgePrivado, notaPrivada,
     pendiente, avisoPendiente, aviso, nombreRol, avatar, vacio, tiempo, cabecera,
     campo, grupo, select, segmentado, valorRadio, limpiarErrores, mostrarErrores, entradaPalabras,
     selectorImagenes, galeria, lightbox, editorTexto, textoConImagenes,

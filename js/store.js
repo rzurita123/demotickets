@@ -366,7 +366,8 @@
   function puedeVerTicket(t, u) {
     if (!t || !u) return false;
     if (t.estado === 'BORRADOR') return t.creadoPorId === u.id;
-    if (u.rol === 'CLIENTE') return !!u.localidadId && t.localidadId === u.localidadId;
+    // Un ticket privado es sólo de ORMEN: la localidad no sabe que existe.
+    if (u.rol === 'CLIENTE') return !t.privado && !!u.localidadId && t.localidadId === u.localidadId;
     return true;
   }
 
@@ -390,6 +391,8 @@
   function ticketParaUsuario(numero, u) {
     const t = ticketPorNumero(numero);
     if (!t || t.estado === 'BORRADOR') return { error: 'no-existe' };
+    // A un cliente, un ticket privado le figura como inexistente.
+    if (t.privado && u && u.rol === 'CLIENTE') return { error: 'no-existe' };
     if (!puedeVerTicket(t, u)) return { error: 'sin-acceso', ticket: t };
     return { ticket: t };
   }
@@ -409,7 +412,7 @@
   function actividadVisible(t, u) {
     if (u.rol !== 'CLIENTE') return t.actividad.slice();
     return t.actividad
-      .filter((ev) => !(ev.tipo === 'comentario' && ev.visibilidad === 'PRIVADO') && ev.tipo !== 'propuesta')
+      .filter((ev) => !(ev.tipo === 'comentario' && ev.visibilidad === 'PRIVADO') && ev.tipo !== 'propuesta' && ev.tipo !== 'privacidad')
       .map((ev) => (EVENTOS_SIN_TEXTO_PARA_CLIENTE.includes(ev.tipo) || (ev.tipo === 'bloqueo' && ev.visibilidad === 'PRIVADO') ? Object.assign({}, ev, { texto: null }) : ev));
   }
 
@@ -454,6 +457,7 @@
    * (eso quedó pendiente de definir).
    */
   function enviarCorreo(t, actor, motivo, detalle) {
+    if (t.privado) return null; // de un ticket privado no se avisa a nadie de la localidad
     const creador = usuario(t.creadoPorId);
     if (!creador || creador.rol !== 'CLIENTE' || creador.activo === false) return null;
     const { asunto, cuerpo } = D.componerCorreo({ ticket: t, destinatario: creador, actor, motivo, detalle });
@@ -567,6 +571,7 @@
     exigir(u && ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'].includes(u.rol), 'Tu rol no puede crear tickets.');
     exigir(!op.proponer || u.rol !== 'CLIENTE', 'Sólo ORMEN puede proponer soluciones reutilizables.');
     exigir(!op.registroDirecto || u.rol !== 'CLIENTE', 'El ticket de un cliente siempre queda Abierto.');
+    exigir(!op.privado || u.rol !== 'CLIENTE', 'Sólo ORMEN puede crear tickets privados.');
     let errores = validarTicket(datos, u, op);
     if (op.registroDirecto && op.proponer) errores = Object.assign(errores, validarPropuesta(op.proponer));
     if (op.solucionCatalogoId) {
@@ -590,6 +595,7 @@
         adjuntos: copiarAdjuntos(datos.adjuntos, u.id, ahora),
         solucion: null,
         registroDirecto: !!op.registroDirecto,
+        privado: !!op.privado,
         actividad: [{ id: U.uid('a'), tipo: 'creado', fecha: ahora, autorId: u.id, estado: esOp ? 'EN_PROCESO' : 'ABIERTO', operadorId: esOp ? u.id : null, desdeBorrador: !!op.borradorId }],
       });
       if (op.borradorId) {
@@ -990,6 +996,26 @@
     return ms >= UMBRALES_DURACION.critico ? 'critico' : ms >= UMBRALES_DURACION.atencion ? 'atencion' : 'ok';
   }
 
+  /**
+   * Ticket privado: sólo lo ven operadores y administradores; la localidad
+   * no se entera de que existe (no lo lista, no lo puede abrir y no recibe
+   * avisos). Sólo se puede con tickets que creó ORMEN.
+   */
+  function cambiarPrivado(ticketId, u, privado) {
+    const t = ticket(ticketId);
+    exigir(t && t.estado !== 'BORRADOR', 'El ticket no existe.');
+    exigir(u && u.rol === 'OPERADOR', 'Sólo Mesa de ayuda puede cambiar si un ticket es privado.');
+    const creador = usuario(t.creadoPorId);
+    exigir(!creador || creador.rol !== 'CLIENTE', 'Este ticket lo creó la localidad: ya lo conocen, no se puede hacer privado.');
+    exigir(!!t.privado !== !!privado, privado ? 'El ticket ya es privado.' : 'El ticket ya es visible para la localidad.');
+    return mutar(() => {
+      t.privado = !!privado;
+      evento(t, { tipo: 'privacidad', autorId: u.id, privado: !!privado });
+      auditar(u.id, 'PRIVACIDAD', t.id, privado ? 'Marcado como privado' : 'Visible para la localidad');
+      return t;
+    });
+  }
+
   /** Imágenes de la resolución: si se registró ya resuelto, son las de la descripción. */
   function adjuntosSolucion(t) {
     if (!t || !t.solucion) return [];
@@ -1359,7 +1385,7 @@
     actividadVisible, imagenesVisibles, correosPara,
     grupoSoporte, nombreDestino, recorrido, nombreResponsable,
     soluciones, usosDeSolucion, contarUsos, propuestaDeTicket, solucionOriginadaPor,
-    esFavorito, favoritosDe, alternarFavorito, adjuntosSolucion, duracionTicket, nivelDuracion, UMBRALES_DURACION,
+    esFavorito, favoritosDe, alternarFavorito, adjuntosSolucion, cambiarPrivado, duracionTicket, nivelDuracion, UMBRALES_DURACION,
     validarTicket, normalizarPalabras,
     // tickets
     crearTicket, guardarBorrador, descartarBorrador,

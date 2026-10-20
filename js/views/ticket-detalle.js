@@ -104,6 +104,7 @@
       h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
         h('a', { href: esCliente ? '#/' : '#/tickets' }, esCliente ? 'Inicio' : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, '#' + t.numero)),
       h('div', { class: 'fila-sm' },
+        t.privado ? ui.badgePrivado('Privado · sólo ORMEN') : null,
         ui.badgeElevado(t, verRecorrido),
         ui.badgeOrigenSolucion(solucionOriginada, true),
         ui.badgeCriticidad(t.criticidadId, true),
@@ -132,7 +133,7 @@
       solucion = h('section', { class: 'solucion-ticket', 'aria-labelledby': 'sec-sol' },
         h('div', { class: 'fila-entre' },
           h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Resolución del ticket'),
-          h('span', { class: 'badge contorno' }, ui.icono('candado', 'i-sm'), 'Sólo ORMEN')),
+          ui.badgePrivado()),
         t.solucion.enDescripcion
           ? h('p', { class: 'chico' }, 'Se registró ya resuelto: el problema y la resolución están en la descripción.')
           : ui.textoConImagenes(t.solucion.texto, t.solucion.adjuntos),
@@ -177,9 +178,10 @@
       else if (ev.tipo === 'elevado') {
         ic = 'elevar';
         texto = [fuerte, ' elevó el ticket a ', h('button', { type: 'button', class: 'badge elevado', title: 'Ver el recorrido', onClick: verRecorrido }, ui.icono('elevar', 'i-sm'), S.nombreDestino(ev.destino)),
-          !esCliente ? nota('Motivo (privado)', ev.texto) : null];
-      } else if (ev.tipo === 'bloqueo') { ic = 'pausa'; texto = [fuerte, ' bloqueó el ticket', pasoA(ev), nota(ev.visibilidad === 'PRIVADO' ? 'Factor externo (privado)' : 'Factor externo', ev.texto)]; }
-      else if (ev.tipo === 'desbloqueo') { ic = 'reabrir'; texto = [fuerte, ' desbloqueó el ticket', pasoA(ev), nota('Nota (privada)', ev.texto)]; }
+          !esCliente ? ui.notaPrivada('Motivo', ev.texto) : null];
+      } else if (ev.tipo === 'bloqueo') { ic = 'pausa'; texto = [fuerte, ' bloqueó el ticket', pasoA(ev), ev.visibilidad === 'PRIVADO' ? ui.notaPrivada('Factor externo', ev.texto) : nota('Factor externo', ev.texto)]; }
+      else if (ev.tipo === 'desbloqueo') { ic = 'reabrir'; texto = [fuerte, ' desbloqueó el ticket', pasoA(ev), ui.notaPrivada('Nota', ev.texto)]; }
+      else if (ev.tipo === 'privacidad') { ic = 'candado'; texto = [fuerte, ev.privado ? ' marcó el ticket como ' : ' hizo el ticket visible para la localidad', ev.privado ? ui.badgePrivado() : null]; }
       else if (ev.tipo === 'propuesta') {
         ic = 'libro';
         const sol = S.solucion(ev.solucionId);
@@ -189,7 +191,7 @@
         ic = 'check';
         texto = [fuerte, ev.registroDirecto ? ' registró el ticket ya resuelto' : ' cerró el ticket', ev.de ? [ui.badgeEstado(ev.de), '→', ui.badgeEstado('CERRADO')] : null,
           ev.texto && !esCliente ? h('span', { class: 'chico suave', style: 'flex-basis: 100%' }, 'Resolución: «' + U.truncar(ev.texto, 160) + '»') : null];
-      } else if (ev.tipo === 'reapertura') { ic = 'reabrir'; texto = [fuerte, ' reabrió el ticket', ev.a ? ['→', ui.badgeEstado(ev.a)] : null, nota('Motivo (privado)', ev.texto)]; }
+      } else if (ev.tipo === 'reapertura') { ic = 'reabrir'; texto = [fuerte, ' reabrió el ticket', ev.a ? ['→', ui.badgeEstado(ev.a)] : null, ui.notaPrivada('Motivo', ev.texto)]; }
       else texto = [fuerte, ' actualizó el ticket'];
       return h('div', { class: 'item-act evento' },
         h('div', { class: 'marcador' }, h('span', null, ui.icono(ic, 'i-sm'))),
@@ -503,7 +505,16 @@
         h('div', { class: 'acciones-ticket' },
           h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirReabrir }, ui.icono('reabrir', 'i-sm'), 'Reabrir ticket'),
           !S.propuestaDeTicket(t) ? h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable') : null)));
-    } else if (esAdmin) {
+    }
+    // Hacer privado (o volver a hacerlo visible) un ticket que creó ORMEN.
+    if (esOperador && !creadorCliente) {
+      lateral.append(h('section', { class: ['card', 'pila-sm', t.privado && 'card-privada'], 'aria-labelledby': 'sec-privacidad' },
+        h('h2', { id: 'sec-privacidad', class: 'fila-sm' }, ui.icono('candado'), 'Privacidad'),
+        h('p', { class: 'chico' }, t.privado ? 'Privado: sólo lo ven Mesa de ayuda y administración. ' + loc + ' no sabe que existe.' : 'Lo ve ' + loc + '. Si lo hacés privado, deja de verlo y no recibe avisos.'),
+        h('button', { type: 'button', class: 'btn btn-neutro', onClick: () => ejecutar(() => S.cambiarPrivado(t.id, u, !t.privado), t.privado ? 'El ticket ahora lo ve ' + loc + '.' : 'Ticket privado: ' + loc + ' ya no lo ve.') },
+          ui.icono(t.privado ? 'ojo' : 'candado', 'i-sm'), t.privado ? 'Hacerlo visible para ' + loc : 'Hacer privado')));
+    }
+    if (esAdmin) {
       if (cerrado && !S.propuestaDeTicket(t)) {
         lateral.append(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable'));
       }
@@ -540,7 +551,8 @@
         h('a', { class: 'chico fuerte', href: '#/soluciones/buscar?q=' + encodeURIComponent(t.titulo) }, 'Buscar soluciones ', ui.icono('flechaDer', 'i-sm'))));
     }
 
-    return h('div', { class: 'pila' },
+    return h('div', { class: ['pila', t.privado && 'ticket-privado'] },
+      t.privado ? ui.aviso(['Ticket privado: sólo lo ven Mesa de ayuda y administración. ', h('strong', null, loc), ' no sabe que existe y no recibe avisos.'], 'privado', 'candado') : null,
       cabecera,
       h('div', { class: 'dos-columnas' },
         h('div', { class: 'hoja' }, descripcion, solucion ? h('div', { class: 'hoja-seccion' }, solucion) : null, cardActividad),

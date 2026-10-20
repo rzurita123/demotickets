@@ -700,6 +700,18 @@
       tickets.push(t);
     }
 
+    // 11) Interno de ORMEN y privado: Pando no lo ve ni recibe avisos.
+    {
+      const ms = haceDias(3, 15, 10);
+      const t = nuevoTicket({
+        plantilla: p('p-term-sincro'), localidadId: 'loc-pando', creador: usu('u-nacosta'), creadoMs: ms, criticidadId: 'cri-media',
+        titulo: 'Revisar las terminales de Pando antes del cambio de versión',
+        descripcion: 'Interno: antes de actualizar la versión, verificar que las tres terminales de Pando sincronizan bien. No avisar a la agencia hasta tener la fecha confirmada.',
+      });
+      t.privado = true;
+      comentar(t, ms + 30 * MIN, 'u-nacosta', 'La terminal 2 tarda en sincronizar; lo vemos con Infraestructura.', 'PRIVADO');
+      tickets.push(t);
+    }
     // Numeración por fecha de creación (1001, 1002, ...).
     tickets.sort((a, b) => a.creadoEn.localeCompare(b.creadoEn));
     tickets.forEach((t, i) => { t.numero = 1001 + i; t.id = 't-' + t.numero; });

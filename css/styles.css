@@ -1106,10 +1106,9 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .editor-boton b { font-weight: 800; }
 .editor-a { font-weight: 800; text-decoration: underline; text-decoration-color: #B42318; text-decoration-thickness: 3px; text-underline-offset: 3px; }
 .editor-sep { width: 1px; height: 20px; background: var(--borde); margin: 0 6px; }
-.editor-adjuntar { margin-left: auto; font-size: 14px; color: var(--azul-texto); }
 .editor-menu { position: relative; display: inline-flex; }
 .editor-colores {
-  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; width: 176px;
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; width: max-content; max-width: 220px;
   background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-sm); box-shadow: var(--sombra-media);
 }
 .editor-colores[hidden] { display: none; }
@@ -1122,3 +1121,20 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .duracion[data-nivel="atencion"] { color: var(--dorado-oscuro); font-weight: 600; }
 .duracion[data-nivel="critico"] { color: var(--rojo); font-weight: 700; }
 .duracion.cerrado { color: var(--texto-suave); }
+/* Aviso amarillo que se puede cerrar (por ejemplo, en Correos simulados) */
+.aviso.amarillo { background: #FFF6D6; border: 1px solid #F0D98A; color: #5C4507; align-items: center; }
+.aviso.amarillo > .icono { color: #8A6A1F; }
+.aviso-cerrar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border: 0; border-radius: 999px; background: transparent; color: #5C4507; cursor: pointer; }
+.aviso-cerrar:hover { background: rgba(138, 106, 31, .14); }
+.aviso-cerrar:focus-visible { outline: 3px solid var(--foco); outline-offset: 1px; }
+/* Lo privado (sólo ORMEN): siempre dorado y con la etiqueta «Privado» */
+.aviso.privado { background: #FFF6D6; border: 1px solid #F0D98A; color: #5C4507; }
+.aviso.privado > .icono { color: #8A6A1F; }
+.ticket-privado .ticket-cabecera { border-left: 4px solid var(--dorado); padding-left: 14px; }
+.nota-privada { flex-basis: 100%; display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; padding: 6px 10px; border-radius: var(--radio-sm); background: #FFFBF2; border: 1px solid #EFDDB2; font-size: 13.5px; color: var(--texto); }
+.nota-privada .badge { height: 20px; font-size: 12px; padding: 0 8px; flex: none; }
+tr.fila-privada > td { background: #FFFBF2; }
+tr.fila-privada > td:first-child { box-shadow: inset 4px 0 0 var(--dorado); }
+.marca-fila.priv { color: var(--dorado-oscuro); }
+.card-privada { background: #FFFBF2; border-color: #EFDDB2; }
+.check-privado { padding: 10px 12px; border: 1px dashed #D9C08A; border-radius: var(--radio-sm); background: #FFFBF2; }

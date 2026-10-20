@@ -78,6 +78,7 @@
     // ------------------------------------------------------- Secciones ---
     // Cerrado va primero y como opción principal; Pendiente, del mismo tamaño, como secundaria.
     // El cliente ve el estado con el que queda su ticket, sin poder cambiarlo.
+    const chkPrivado = esCliente ? null : h('input', { type: 'checkbox', id: 't-privado' });
     const segModo = b ? null : esCliente
       ? h('div', { class: 'modo-fijo' },
         h('strong', null, 'Abierto'), h('span', null, 'Mesa de ayuda lo va a tomar y te avisamos por correo cuando haya novedades.'))
@@ -101,7 +102,9 @@
       h('div', { class: 'grid-2' },
         ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub }),
         esOperador ? ui.campo({ nombre: 'tipoProblemaId', id: 't-tipo-problema', etiqueta: 'Tipo de problema', opcional: true, control: selTipoProblema }) : h('div')),
-      ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri }));
+      ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri }),
+      esCliente ? null : h('label', { class: 'check check-privado', for: 't-privado' }, chkPrivado,
+        h('span', null, h('strong', null, 'Ticket privado'), h('br'), h('span', { class: 'chico suave' }, 'Sólo lo ven Mesa de ayuda y administración. La localidad no se entera de que existe.'))));
 
     const cardProblema = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-problema' },
       h('h2', { id: 'sec-problema' }, 'Problema'),
@@ -208,7 +211,7 @@
     }
 
     function crear() {
-      const opciones = { borradorId: b ? b.id : null };
+      const opciones = { borradorId: b ? b.id : null, privado: !!(chkPrivado && chkPrivado.checked) };
       if (modo === 'resuelto') {
         Object.assign(opciones, {
           registroDirecto: true,
