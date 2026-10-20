@@ -38,7 +38,7 @@
     // ---- controles ----
     const inBuscar = h('input', { id: 'f-buscar', class: 'control', type: 'search', placeholder: 'Buscar por número o texto', 'aria-label': 'Buscar tickets', value: q.q || '' });
     const opcionesAtiende = [{ valor: 'sin', texto: 'Sin asignar' }];
-    if (u.rol === 'OPERADOR') opcionesAtiende.push({ valor: u.id, texto: 'Yo (' + u.nombre + ')' });
+    if (App.store.esOrmen(u)) opcionesAtiende.push({ valor: u.id, texto: 'Yo (' + u.nombre + ')' });
     S.operadores().filter((o) => o.id !== u.id).forEach((o) => opcionesAtiende.push({ valor: o.id, texto: o.nombre + (o.activo === false ? ' (usuario inactivo)' : '') }));
 
     const controles = {

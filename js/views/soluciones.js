@@ -396,7 +396,7 @@
     const S = App.store;
     const ui = App.ui;
     const u = ctx.usuario;
-    const esOperador = u.rol === 'OPERADOR';
+    const esOperador = S.esOrmen(u);
     const q = Object.assign({}, ctx.query);
 
     const inTexto = h('textarea', { id: 'b-texto', class: 'control', rows: '3', value: q.q || '', placeholder: 'Por ejemplo: la terminal muestra el mensaje de terminal bloqueada y no permite vender' });

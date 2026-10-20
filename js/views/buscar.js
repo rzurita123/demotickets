@@ -37,7 +37,7 @@
     const C = App.comun;
     const u = ctx.usuario;
     const esCliente = u.rol === 'CLIENTE';
-    const esOperador = u.rol === 'OPERADOR';
+    const esOperador = App.store.esOrmen(u);
     const q = (ctx.query.q || '').trim();
 
     const input = h('input', { type: 'search', id: 'buscar-todo', value: q, placeholder: esCliente ? 'Buscar tickets' : 'Buscar tickets o soluciones', 'aria-label': esCliente ? 'Buscar tickets' : 'Buscar tickets o soluciones' });

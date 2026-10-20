@@ -337,8 +337,9 @@
     if (filtro && filtro.activo) l = l.filter((u) => u.activo !== false);
     return l.sort(orden);
   }
+  /** Quienes atienden tickets: Mesa de ayuda y administradores. */
   function operadores(soloActivos) {
-    return usuarios({ rol: 'OPERADOR', activo: !!soloActivos });
+    return usuarios({ activo: !!soloActivos }).filter(esOrmen);
   }
   function localidades(soloActivas) {
     const l = soloActivas ? activos(db.localidades, 'activa') : db.localidades.slice();
@@ -530,7 +531,7 @@
       sistemaId: datos.sistemaId,
       subsistemaId: datos.subsistemaId || null,
       criticidadId: datos.criticidadId,
-      tipoProblemaId: u.rol === 'OPERADOR' && datos.tipoProblemaId ? datos.tipoProblemaId : 'tp-nodef',
+      tipoProblemaId: esOrmen(u) && datos.tipoProblemaId ? datos.tipoProblemaId : 'tp-nodef',
     };
   }
 
@@ -584,7 +585,7 @@
     return mutar(() => {
       const ahora = U.isoAhora();
       const numero = db.secuencias.ticket++;
-      const esOp = u.rol === 'OPERADOR';
+      const esOp = esOrmen(u);
       const t = Object.assign({ id: 't-' + numero, numero, estado: esOp ? 'EN_PROCESO' : 'ABIERTO' }, datosTicket(datos, u), {
         creadoPorId: u.id,
         operadorId: esOp ? u.id : null,
@@ -623,7 +624,7 @@
   // ------------------------------------------------------- Borradores ---
 
   function guardarBorrador(datos, u, id) {
-    exigir(u && u.rol === 'OPERADOR', 'Sólo Mesa de ayuda usa borradores.');
+    exigir(u && ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'].includes(u.rol), 'Tu rol no puede guardar borradores.');
     const tieneAlgo = ['titulo', 'descripcion', 'localidadId', 'sistemaId'].some((k) => limpio(datos[k])) || (datos.adjuntos && datos.adjuntos.length);
     if (!tieneAlgo) throw errorDeCampos({ descripcion: 'Para guardar un borrador escribí algo (por ejemplo, una nota en la descripción).' });
     return mutar(() => {
@@ -633,7 +634,7 @@
       const campos = {
         titulo: limpio(datos.titulo),
         descripcion: limpio(datos.descripcion),
-        localidadId: datos.localidadId || '',
+        localidadId: (u.rol === 'CLIENTE' ? u.localidadId : datos.localidadId) || '',
         sistemaId: datos.sistemaId || '',
         subsistemaId: datos.subsistemaId || '',
         criticidadId: datos.criticidadId || '',
@@ -672,7 +673,7 @@
   function ticketActivoParaOperador(ticketId, u) {
     const t = ticket(ticketId);
     exigir(t && t.estado !== 'BORRADOR', 'El ticket no existe.');
-    exigir(u && u.rol === 'OPERADOR', 'Sólo Mesa de ayuda puede tratar tickets.');
+    exigir(esOrmen(u), 'Sólo ORMEN puede tratar tickets.');
     return t;
   }
 
@@ -684,14 +685,12 @@
   }
 
   /**
-   * Comentario de un operador (público o privado, obligatorio elegir) o de
-   * un cliente (siempre público). Un ticket cerrado hay que reabrirlo.
+   * Comentario de ORMEN (público o privado, obligatorio elegir) o de un
+   * cliente (siempre público). También en un ticket cerrado: queda cerrado.
    */
   function comentar(ticketId, u, datos) {
     const t = ticket(ticketId);
     exigir(t && t.estado !== 'BORRADOR' && puedeVerTicket(t, u), 'El ticket no existe o no tenés acceso.');
-    exigir(u.rol !== 'ADMINISTRADOR', 'En esta demo el administrador consulta los tickets pero no los trata.');
-    exigir(t.estado !== 'CERRADO', u.rol === 'OPERADOR' ? 'El ticket está cerrado: reabrilo para agregar comentarios.' : 'El ticket está cerrado. Para agregar información, Mesa de ayuda tiene que reabrirlo.');
     const campos = {};
     const texto = limpio(datos.texto);
     if (!texto) campos.texto = 'Escribí el comentario.';
@@ -702,7 +701,7 @@
       const ahora = U.isoAhora();
       const ev = evento(t, { tipo: 'comentario', autorId: u.id, texto, visibilidad, adjuntos: copiarAdjuntos(datos.adjuntos, u.id, ahora) });
       auditar(u.id, visibilidad === 'PRIVADO' ? 'COMENTARIO_PRIVADO' : 'COMENTARIO_PUBLICO', t.id, U.truncar(texto, 90));
-      if (u.rol === 'OPERADOR' && visibilidad === 'PUBLICO') enviarCorreo(t, u, 'comentario', 'Mensaje de Mesa de ayuda:\n"' + texto + '"');
+      if (esOrmen(u) && visibilidad === 'PUBLICO') enviarCorreo(t, u, 'comentario', 'Mensaje de Mesa de ayuda:\n"' + texto + '"');
       return ev;
     });
   }
@@ -715,7 +714,7 @@
     const t = ticketActivoParaOperador(ticketId, u);
     exigir(t.estado !== 'CERRADO', 'El ticket está cerrado.');
     const op = usuario(operadorId);
-    exigir(op && op.rol === 'OPERADOR' && op.activo !== false, 'Elegí un operador activo.');
+    exigir(esOrmen(op) && op.activo !== false, 'Elegí una persona activa de ORMEN.');
     exigir(t.operadorId !== operadorId, 'El ticket ya lo atiende ' + op.nombre + '.');
     return mutar(() => {
       const anteriorId = t.operadorId;
@@ -781,7 +780,7 @@
     else if (destino.tipo === 'grupo' && grupoSoporte(destino.id).activo === false) e.destino = 'Ese grupo está inactivo.';
     else if (destino.tipo === 'usuario') {
       const p = usuario(destino.id);
-      if (p.rol !== 'OPERADOR' || p.activo === false) e.destino = 'Elegí un operador activo.';
+      if (!esOrmen(p) || p.activo === false) e.destino = 'Elegí una persona activa de ORMEN.';
       else if (p.id === t.operadorId) e.destino = 'Ya lo atiende ' + p.nombre + '.';
     }
     if (!e.destino && mismoDestino(destino, t.elevadoA)) e.destino = 'El ticket ya está elevado a ' + nombreDestino(destino) + '.';
@@ -907,8 +906,8 @@
   }
 
   /**
-   * ORMEN: "luego de cerrado se tendría que reabrir para ingresar nuevos
-   * comentarios". Vuelve a En proceso y lo atiende quien lo reabre.
+   * Reabrir: vuelve a En proceso y lo atiende quien lo reabre. (Para sólo
+   * agregar un comentario no hace falta: se puede comentar estando cerrado.)
    */
   function reabrir(ticketId, u, datos) {
     const t = ticketActivoParaOperador(ticketId, u);
@@ -1004,7 +1003,7 @@
   function cambiarPrivado(ticketId, u, privado) {
     const t = ticket(ticketId);
     exigir(t && t.estado !== 'BORRADOR', 'El ticket no existe.');
-    exigir(u && u.rol === 'OPERADOR', 'Sólo Mesa de ayuda puede cambiar si un ticket es privado.');
+    exigir(esOrmen(u), 'Sólo ORMEN puede cambiar si un ticket es privado.');
     const creador = usuario(t.creadoPorId);
     exigir(!creador || creador.rol !== 'CLIENTE', 'Este ticket lo creó la localidad: ya lo conocen, no se puede hacer privado.');
     exigir(!!t.privado !== !!privado, privado ? 'El ticket ya es privado.' : 'El ticket ya es visible para la localidad.');
@@ -1053,7 +1052,7 @@
   // ---------------------------------------------------------- Favoritos ---
 
   /**
-   * Favoritos de cada operador: tickets y soluciones reutilizables marcados
+   * Favoritos de cada persona de ORMEN: tickets y soluciones reutilizables marcados
    * con la estrella. Son personales y no van a la auditoría. Se guardan en la
    * base (db.favoritos[usuarioId]), así que con la base compartida lo siguen
    * en cualquier computadora.
@@ -1076,7 +1075,7 @@
 
   /** Agrega o quita un favorito; devuelve si quedó marcado. */
   function alternarFavorito(u, tipo, id) {
-    exigir(u && u.rol === 'OPERADOR', 'Los favoritos son de Mesa de ayuda.');
+    exigir(esOrmen(u), 'Los favoritos son de ORMEN.');
     exigir(tipo === 'ticket' || tipo === 'solucion', 'Sólo se marcan tickets o soluciones reutilizables.');
     exigir(tipo === 'ticket' ? ticket(id) : solucion(id), 'Ya no existe.');
     return mutar(() => {

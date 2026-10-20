@@ -55,9 +55,8 @@
     if (r.error) return sinAcceso(ctx, r);
     const t = r.ticket;
 
-    const esOperador = u.rol === 'OPERADOR';
+    const esOrmen = S.esOrmen(u); // Mesa de ayuda y administradores atienden tickets
     const esCliente = u.rol === 'CLIENTE';
-    const esAdmin = u.rol === 'ADMINISTRADOR';
     const activo = D.ESTADOS_ACTIVOS.includes(t.estado);
     const cerrado = t.estado === 'CERRADO';
     const creador = S.usuario(t.creadoPorId);
@@ -129,7 +128,7 @@
       const cat = t.solucion.solucionCatalogoId ? S.solucion(t.solucion.solucionCatalogoId) : null;
       const autor = S.usuario(t.solucion.autorId);
       const propuesta = S.propuestaDeTicket(t) || S.soluciones().find((s) => s.ticketOrigenId === t.id);
-      const puedeProponer = (esOperador || esAdmin) && !S.propuestaDeTicket(t);
+      const puedeProponer = esOrmen && !S.propuestaDeTicket(t);
       solucion = h('section', { class: 'solucion-ticket', 'aria-labelledby': 'sec-sol' },
         h('div', { class: 'fila-entre' },
           h('h3', { id: 'sec-sol' }, ui.icono('checkCirculo'), 'Resolución del ticket'),
@@ -215,24 +214,18 @@
 
     // Para responder o comentar
     function composer() {
-      if (esAdmin) return null;
-      if (cerrado) {
-        return esOperador
-          ? h('div', { class: 'composer' }, h('button', { type: 'button', class: 'btn btn-neutro', style: 'align-self: flex-start', onClick: abrirReabrir }, ui.icono('reabrir', 'i-sm'), 'Reabrir para comentar'))
-          : null;
-      }
-      const texto = h('textarea', { id: 'composer-texto', class: 'control', rows: '3', placeholder: esOperador ? 'Acción realizada o respuesta para la localidad…' : 'Tu mensaje para Mesa de ayuda…' });
+      const texto = h('textarea', { id: 'composer-texto', class: 'control', rows: '3', placeholder: esOrmen ? 'Acción realizada o respuesta para la localidad…' : 'Tu mensaje para Mesa de ayuda…' });
       const imgs = ui.selectorImagenes({ pegarEn: [texto], max: 4, etiqueta: 'Imágenes del comentario' });
       const form = h('form', { class: 'composer', novalidate: true },
-        ui.campo({ nombre: 'texto', id: 'composer-texto', etiqueta: esOperador ? 'Agregar comentario' : 'Responder', control: texto }),
+        ui.campo({ nombre: 'texto', id: 'composer-texto', etiqueta: esOrmen ? 'Agregar comentario' : 'Responder', control: texto }),
         imgs.el,
         h('div', { class: 'fila-entre' },
-          esOperador ? ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién lo ve?', requerido: true, control: opcionesVisibilidad('visibilidad') }) : h('span'),
-          h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('enviar', 'i-sm'), esOperador ? 'Comentar' : 'Enviar')));
+          esOrmen ? ui.grupo({ nombre: 'visibilidad', etiqueta: '¿Quién lo ve?', requerido: true, control: opcionesVisibilidad('visibilidad') }) : h('span'),
+          h('button', { type: 'submit', class: 'btn btn-primario' }, ui.icono('enviar', 'i-sm'), esOrmen ? 'Comentar' : 'Enviar')));
       form.addEventListener('input', () => ctx.marcarSucio(!!texto.value.trim()));
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const visibilidad = esOperador ? ui.valorRadio(form, 'visibilidad') : 'PUBLICO';
+        const visibilidad = esOrmen ? ui.valorRadio(form, 'visibilidad') : 'PUBLICO';
         try {
           S.comentar(t.id, u, { texto: texto.value, visibilidad, adjuntos: imgs.valor() });
         } catch (err) {
@@ -258,7 +251,7 @@
         h('optgroup', { label: 'Grupos de soporte' }, S.catalogo('gruposSoporte', true)
           .filter((g) => !(t.elevadoA && t.elevadoA.tipo === 'grupo' && t.elevadoA.id === g.id))
           .map((g) => h('option', { value: 'grupo:' + g.id }, g.nombre))),
-        h('optgroup', { label: 'Personas de Mesa de ayuda' }, S.operadores(true)
+        h('optgroup', { label: 'Personas de ORMEN' }, S.operadores(true)
           .filter((o) => o.id !== t.operadorId)
           .map((o) => h('option', { value: 'usuario:' + o.id }, o.nombre))));
       const motivo = h('textarea', { id: 'elevar-motivo', class: 'control', rows: '3', placeholder: 'Por ejemplo: se reinició el router y sigue sin conexión; hay que revisar el enlace.' });
@@ -472,7 +465,7 @@
     // ------------------------------------------------------------ Lateral ---
     const lateral = h('aside', { class: 'pila', 'aria-label': 'Datos y acciones del ticket' });
 
-    if (esOperador && activo) {
+    if (esOrmen && activo) {
       const items = [];
       if (t.operadorId !== u.id) {
         items.push(h('button', { type: 'button', class: 'btn btn-primario', onClick: () => ejecutar(() => S.asignar(t.id, u, u.id), 'Tomaste el ticket #' + t.numero + (t.estado === 'ABIERTO' ? ': pasó a En proceso.' : '.') + (t.estado === 'ABIERTO' ? avisoCorreo() : '')) },
@@ -499,7 +492,7 @@
       }
       items.push(h('button', { type: 'button', class: 'btn btn-exito btn-lg', onClick: () => abrirCierre() }, ui.icono('check', 'i-sm'), 'Cerrar con resolución'));
       lateral.append(h('section', { class: 'card acento-azul', 'aria-labelledby': 'sec-acciones' }, h('h2', { id: 'sec-acciones', style: 'margin-bottom: 14px' }, 'Acciones'), h('div', { class: 'acciones-ticket' }, items)));
-    } else if (esOperador && cerrado) {
+    } else if (esOrmen && cerrado) {
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-acciones' },
         h('h2', { id: 'sec-acciones' }, 'Acciones'),
         h('div', { class: 'acciones-ticket' },
@@ -507,17 +500,12 @@
           !S.propuestaDeTicket(t) ? h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable') : null)));
     }
     // Hacer privado (o volver a hacerlo visible) un ticket que creó ORMEN.
-    if (esOperador && !creadorCliente) {
+    if (esOrmen && !creadorCliente) {
       lateral.append(h('section', { class: ['card', 'pila-sm', t.privado && 'card-privada'], 'aria-labelledby': 'sec-privacidad' },
         h('h2', { id: 'sec-privacidad', class: 'fila-sm' }, ui.icono('candado'), 'Privacidad'),
         h('p', { class: 'chico' }, t.privado ? 'Privado: sólo lo ven Mesa de ayuda y administración. ' + loc + ' no sabe que existe.' : 'Lo ve ' + loc + '. Si lo hacés privado, deja de verlo y no recibe avisos.'),
         h('button', { type: 'button', class: 'btn btn-neutro', onClick: () => ejecutar(() => S.cambiarPrivado(t.id, u, !t.privado), t.privado ? 'El ticket ahora lo ve ' + loc + '.' : 'Ticket privado: ' + loc + ' ya no lo ve.') },
           ui.icono(t.privado ? 'ojo' : 'candado', 'i-sm'), t.privado ? 'Hacerlo visible para ' + loc : 'Hacer privado')));
-    }
-    if (esAdmin) {
-      if (cerrado && !S.propuestaDeTicket(t)) {
-        lateral.append(h('button', { type: 'button', class: 'btn btn-neutro', onClick: abrirProponer }, ui.icono('libro', 'i-sm'), 'Proponer como solución reutilizable'));
-      }
     }
 
     const datos = [
@@ -531,13 +519,13 @@
     lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-datos' },
       h('div', { class: 'fila-entre' },
         h('h2', { id: 'sec-datos' }, 'Clasificación'),
-        esOperador && activo ? h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar') : null),
+        esOrmen && activo ? h('button', { type: 'button', class: 'btn btn-fantasma btn-sm', onClick: abrirClasificacion }, ui.icono('editar', 'i-sm'), 'Editar') : null),
       h('dl', { class: 'datos-lista' }, datos.map(([k, v]) => [h('dt', null, k), h('dd', null, v)])),
       h('button', { type: 'button', class: 'enlace-boton chico', style: 'align-self: flex-start; margin-top: 4px', onClick: verRecorrido }, ui.icono('recorrido', 'i-sm'), ' Ver el recorrido del ticket')));
 
     if (!esCliente && activo) {
       const sugeridas = App.sugerencias.buscar({ texto: t.titulo + ' ' + t.descripcion, sistemaId: t.sistemaId, subsistemaId: t.subsistemaId, localidadId: t.localidadId, excluirTicketId: t.id, limite: 4 });
-      const opSug = { alUsar: esOperador ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' };
+      const opSug = { alUsar: esOrmen ? (x) => abrirCierre(x) : null, textoUsar: 'Usar al cerrar' };
       lateral.append(h('section', { class: 'card pila-sm', 'aria-labelledby': 'sec-sug' },
         h('h2', { id: 'sec-sug', class: 'fila-sm' }, ui.icono('bombilla'), 'Sugerencias'),
         sugeridas.length

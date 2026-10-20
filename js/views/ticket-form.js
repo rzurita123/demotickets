@@ -15,7 +15,7 @@
     const S = App.store;
     const ui = App.ui;
     const u = ctx.usuario;
-    const esOperador = u.rol === 'OPERADOR';
+    const esOperador = S.esOrmen(u); // Mesa de ayuda o administración
     // ORMEN (operador o administrador) elige la localidad; el cliente usa la suya.
     const eligeLocalidad = u.rol !== 'CLIENTE';
     const b = op.borrador || null;
@@ -114,11 +114,11 @@
       basadaEn);
 
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
-    const btnBorrador = esOperador ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
+    const btnBorrador = App.auth.puede('borradores', u) ? h('button', { type: 'button', class: 'btn btn-neutro btn-lg', onClick: guardarBorrador }, ui.icono('borrador', 'i-sm'), 'Guardar borrador') : null;
     const btnDescartar = b ? h('button', { type: 'button', class: 'btn btn-peligro', onClick: descartar }, ui.icono('basura', 'i-sm'), 'Descartar borrador') : null;
     const acciones = h('div', { class: 'barra-form' },
       btnCrear, btnBorrador,
-      h('a', { class: 'btn btn-fantasma btn-lg', href: b ? '#/borradores' : '#/' }, 'Cancelar'),
+      h('a', { class: 'btn btn-fantasma btn-lg', href: b ? '#/?vista=borradores' : '#/' }, 'Cancelar'),
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
     // El formulario se ve desde el principio: el modo siempre tiene un valor.
@@ -250,7 +250,7 @@
         S.descartarBorrador(b.id, u);
         ctx.marcarSucio(false);
         ui.toast('Borrador descartado.');
-        App.router.ir('/borradores');
+        App.router.ir('/?vista=borradores');
       } catch (e) { ui.mostrarError(e); }
     }
 
@@ -267,7 +267,7 @@
     const encabezado = h('div', { class: 'cabecera' },
       h('div', { class: 'titulos' },
         h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
-          b ? [h('a', { href: '#/borradores' }, 'Borradores'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Continuar')]
+          b ? [h('a', { href: '#/?vista=borradores' }, 'Mis borradores'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Continuar')]
             : [h('a', { href: esCliente ? '#/' : '#/tickets' }, esCliente ? 'Inicio' : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Crear')]),
         tituloPagina),
       b ? h('span', { class: 'badge contorno grande' }, ui.icono('borrador', 'i-sm'), 'Borrador · guardado ', ui.tiempo(b.actualizadoEn)) : null);
@@ -301,7 +301,7 @@
     const pre = { titulo: q.titulo || '', descripcion: q.descripcion || '', sistemaId: q.sis || '', subsistemaId: q.sub || '', localidadId: q.loc || '' };
     // Sin modo en la dirección, ORMEN arranca en Cerrado; ?modo=pendiente abre Pendiente.
     let modoInicial = q.modo === 'pendiente' ? 'nuevo' : 'resuelto';
-    if (q.usar && ctx.usuario.rol === 'OPERADOR') {
+    if (q.usar && S.esOrmen(ctx.usuario)) {
       const i = q.usar.indexOf(':');
       const tipo = q.usar.slice(0, i);
       const id = q.usar.slice(i + 1);
@@ -331,7 +331,7 @@
       return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Borrador no encontrado'), App.ui.vacio({
         icono: 'borrador',
         titulo: 'No encontramos el borrador',
-        accion: h('a', { class: 'btn btn-primario', href: '#/borradores' }, 'Ver mis borradores'),
+        accion: h('a', { class: 'btn btn-primario', href: '#/?vista=borradores' }, 'Ver mis borradores'),
       }));
     }
     return formularioTicket(ctx, { borrador: b });

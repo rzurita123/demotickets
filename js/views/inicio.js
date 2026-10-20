@@ -3,7 +3,8 @@
    - Cliente: los tickets de su localidad, en una cola con pestañas (no hay pantalla Tickets aparte).
      Sus estadísticas están en App.vistas.estadisticasCliente.
    - Operador: crear ticket y su cola de trabajo (la búsqueda está en la barra).
-   - Administrador: soluciones reutilizables por aprobar y analíticas.
+   - Administrador: indicadores, la misma cola de trabajo (también atiende
+     tickets), soluciones reutilizables por aprobar y analíticas.
    ========================================================================== */
 (function (App) {
   'use strict';
@@ -38,6 +39,25 @@
     return h('a', { href, class: 'chico fuerte', style: 'color: var(--azul-texto)' }, texto || 'Ver todos', ' ', App.ui.icono('flechaDer', 'i-sm'));
   }
 
+  /** Borradores del usuario: tickets que empezó a cargar y guardó para terminar después. */
+  function tablaBorradores(borradores, conLocalidad) {
+    const S = App.store;
+    const ui = App.ui;
+    return h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
+      h('caption', { class: 'sr-only' }, 'Mis borradores'),
+      h('thead', null, h('tr', null, ['Borrador', conLocalidad ? 'Localidad' : null, 'Guardado', ''].filter((x) => x !== null).map((t) => h('th', { scope: 'col' }, t)))),
+      h('tbody', null, borradores.map((b) => h('tr', null,
+        ui.celda('Borrador', h('a', { class: 'fuerte', href: '#/borradores/' + b.id }, b.titulo || 'Sin título'), 'sin-label'),
+        conLocalidad ? ui.celda('Localidad', b.localidadId ? S.nombre('localidades', b.localidadId) : '—') : null,
+        ui.celda('Guardado', ui.tiempo(b.actualizadoEn)),
+        ui.celda('', h('a', { class: 'btn btn-secundario btn-sm', href: '#/borradores/' + b.id }, 'Continuar'), 'derecha sin-label'))))));
+  }
+
+  const pestanaBorradores = (borradores, conLocalidad) => ({
+    clave: 'borradores', texto: 'Mis borradores', cuenta: borradores.length, tono: 'gris',
+    contenido: () => (borradores.length ? tablaBorradores(borradores, conLocalidad) : App.ui.vacio({ icono: 'borrador', titulo: 'No tenés borradores', texto: 'Mientras cargás un ticket podés guardarlo como borrador y terminarlo después.' })),
+  });
+
   // ------------------------------------------------------------- Cliente ---
 
   const POR_PAGINA_CLIENTE = 15;
@@ -58,6 +78,7 @@
     const cerrados = tickets.filter((t) => t.estado === 'CERRADO').sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
     const cols = ['numero', 'ticket', 'creador', 'estado', 'duracion', 'actualizado'];
     const vistaActual = ctx.query.vista || 'curso';
+    const borradores = S.borradoresDe(u);
 
     function lista(clave, items, vacio) {
       if (!items.length) return ui.vacio({ icono: 'checkCirculo', titulo: vacio });
@@ -83,7 +104,8 @@
           { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista('curso', enCurso, 'No hay tickets en curso') },
           { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista('bloqueados', bloqueados, 'Ningún ticket espera tu respuesta') },
           { clave: 'cerrados', texto: 'Cerrados', cuenta: cerrados.length, tono: 'verde', contenido: () => lista('cerrados', cerrados, 'Todavía no hay tickets cerrados') },
-        ],
+          borradores.length || vistaActual === 'borradores' ? pestanaBorradores(borradores) : null,
+        ].filter(Boolean),
       }));
   }
 
@@ -145,7 +167,8 @@
 
   // ------------------------------------------------------------ Operador ---
 
-  function inicioOperador(ctx) {
+  /** Cola de trabajo de ORMEN: pendientes, mis tickets, favoritos y borradores. */
+  function colaTrabajo(ctx) {
     const S = App.store;
     const ui = App.ui;
     const C = App.comun;
@@ -167,13 +190,6 @@
     }
 
     const pie = (n, href) => (n > 12 ? h('div', { class: 'cola-pie' }, verTodos(href, 'Ver los ' + n)) : null);
-    const tablaBorradores = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
-      h('thead', null, h('tr', null, ['Borrador', 'Localidad', 'Guardado', ''].map((t) => h('th', { scope: 'col' }, t)))),
-      h('tbody', null, borradores.map((b) => h('tr', null,
-        ui.celda('Borrador', h('a', { class: 'fuerte', href: '#/borradores/' + b.id }, b.titulo || 'Sin título'), 'sin-label'),
-        ui.celda('Localidad', b.localidadId ? S.nombre('localidades', b.localidadId) : '—'),
-        ui.celda('Guardado', ui.tiempo(b.actualizadoEn)),
-        ui.celda('', h('a', { class: 'btn btn-secundario btn-sm', href: '#/borradores/' + b.id }, 'Continuar'), 'derecha sin-label'))))));
 
     // Favoritos: primero los tickets y después las soluciones reutilizables, cada grupo con su tabla.
     const tablaSolucionesFav = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
@@ -196,9 +212,7 @@
         favSoluciones.length ? [h('h3', { class: 'cola-subtitulo' }, 'Soluciones reutilizables'), tablaSolucionesFav()] : [])
       : ui.vacio({ icono: 'estrella', titulo: 'Todavía no tenés favoritos', texto: 'Marcá con la estrella los tickets o las soluciones reutilizables que consultás seguido y van a aparecer acá.' }));
 
-    return h('div', { class: 'pila-lg' },
-      saludo(u),
-      C.cola({
+    return C.cola({
         id: 'cola-operador',
         etiqueta: 'Mi trabajo',
         activa: ctx.query.vista,
@@ -221,12 +235,13 @@
               : ui.vacio({ titulo: 'No tenés tickets en curso' })),
           },
           { clave: 'favoritos', texto: 'Favoritos', cuenta: favoritos.length, contenido: contenidoFavoritos },
-          {
-            clave: 'borradores', texto: 'Mis borradores', cuenta: borradores.length, tono: 'gris',
-            contenido: () => (borradores.length ? tablaBorradores() : ui.vacio({ icono: 'borrador', titulo: 'No tenés borradores' })),
-          },
+          pestanaBorradores(borradores, true),
         ],
-      }));
+      });
+  }
+
+  function inicioOperador(ctx) {
+    return h('div', { class: 'pila-lg' }, saludo(ctx.usuario), colaTrabajo(ctx));
   }
 
   // ------------------------------------------------------- Administrador ---
@@ -290,6 +305,7 @@
         mosaico({ etiqueta: 'Cerrados en 30 días', icono: 'check', valor: cerrados30, tono: 'verde', href: '#/tickets?estado=CERRADO' }),
         mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', href: '#/tickets?estado=en-curso' }),
         mosaico({ etiqueta: 'Sin asignar', icono: 'bandeja', valor: sinAsignar, tono: 'gris', href: '#/tickets?atiende=sin' })),
+      colaTrabajo(ctx),
       h('div', { class: 'grid-2' },
         tarjeta('Soluciones reutilizables por aprobar', listaPorAprobar, porAprobar.length > 5 ? verTodos('#/soluciones?estado=PENDIENTE', 'Ver las ' + porAprobar.length) : null),
         App.charts.tarjeta({

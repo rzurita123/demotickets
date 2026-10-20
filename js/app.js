@@ -11,6 +11,7 @@
   const R = App.router;
   const V = App.vistas;
   const ORMEN = ['OPERADOR', 'ADMINISTRADOR'];
+  const TODOS = ['OPERADOR', 'ADMINISTRADOR', 'CLIENTE'];
 
   // Las rutas fijas van antes que las que tienen parámetros (/tickets/nuevo antes que /tickets/:numero).
   R.registrar('/ingresar', { vista: V.login, titulo: 'Ingresar', publica: true, sinMarco: true, soloSinSesion: true });
@@ -20,8 +21,8 @@
   R.registrar('/tickets/nuevo', { vista: V.ticketNuevo, titulo: 'Crear ticket', roles: ['OPERADOR', 'CLIENTE', 'ADMINISTRADOR'] });
   R.registrar('/tickets/:numero', { vista: V.ticketDetalle, titulo: 'Ticket' });
 
-  R.registrar('/borradores', { vista: V.borradores, titulo: 'Borradores', roles: ['OPERADOR'] });
-  R.registrar('/borradores/:id', { vista: V.borrador, titulo: 'Borrador', roles: ['OPERADOR'] });
+  R.registrar('/borradores', { vista: V.borradores, titulo: 'Borradores', roles: TODOS });
+  R.registrar('/borradores/:id', { vista: V.borrador, titulo: 'Borrador', roles: TODOS });
 
   R.registrar('/soluciones', { vista: V.soluciones, titulo: 'Soluciones reutilizables', roles: ORMEN });
   R.registrar('/soluciones/buscar', { vista: V.buscarSoluciones, titulo: 'Buscar una solución', roles: ORMEN });
