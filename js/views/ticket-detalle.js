@@ -43,7 +43,7 @@
     return h('div', { class: 'card' }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Ticket no disponible'), App.ui.vacio({
       icono: 'candado',
       titulo: esCliente ? 'No encontramos el ticket #' + ctx.params.numero + ' o no tenés acceso' : 'No existe el ticket #' + ctx.params.numero,
-      accion: h('a', { class: 'btn btn-primario', href: '#/tickets' }, esCliente ? 'Ver los tickets de ' + S.nombre('localidades', u.localidadId) : 'Ir al listado'),
+      accion: h('a', { class: 'btn btn-primario', href: esCliente ? '#/' : '#/tickets' }, esCliente ? 'Ver los tickets de ' + S.nombre('localidades', u.localidadId) : 'Ir al listado'),
     }));
   }
 
@@ -102,7 +102,7 @@
     // ------------------------------------------------------------ Cabecera ---
     const cabecera = h('div', { class: 'ticket-cabecera' },
       h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
-        h('a', { href: '#/tickets' }, esCliente ? 'Tickets de ' + loc : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, '#' + t.numero)),
+        h('a', { href: esCliente ? '#/' : '#/tickets' }, esCliente ? 'Inicio' : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, '#' + t.numero)),
       h('div', { class: 'fila-sm' },
         ui.badgeElevado(t, verRecorrido),
         ui.badgeOrigenSolucion(solucionOriginada, true),
@@ -187,7 +187,7 @@
       } else if (ev.tipo === 'datos') { ic = 'editar'; texto = [fuerte, ' modificó la clasificación: ', (ev.cambios || []).map((c) => c.etiqueta + ': ' + c.de + ' → ' + c.a).join(' · ')]; }
       else if (ev.tipo === 'cierre') {
         ic = 'check';
-        texto = [fuerte, ev.registroDirecto ? ' registró el ticket ya resuelto' : ' cerró el ticket', ev.de ? [' (estaba ', ui.badgeEstado(ev.de), ')'] : null,
+        texto = [fuerte, ev.registroDirecto ? ' registró el ticket ya resuelto' : ' cerró el ticket', ev.de ? [ui.badgeEstado(ev.de), '→', ui.badgeEstado('CERRADO')] : null,
           ev.texto && !esCliente ? h('span', { class: 'chico suave', style: 'flex-basis: 100%' }, 'Resolución: «' + U.truncar(ev.texto, 160) + '»') : null];
       } else if (ev.tipo === 'reapertura') { ic = 'reabrir'; texto = [fuerte, ' reabrió el ticket', ev.a ? ['→', ui.badgeEstado(ev.a)] : null, nota('Motivo (privado)', ev.texto)]; }
       else texto = [fuerte, ' actualizó el ticket'];

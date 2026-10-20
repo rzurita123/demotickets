@@ -52,6 +52,7 @@
   }
 
   App.vistas.estadisticas = function (ctx) {
+    if (ctx.usuario.rol === 'CLIENTE') return App.vistas.estadisticasCliente(ctx);
     const S = App.store;
     const ui = App.ui;
     const C = App.comun;

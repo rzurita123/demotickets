@@ -265,7 +265,7 @@
       h('div', { class: 'titulos' },
         h('nav', { class: 'migas', 'aria-label': 'Ubicación' },
           b ? [h('a', { href: '#/borradores' }, 'Borradores'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Continuar')]
-            : [h('a', { href: '#/tickets' }, 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Crear')]),
+            : [h('a', { href: esCliente ? '#/' : '#/tickets' }, esCliente ? 'Inicio' : 'Tickets'), ui.icono('derecha', 'i-sm'), h('span', { 'aria-current': 'page' }, 'Crear')]),
         tituloPagina),
       b ? h('span', { class: 'badge contorno grande' }, ui.icono('borrador', 'i-sm'), 'Borrador · guardado ', ui.tiempo(b.actualizadoEn)) : null);
 

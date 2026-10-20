@@ -13,8 +13,9 @@
     const empieza = (p) => (r) => r === p || r.indexOf(p + '/') === 0;
     if (u.rol === 'CLIENTE') {
       return [
-        { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' },
-        { href: '#/tickets', texto: 'Tickets', icono: 'lista', activo: (r) => empieza('/tickets')(r) && r !== '/tickets/nuevo' },
+        // El cliente tiene sus tickets en Inicio: el detalle de un ticket también marca Inicio.
+        { href: '#/', texto: 'Inicio', icono: 'inicio', activo: (r) => r === '/' || (empieza('/tickets')(r) && r !== '/tickets/nuevo') },
+        { href: '#/estadisticas', texto: 'Estadísticas', icono: 'grafico', activo: empieza('/estadisticas') },
         { href: '#/tickets/nuevo', texto: 'Crear ticket', icono: 'mas', activo: (r) => r === '/tickets/nuevo', soloMovil: true },
         { href: '#/buscar', texto: 'Buscar', icono: 'buscar', activo: (r) => r === '/buscar', soloMovil: true },
       ];

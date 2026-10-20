@@ -29,7 +29,7 @@
   R.registrar('/soluciones/:id', { vista: V.solucion, titulo: 'Solución reutilizable', roles: ORMEN });
   R.registrar('/soluciones/:id/editar', { vista: V.solucionForm, titulo: 'Editar solución', roles: ['ADMINISTRADOR'] });
 
-  R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR'] });
+  R.registrar('/estadisticas', { vista: V.estadisticas, titulo: 'Estadísticas', roles: ['ADMINISTRADOR', 'CLIENTE'] });
 
   // Catálogos se abre desde el menú del usuario administrador; /admin/catalogos queda por los enlaces viejos.
   R.registrar('/catalogos', { vista: V.adminCatalogos, titulo: 'Catálogos', roles: ['ADMINISTRADOR'] });

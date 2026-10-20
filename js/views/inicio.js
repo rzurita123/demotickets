@@ -1,6 +1,7 @@
 /* ==========================================================================
    Inicio de cada rol.
-   - Cliente: crear ticket y los tickets de su localidad, en una cola con pestañas.
+   - Cliente: los tickets de su localidad, en una cola con pestañas (no hay pantalla Tickets aparte).
+     Sus estadísticas están en App.vistas.estadisticasCliente.
    - Operador: crear ticket y su cola de trabajo (la búsqueda está en la barra).
    - Administrador: soluciones reutilizables por aprobar y analíticas.
    ========================================================================== */
@@ -39,6 +40,12 @@
 
   // ------------------------------------------------------------- Cliente ---
 
+  const POR_PAGINA_CLIENTE = 15;
+
+  /**
+   * Inicio del cliente: la única lista de tickets de su localidad (ya no hay
+   * pantalla Tickets aparte), en pestañas y con páginas.
+   */
   function inicioCliente(ctx) {
     const S = App.store;
     const ui = App.ui;
@@ -48,53 +55,93 @@
     const tickets = S.ticketsVisibles(u);
     const enCurso = tickets.filter(activo).sort(C.ORDENES.actualizados.fn);
     const bloqueados = enCurso.filter((t) => t.estado === 'BLOQUEADO');
-    const desde = Date.now() - 30 * U.DIA;
-    const cerrados = tickets.filter((t) => t.estado === 'CERRADO' && new Date(t.cerradoEn).getTime() >= desde)
-      .sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
+    const cerrados = tickets.filter((t) => t.estado === 'CERRADO').sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
     const cols = ['numero', 'ticket', 'creador', 'estado', 'duracion', 'actualizado'];
-    const lista = (items, vacio, href) => (items.length
-      ? [C.tablaTickets(items.slice(0, 12), cols, { caption: 'Tickets de ' + loc }), items.length > 12 ? h('div', { class: 'cola-pie' }, verTodos(href, 'Ver los ' + items.length)) : null]
-      : ui.vacio({ icono: 'checkCirculo', titulo: vacio }));
+    const vistaActual = ctx.query.vista || 'curso';
 
-    // Estadísticas mínimas de la localidad: qué hay en curso, cuánto tarda la resolución y de qué sistemas.
-    const hace90 = Date.now() - 90 * U.DIA;
-    const resueltos90 = tickets.filter((t) => t.estado === 'CERRADO' && !t.registroDirecto && new Date(t.cerradoEn).getTime() >= hace90);
-    const promedio = resueltos90.length ? resueltos90.reduce((a, t) => a + S.duracionTicket(t), 0) / resueltos90.length : 0;
-    const masAntiguo = enCurso.slice().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))[0];
-    const ultimos90 = tickets.filter((t) => new Date(t.creadoEn).getTime() >= hace90);
-    const porSistema = Array.from(U.contarPor(ultimos90, (t) => t.sistemaId), ([clave, valor]) => ({ clave, valor, etiqueta: S.nombre('sistemas', clave) }))
-      .sort((a, b) => b.valor - a.valor).slice(0, 6);
-    const resumen = h('section', { class: 'pila', 'aria-labelledby': 'sec-resumen-loc' },
-      h('h2', { id: 'sec-resumen-loc', class: 'titulo-seccion' }, 'Resumen de ' + loc),
-      h('div', { class: 'mosaicos' },
-        C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', detalle: bloqueados.length ? U.plural(bloqueados.length, 'espera tu respuesta', 'esperan tu respuesta') : 'Ninguno espera tu respuesta' }),
-        C.mosaico({ etiqueta: 'Cerrados en 30 días', icono: 'check', valor: cerrados.length, tono: 'verde' }),
-        C.mosaico({ etiqueta: 'Resolución promedio', icono: 'historial', valor: resueltos90.length ? U.duracionCorta(promedio) : '—', detalle: 'Últimos 90 días · ' + U.plural(resueltos90.length, 'ticket', 'tickets') }),
-        C.mosaico({ etiqueta: 'Abierto hace más tiempo', icono: 'bandeja', valor: masAntiguo ? U.duracionCorta(S.duracionTicket(masAntiguo)) : '—', detalle: masAntiguo ? '#' + masAntiguo.numero + ' · ' + U.truncar(masAntiguo.titulo, 34) : 'No hay tickets en curso', href: masAntiguo ? '#/tickets/' + masAntiguo.numero : null })));
-    const graficoSistemas = App.charts.tarjeta({
-      titulo: 'Tickets por sistema',
-      descripcion: 'Últimos 90 días',
-      grafico: App.charts.barras({ titulo: 'Tickets por sistema', datos: porSistema, total: ultimos90.length }),
-      tabla: { columnas: ['Sistema', 'Tickets'], filas: porSistema.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
-      vacio: porSistema.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en los últimos 90 días.'),
-    });
+    function lista(clave, items, vacio) {
+      if (!items.length) return ui.vacio({ icono: 'checkCirculo', titulo: vacio });
+      const paginas = Math.ceil(items.length / POR_PAGINA_CLIENTE);
+      const pagina = clave === vistaActual ? Math.min(Math.max(1, Number(ctx.query.p) || 1), paginas) : 1;
+      return [
+        C.tablaTickets(items.slice((pagina - 1) * POR_PAGINA_CLIENTE, pagina * POR_PAGINA_CLIENTE), cols, { caption: 'Tickets de ' + loc }),
+        paginas > 1 ? ui.paginador({
+          total: items.length, pagina, porPagina: POR_PAGINA_CLIENTE,
+          alCambiar: (p) => { App.router.actualizarQuery({ vista: clave, p: String(p) }); ctx.refrescar(); },
+        }) : null,
+      ];
+    }
 
     return h('div', { class: 'pila-lg' },
       saludo(u),
-      resumen,
       C.cola({
         id: 'cola-cliente',
         etiqueta: 'Tickets de ' + loc,
         activa: ctx.query.vista,
         alCambiar: (v) => App.router.actualizarQuery({ vista: v }),
         pestanas: [
-          { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista(enCurso, 'No hay tickets en curso', '#/tickets?estado=en-curso') },
-          { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista(bloqueados, 'Ningún ticket espera tu respuesta', '#/tickets?estado=BLOQUEADO') },
-          { clave: 'cerrados', texto: 'Cerrados en 30 días', cuenta: cerrados.length, tono: 'verde', contenido: () => lista(cerrados, 'No hay tickets cerrados en los últimos 30 días', '#/tickets?estado=CERRADO') },
+          { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista('curso', enCurso, 'No hay tickets en curso') },
+          { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista('bloqueados', bloqueados, 'Ningún ticket espera tu respuesta') },
+          { clave: 'cerrados', texto: 'Cerrados', cuenta: cerrados.length, tono: 'verde', contenido: () => lista('cerrados', cerrados, 'Todavía no hay tickets cerrados') },
         ],
-      }),
-      graficoSistemas);
+      }));
   }
+
+  /**
+   * Estadísticas del cliente: lo mínimo de su localidad (en curso, cerrados,
+   * tiempos de resolución, tickets por sistema y por mes).
+   */
+  App.vistas.estadisticasCliente = function (ctx) {
+    const S = App.store;
+    const C = App.comun;
+    const u = ctx.usuario;
+    const loc = S.nombre('localidades', u.localidadId);
+    const tickets = S.ticketsVisibles(u);
+    const enCurso = tickets.filter(activo);
+    const bloqueados = enCurso.filter((t) => t.estado === 'BLOQUEADO');
+    const hace30 = Date.now() - 30 * U.DIA;
+    const cerrados30 = tickets.filter((t) => t.estado === 'CERRADO' && new Date(t.cerradoEn).getTime() >= hace30).length;
+    const hace90 = Date.now() - 90 * U.DIA;
+    const resueltos90 = tickets.filter((t) => t.estado === 'CERRADO' && !t.registroDirecto && new Date(t.cerradoEn).getTime() >= hace90);
+    const promedio = resueltos90.length ? resueltos90.reduce((a, t) => a + S.duracionTicket(t), 0) / resueltos90.length : 0;
+    const masAntiguo = enCurso.slice().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))[0];
+    const ultimos90 = tickets.filter((t) => new Date(t.creadoEn).getTime() >= hace90);
+    const porSistema = Array.from(U.contarPor(ultimos90, (t) => t.sistemaId), ([clave, valor]) => ({ clave, valor, etiqueta: S.nombre('sistemas', clave) }))
+      .sort((a, b) => b.valor - a.valor).slice(0, 8);
+
+    // Tickets registrados por mes (últimos 6 meses).
+    const meses = [];
+    const hoy = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      meses.push({ clave: U.claveMes(d), etiqueta: U.mesCorto(d), etiquetaLarga: U.mesLargo(d), valor: 0 });
+    }
+    const porMes = U.contarPor(tickets, (t) => U.claveMes(t.creadoEn));
+    meses.forEach((m) => { m.valor = porMes.get(m.clave) || 0; });
+
+    ctx.titulo('Estadísticas de ' + loc);
+    return h('div', { class: 'pila-lg' },
+      App.ui.cabecera({ titulo: 'Estadísticas de ' + loc }),
+      h('div', { class: 'mosaicos' },
+        C.mosaico({ etiqueta: 'En curso', icono: 'reloj', valor: enCurso.length, tono: 'dorado', detalle: bloqueados.length ? U.plural(bloqueados.length, 'espera tu respuesta', 'esperan tu respuesta') : 'Ninguno espera tu respuesta', href: '#/' }),
+        C.mosaico({ etiqueta: 'Cerrados en 30 días', icono: 'check', valor: cerrados30, tono: 'verde', href: '#/?vista=cerrados' }),
+        C.mosaico({ etiqueta: 'Resolución promedio', icono: 'historial', valor: resueltos90.length ? U.duracionCorta(promedio) : '—', detalle: 'Últimos 90 días · ' + U.plural(resueltos90.length, 'ticket', 'tickets') }),
+        C.mosaico({ etiqueta: 'Abierto hace más tiempo', icono: 'bandeja', valor: masAntiguo ? U.duracionCorta(S.duracionTicket(masAntiguo)) : '—', detalle: masAntiguo ? '#' + masAntiguo.numero + ' · ' + U.truncar(masAntiguo.titulo, 34) : 'No hay tickets en curso', href: masAntiguo ? '#/tickets/' + masAntiguo.numero : null })),
+      h('div', { class: 'grid-2' },
+        App.charts.tarjeta({
+          titulo: 'Tickets registrados por mes',
+          descripcion: 'Últimos 6 meses',
+          grafico: App.charts.columnas({ titulo: 'Tickets registrados por mes', datos: meses }),
+          tabla: { columnas: ['Mes', 'Tickets'], filas: meses.map((m) => [m.etiquetaLarga, U.formatoNumero(m.valor)]) },
+        }),
+        App.charts.tarjeta({
+          titulo: 'Tickets por sistema',
+          descripcion: 'Últimos 90 días',
+          grafico: App.charts.barras({ titulo: 'Tickets por sistema', datos: porSistema, total: ultimos90.length }),
+          tabla: { columnas: ['Sistema', 'Tickets'], filas: porSistema.map((d) => [d.etiqueta, U.formatoNumero(d.valor)]) },
+          vacio: porSistema.length ? null : h('p', { class: 'chico suave' }, 'No hay tickets en los últimos 90 días.'),
+        })));
+  };
 
   // ------------------------------------------------------------ Operador ---
 
