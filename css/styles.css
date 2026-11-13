@@ -924,6 +924,9 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .modo-ormen .segmentado label:first-child input:checked + span { background: var(--azul); border-color: var(--azul); color: #fff; }
 .modo-ormen .segmentado label:last-child > span { color: var(--azul-texto); border-color: var(--azul); }
 .modo-ormen .segmentado label:last-child input:checked + span { background: var(--azul-muy-claro); border-color: var(--azul); color: var(--azul-texto); box-shadow: inset 0 0 0 1px var(--azul); }
+.modo-ormen .segmentado { gap: 10px; }
+.modo-ormen .segmentado label > span { min-height: 60px; padding: 10px 14px; }
+.modo-ormen .segmentado label > span .icono { width: 24px; height: 24px; }
 /* Cliente: el estado se muestra, no se elige. Cartel discreto, sin ícono. */
 .modo-fijo {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; align-self: flex-start;
@@ -998,9 +1001,12 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 /* Formularios largos: la resolución se distingue y los botones quedan siempre a la vista */
 .seccion-resolucion { background: #FCFAF3; box-shadow: inset 4px 0 0 var(--dorado); }
 .barra-form {
-  position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 14px 24px; background: rgba(255, 255, 255, .96); border-top: 1px solid var(--borde); border-radius: 0 0 var(--radio-lg) var(--radio-lg);
 }
+.formulario-ticket { transform: none; }
+.resumen-formulario:empty { display: none; }
+.vista-ticket-form > .cabecera { margin-bottom: 0; }
 .modo-registro .segmentado label > span { min-height: 76px; }
 
 /* Filtros en grilla pareja (estadísticas) */
@@ -1035,6 +1041,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .resultados-busqueda-titulo h2 { font-size: 18px; }
 .resultados-busqueda-titulo .cuenta { min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--gris-claro); color: var(--texto-suave); font-size: 13px; font-weight: 700; text-align: center; }
 @media (max-width: 760px) {
+  .formulario-ticket { transform: none; }
   .resultados-busqueda-lista { display: block; }
   .resultados-busqueda-bloque + .resultados-busqueda-bloque { border-top: 1px solid var(--borde); border-left: 0; }
   .resultados-busqueda-bloque:last-child .resultados-busqueda { padding: 16px 18px; }

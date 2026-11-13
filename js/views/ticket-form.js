@@ -72,8 +72,8 @@
     }
     pintarBasadaEn();
 
-    const resumen = h('div');
-    const tituloPagina = h('h1', { id: 'titulo-pagina', tabindex: '-1' });
+    const resumen = h('div', { class: 'resumen-formulario' });
+    const tituloPagina = h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' });
 
     // ------------------------------------------------------- Secciones ---
     // Cerrado va primero y como opción principal; Pendiente, del mismo tamaño, como secundaria.
@@ -122,10 +122,10 @@
       btnDescartar && h('span', { class: 'crecer' }), btnDescartar);
 
     // El formulario se ve desde el principio: el modo siempre tiene un valor.
-    // Primero los datos del ticket (localidad, sistema, criticidad) y después el problema.
-    const hojaForm = h('div', { class: 'hoja' }, cardDatos, cardProblema, acciones);
+    // Primero los datos del ticket, después el problema y al final el modo de registro.
+    const hojaForm = h('div', { class: 'hoja' }, cardDatos, cardProblema, segModo, acciones);
     const form = h('form', { class: 'pila-lg', novalidate: true, 'aria-labelledby': 'titulo-pagina' },
-      resumen, segModo, hojaForm);
+      resumen, hojaForm);
     // Elegir Cerrado o Pendiente no cuenta como un cambio sin guardar.
     const marcarSalvoModo = (e) => { if (e.target.name !== 'modo') marcar(); };
     form.addEventListener('input', marcarSalvoModo);
@@ -272,6 +272,7 @@
         tituloPagina),
       b ? h('span', { class: 'badge contorno grande' }, ui.icono('borrador', 'i-sm'), 'Borrador · guardado ', ui.tiempo(b.actualizadoEn)) : null);
 
+    form.classList.add('formulario-ticket');
     const columnas = h('div', { class: lateral ? 'dos-columnas-anchas' : 'columna-unica' }, form, lateral);
     cambiarModo(modo);
     if (pre.usar && modo === 'resuelto') {
@@ -288,7 +289,7 @@
       encabezado,
       columnas,
     ];
-    return h('div', { class: 'pila' }, contenido);
+    return h('div', { class: ['pila', 'vista-ticket-form'] }, contenido);
   }
 
   /**
