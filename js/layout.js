@@ -7,6 +7,12 @@
 
   const U = App.util;
   const h = U.h;
+  const fmtFechaHeader = new Intl.DateTimeFormat('es-UY', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  function fechaHeader() {
+    const ahora = new Date();
+    return h('time', { class: 'fecha-header', datetime: ahora.toISOString().slice(0, 10) }, U.capitalizar(fmtFechaHeader.format(ahora).replace(',', '')));
+  }
 
   function navegacion(u) {
     const S = App.store;
@@ -135,7 +141,7 @@
 
   function barra(u, ctx) {
     const ruta = ctx.ruta;
-    const interior = h('div', { class: 'contenedor barra-interior' }, marca(), estadoGuardado());
+    const interior = h('div', { class: 'contenedor barra-interior' }, marca(), fechaHeader(), estadoGuardado());
     if (!u) {
       interior.append(h('div', { class: 'barra-acciones' }, h('a', { class: 'btn btn-primario btn-sm', href: '#/ingresar' }, 'Ingresar')));
       return h('header', { class: 'barra' }, interior);

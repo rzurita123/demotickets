@@ -1,7 +1,7 @@
 /* ==========================================================================
    Búsqueda general (buscador de la barra superior).
    - Un número (#1150 o 1150) de un ticket visible abre ese ticket.
-   - Un texto muestra, en pestañas, los tickets que coinciden (del ámbito
+   - Un texto muestra en una única lista los tickets que coinciden (del ámbito
      de cada usuario) y, para ORMEN, las soluciones y resoluciones parecidas.
    ========================================================================== */
 (function (App) {
@@ -31,6 +31,20 @@
     return U.normalizar(limpio).split(/\s+/).filter(Boolean).every((p) => donde.indexOf(p) >= 0);
   }
 
+  function puntajeCoincidencia(t, texto) {
+    const consulta = U.normalizar(texto.replace(/^#/, '').trim());
+    const titulo = U.normalizar(t.titulo);
+    const descripcion = U.normalizar(t.descripcion);
+    const completo = titulo + ' ' + descripcion;
+    let puntaje = completo === consulta ? 100 : (completo.indexOf(consulta) >= 0 ? 20 : 0);
+    for (const termino of consulta.split(/\s+/).filter(Boolean)) {
+      if (titulo.indexOf(termino) >= 0) puntaje += 5;
+      let desde = 0;
+      while ((desde = completo.indexOf(termino, desde)) >= 0) { puntaje += 1; desde += termino.length; }
+    }
+    return puntaje;
+  }
+
   App.vistas.buscar = function (ctx) {
     const S = App.store;
     const ui = App.ui;
@@ -55,7 +69,7 @@
 
     const activo = (t) => D.ESTADOS_ACTIVOS.includes(t.estado);
     const tickets = S.ticketsVisibles(u).filter((t) => coincide(t, q))
-      .sort((a, b) => (activo(b) - activo(a)) || b.actualizadoEn.localeCompare(a.actualizadoEn));
+      .sort((a, b) => (puntajeCoincidencia(b, q) - puntajeCoincidencia(a, q)) || (activo(b) - activo(a)) || b.actualizadoEn.localeCompare(a.actualizadoEn));
     const soluciones = esCliente ? [] : App.sugerencias.buscar({ texto: q, limite: 12 });
 
     function usar(r) {
@@ -66,32 +80,25 @@
     const cols = esCliente
       ? ['numero', 'ticket', 'creador', 'estado', 'actualizado']
       : ['numero', 'ticket', 'localidad', 'estado', 'atiende', 'actualizado'];
-    const pestanas = [{
-      clave: 'tickets', texto: 'Tickets', cuenta: tickets.length,
-      contenido: () => (tickets.length
+    const bloqueTickets = h('section', { class: 'resultados-busqueda-bloque' },
+      h('div', { class: 'resultados-busqueda-titulo' }, h('h2', null, 'Tickets'), h('span', { class: 'cuenta' }, U.formatoNumero(tickets.length))),
+      tickets.length
         ? [C.tablaTickets(tickets.slice(0, MAX_TICKETS), cols, { caption: 'Tickets que coinciden' }),
           tickets.length > MAX_TICKETS ? h('div', { class: 'cola-pie' },
             h('a', { class: 'chico fuerte', href: '#/tickets?' + U.buildQuery({ estado: 'todos', q }) }, 'Ver los ' + tickets.length + ' en el listado ', ui.icono('flechaDer', 'i-sm'))) : null]
-        : ui.vacio({ icono: 'buscar', titulo: 'Ningún ticket coincide' })),
-    }];
+        : ui.vacio({ icono: 'buscar', titulo: 'Ningún ticket coincide' }));
+
+    const bloques = [bloqueTickets];
     if (!esCliente) {
-      pestanas.push({
-        clave: 'soluciones', texto: 'Soluciones', cuenta: soluciones.length, tono: 'dorado',
-        contenido: () => (soluciones.length
+      bloques.push(h('section', { class: 'resultados-busqueda-bloque' },
+        h('div', { class: 'resultados-busqueda-titulo' }, h('h2', null, 'Soluciones'), h('span', { class: 'cuenta' }, U.formatoNumero(soluciones.length))),
+        soluciones.length
           ? h('div', { class: 'sugerencias resultados-busqueda' }, soluciones.map((r) => ui.tarjetaSugerencia(r, { alUsar: esOperador ? usar : null, textoUsar: 'Crear ticket cerrado con esta' })))
-          : ui.vacio({ icono: 'libro', titulo: 'Ninguna solución parecida' })),
-      });
+          : ui.vacio({ icono: 'libro', titulo: 'Ninguna solución parecida' })));
     }
-    const activa = ctx.query.vista || (tickets.length || !soluciones.length ? 'tickets' : 'soluciones');
 
     return h('div', { class: 'pila-lg' }, cabecera,
-      C.cola({
-        id: 'cola-busqueda',
-        etiqueta: 'Resultados de la búsqueda',
-        activa,
-        alCambiar: (v) => App.router.actualizarQuery({ q, vista: v }),
-        pestanas,
-      }));
+      h('section', { class: 'card resultados-busqueda-lista', 'aria-label': 'Resultados de la búsqueda' }, bloques));
   };
 
   App.buscar = { ir };
