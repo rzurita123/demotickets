@@ -68,7 +68,7 @@
         th: 'Ticket',
         td: (t) => ui.celda('Ticket', h('div', { class: 'titulo-celda' },
           enlaceTicket(t, t.titulo),
-          h('span', { class: 'sub' }, clasificacionCorta(t), t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t))), 'sin-label'),
+          h('span', { class: 'sub' }, o.detalleTicket ? o.detalleTicket(t) : [clasificacionCorta(t), t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t)])), 'sin-label'),
       },
       localidad: { th: 'Localidad', td: (t) => ui.celda('Localidad', S.nombre('localidades', t.localidadId)) },
       creador: { th: 'Creado por', td: (t) => { const u = S.usuario(t.creadoPorId); return ui.celda('Creado por', u ? (u.rol === 'CLIENTE' ? u.nombre : u.nombre + ' (Mesa de ayuda)') : '—'); } },

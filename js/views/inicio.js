@@ -13,10 +13,8 @@
   const h = U.h;
   const D = App.dominio;
 
-  const fmtDia = new Intl.DateTimeFormat('es-UY', { weekday: 'long', day: 'numeric', month: 'long' });
-  const hoyLargo = () => U.capitalizar(fmtDia.format(new Date()).replace(',', ''));
-  const primerNombre = (u) => u.nombre.split(' ')[0];
   const activo = (t) => D.ESTADOS_ACTIVOS.includes(t.estado);
+  const POR_PAGINA_OPERADOR = 3;
 
   const mosaico = (op) => App.comun.mosaico(op);
 
@@ -24,15 +22,6 @@
     return h('section', { class: 'card' },
       h('div', { class: 'card-titulo' }, h('h2', null, titulo), extra),
       contenido);
-  }
-
-  /** Saludo con la fecha; acción opcional a la derecha. */
-  function saludo(u, accion) {
-    return h('div', { class: 'cabecera saludo' },
-      h('div', { class: 'titulos' },
-        h('h1', { id: 'titulo-pagina', tabindex: '-1' }, 'Hola, ' + primerNombre(u)),
-        h('span', { class: 'suave' }, hoyLargo())),
-      accion ? h('div', { class: 'acciones' }, accion) : null);
   }
 
   function verTodos(href, texto) {
@@ -94,7 +83,7 @@
     }
 
     return h('div', { class: 'pila-lg' },
-      saludo(u),
+      h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Inicio'),
       C.cola({
         id: 'cola-cliente',
         etiqueta: 'Tickets de ' + loc,
@@ -175,7 +164,6 @@
     const u = ctx.usuario;
     const enCurso = S.ticketsVisibles(u).filter(activo);
     const pendientes = enCurso.filter((t) => !t.operadorId).sort(C.ORDENES.criticidad.fn);
-    const mios = enCurso.filter((t) => t.operadorId === u.id).sort(C.ORDENES.actualizados.fn);
     const borradores = S.borradoresDe(u);
     const favoritos = S.favoritosDe(u);
     const favTickets = favoritos.filter((f) => f.tipo === 'ticket').map((f) => f.item);
@@ -189,13 +177,25 @@
       } catch (e) { ui.mostrarError(e); }
     }
 
+    function pagina(items, clave) {
+      const totalPaginas = Math.max(1, Math.ceil(items.length / POR_PAGINA_OPERADOR));
+      const actual = Math.min(Math.max(1, Number(ctx.query[clave]) || 1), totalPaginas);
+      return {
+        items: items.slice((actual - 1) * POR_PAGINA_OPERADOR, actual * POR_PAGINA_OPERADOR),
+        control: items.length > POR_PAGINA_OPERADOR ? ui.paginador({
+          total: items.length, pagina: actual, porPagina: POR_PAGINA_OPERADOR,
+          alCambiar: (p) => { App.router.actualizarQuery(Object.assign({}, ctx.query, { [clave]: String(p) })); ctx.refrescar(); },
+        }) : null,
+      };
+    }
+
     const pie = (n, href) => (n > 12 ? h('div', { class: 'cola-pie' }, verTodos(href, 'Ver los ' + n)) : null);
 
     // Favoritos: primero los tickets y después las soluciones reutilizables, cada grupo con su tabla.
-    const tablaSolucionesFav = () => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
+    const tablaSolucionesFav = (soluciones) => h('div', { class: 'tabla-envoltura' }, h('table', { class: 'tabla responsive' },
       h('caption', { class: 'sr-only' }, 'Soluciones reutilizables favoritas'),
       h('thead', null, h('tr', null, ['Solución', 'Estado', 'Usos', h('span', { class: 'sr-only' }, 'Favorito')].map((t) => h('th', { scope: 'col' }, t)))),
-      h('tbody', null, favSoluciones.map((s) => {
+      h('tbody', null, soluciones.map((s) => {
         const usos = S.usosDeSolucion(s.id).length;
         const tr = h('tr', { class: 'clic' },
           ui.celda('Solución', h('div', { class: 'titulo-celda' }, h('a', { href: '#/soluciones/' + s.id }, s.titulo), h('span', { class: 'sub' }, ui.clasificacion(s.sistemaId, s.subsistemaId))), 'sin-label'),
@@ -207,41 +207,68 @@
       }))));
     // La cola sólo acepta una lista plana de nodos.
     const contenidoFavoritos = () => (favoritos.length
-      ? [].concat(
-        favTickets.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(favTickets, ['numero', 'ticket', 'localidad', 'estado', 'duracion', 'actualizado'], { caption: 'Tickets favoritos' })] : [],
-        favSoluciones.length ? [h('h3', { class: 'cola-subtitulo' }, 'Soluciones reutilizables'), tablaSolucionesFav()] : [])
+      ? (() => {
+        const items = favTickets.map((item) => ({ tipo: 'ticket', item })).concat(favSoluciones.map((item) => ({ tipo: 'solucion', item })));
+        const pag = pagina(items, 'pFavoritos');
+        const ticketsPagina = pag.items.filter((item) => item.tipo === 'ticket').map((item) => item.item);
+        const solucionesPagina = pag.items.filter((item) => item.tipo === 'solucion').map((item) => item.item);
+        return [].concat(
+          ticketsPagina.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(ticketsPagina, ['numero', 'ticket', 'estado', 'actualizado'], {
+            caption: 'Tickets favoritos',
+            detalleTicket: (t) => [
+              C.clasificacionCorta(t),
+              ' · ',
+              S.nombre('localidades', t.localidadId),
+              ' · ',
+              ui.duracionTicket(t),
+              t.registroDirecto ? ' · Registrado ya resuelto' : '',
+            ],
+          })] : [],
+          solucionesPagina.length ? [h('h3', { class: 'cola-subtitulo' }, 'Soluciones reutilizables'), tablaSolucionesFav(solucionesPagina)] : [],
+          pag.control ? [pag.control] : []);
+      })()
       : ui.vacio({ icono: 'estrella', titulo: 'Todavía no tenés favoritos', texto: 'Marcá con la estrella los tickets o las soluciones reutilizables que consultás seguido y van a aparecer acá.' }));
+
+    const pestanasTrabajo = [
+      // Lo principal es lo que nadie tomó todavía, de cualquier localidad.
+      {
+        clave: 'pendientes', texto: 'Pendientes', cuenta: pendientes.length, tono: 'dorado',
+        contenido: () => (pendientes.length
+          ? (() => { const pag = pagina(pendientes, 'pPendientes'); return [C.tablaTickets(pag.items, ['numero', 'ticket', 'localidad', 'criticidad', 'duracion', 'accion'], {
+            caption: 'Tickets pendientes: nadie de Mesa de ayuda los tomó',
+            accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
+          }), pag.control, pie(pendientes.length, '#/tickets?estado=ABIERTO')]; })()
+          : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets pendientes', texto: 'Todos los tickets en curso ya los tomó alguien de Mesa de ayuda.' })),
+      },
+      Object.assign({}, pestanaBorradores(borradores, true), {
+        texto: 'Borradores',
+        contenido: () => {
+          if (!borradores.length) return ui.vacio({ icono: 'borrador', titulo: 'No tenés borradores', texto: 'Mientras cargás un ticket podés guardarlo como borrador y terminarlo después.' });
+          const pag = pagina(borradores, 'pBorradores');
+          return [tablaBorradores(pag.items, true), pag.control];
+        },
+      }),
+      { clave: 'favoritos', texto: 'Favoritos', cuenta: favoritos.length, contenido: contenidoFavoritos },
+    ];
+
+    if (u.rol === 'OPERADOR') {
+      return h('div', { class: 'inicio-operador-cuadrantes' }, pestanasTrabajo.map((p, i) =>
+        h('section', { class: ['card', 'inicio-operador-bloque', i === 0 && 'inicio-operador-pendientes', p.clave === 'favoritos' && 'inicio-operador-favoritos', p.clave === 'borradores' && 'inicio-operador-borradores'] },
+          h('div', { class: 'card-titulo' }, h('h2', null, p.texto), h('span', { class: 'cuenta-titulo' }, U.formatoNumero(p.cuenta))),
+          p.contenido())));
+    }
 
     return C.cola({
         id: 'cola-operador',
         etiqueta: 'Mi trabajo',
         activa: ctx.query.vista,
         alCambiar: (v) => App.router.actualizarQuery({ vista: v }),
-        pestanas: [
-          // Lo principal es lo que nadie tomó todavía, de cualquier localidad.
-          {
-            clave: 'pendientes', texto: 'Pendientes', cuenta: pendientes.length, tono: 'dorado',
-            contenido: () => (pendientes.length
-              ? [C.tablaTickets(pendientes.slice(0, 12), ['numero', 'ticket', 'localidad', 'criticidad', 'duracion', 'accion'], {
-                caption: 'Tickets pendientes: nadie de Mesa de ayuda los tomó',
-                accion: (t) => h('button', { type: 'button', class: 'btn btn-secundario btn-sm', onClick: () => tomar(t) }, ui.icono('asignar', 'i-sm'), 'Tomar'),
-              }), pie(pendientes.length, '#/tickets?estado=ABIERTO')]
-              : ui.vacio({ icono: 'checkCirculo', titulo: 'No hay tickets pendientes', texto: 'Todos los tickets en curso ya los tomó alguien de Mesa de ayuda.' })),
-          },
-          {
-            clave: 'mios', texto: 'Mis tickets', cuenta: mios.length,
-            contenido: () => (mios.length
-              ? [C.tablaTickets(mios.slice(0, 12), ['numero', 'ticket', 'localidad', 'estado', 'duracion', 'actualizado'], { caption: 'Mis tickets en curso' }), pie(mios.length, '#/tickets?atiende=' + u.id)]
-              : ui.vacio({ titulo: 'No tenés tickets en curso' })),
-          },
-          { clave: 'favoritos', texto: 'Favoritos', cuenta: favoritos.length, contenido: contenidoFavoritos },
-          pestanaBorradores(borradores, true),
-        ],
+        pestanas: pestanasTrabajo,
       });
   }
 
   function inicioOperador(ctx) {
-    return h('div', { class: 'pila-lg' }, saludo(ctx.usuario), colaTrabajo(ctx));
+    return h('div', { class: ['pila-lg', 'inicio-operador'] }, h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Inicio'), colaTrabajo(ctx));
   }
 
   // ------------------------------------------------------- Administrador ---
@@ -298,7 +325,7 @@
       : ui.vacio({ icono: 'checkCirculo', titulo: 'Nada por aprobar' });
 
     return h('div', { class: 'pila-lg' },
-      saludo(u),
+      h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Inicio'),
       h('div', { class: 'mosaicos' },
         mosaico({ etiqueta: 'Por aprobar', icono: 'libro', valor: porAprobar.length, tono: 'tinta', href: '#/soluciones?estado=PENDIENTE' }),
         mosaico({ etiqueta: 'Registrados en 30 días', icono: 'ticket', valor: ultimos30.length, href: '#/estadisticas?periodo=30d' }),

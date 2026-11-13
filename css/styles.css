@@ -161,6 +161,7 @@ h1[tabindex="-1"]:focus, h1[tabindex="-1"]:focus-visible { outline: none; }
 .barra .marca { color: #fff; }
 .barra .marca-sep { background: rgba(255, 255, 255, .28); }
 .barra .marca-sistema { color: rgba(255, 255, 255, .78); }
+.fecha-header { flex: none; color: rgba(255, 255, 255, .72); font-size: 13px; white-space: nowrap; }
 .nav { display: flex; align-items: stretch; gap: 2px; height: 100%; margin-left: 4px; }
 .nav a {
   display: inline-flex; align-items: center; gap: 8px; padding: 0 14px;
@@ -544,6 +545,34 @@ body.con-modal { overflow: hidden; }
 .login-clave { font-size: 13.5px; color: var(--texto-suave); }
 
 /* ---------- Inicio ---------- */
+.inicio-operador { gap: 12px; }
+.inicio-operador-cuadrantes { display: grid; grid-template-columns: minmax(230px, .82fr) minmax(0, 1.18fr); gap: 12px; }
+.inicio-operador-pendientes { grid-column: 1 / -1; }
+.inicio-operador-bloque { display: flex; flex-direction: column; min-width: 0; height: 350px; overflow: hidden; }
+.inicio-operador-bloque .tabla-envoltura { flex: 1 1 auto; min-height: 0; margin: 0 -22px; overflow: hidden; }
+.inicio-operador-bloque .cola-pie { margin: 0 -22px -20px; }
+.inicio-operador-bloque .card-titulo { margin-bottom: 8px; }
+.inicio-operador-bloque .tabla th { padding-top: 6px; padding-bottom: 6px; }
+.inicio-operador-bloque .tabla td { padding-top: 7px; padding-bottom: 7px; }
+.inicio-operador-pendientes .btn-sm { min-height: 34px; padding-left: 10px; padding-right: 10px; font-size: 13px; }
+.inicio-operador-bloque .paginador { padding: 6px 10px; gap: 6px; font-size: 12.5px; }
+.inicio-operador-bloque .paginador .btn-sm { min-height: 32px; padding-left: 9px; padding-right: 9px; }
+.inicio-operador-favoritos .cola-subtitulo { padding: 7px 14px 3px; font-size: 12px; }
+.inicio-operador-favoritos .tabla td { padding-top: 5px; padding-bottom: 5px; }
+.inicio-operador-favoritos .tabla th { padding-top: 5px; padding-bottom: 5px; }
+.inicio-operador-favoritos .tabla .sub { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-operador-favoritos .tabla .titulo-celda { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-operador-favoritos .tabla-envoltura { overflow: visible; }
+@media (max-width: 1050px) {
+  .inicio-operador-cuadrantes { grid-template-columns: minmax(200px, .82fr) minmax(0, 1.18fr); }
+}
+@media (max-width: 760px) {
+  .inicio-operador-cuadrantes { grid-template-columns: minmax(0, 1fr); }
+  .inicio-operador-pendientes { grid-column: auto; }
+  .inicio-operador-bloque { height: auto; min-height: 300px; }
+  .inicio-operador-bloque .tabla-envoltura { margin: 0 -16px; }
+  .inicio-operador-bloque .cola-pie { margin: 0 -16px -16px; }
+}
 .saludo h1 { font-size: 30px; }
 .buscador-rapido {
   display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 22px; background: var(--superficie);
@@ -766,6 +795,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
   .saludo h1 { font-size: 26px; }
   .login-panel h1 { font-size: 36px; }
   .main { padding-top: 22px; }
+  .fecha-header { display: none; }
   .grid-2, .grid-3, .usuarios-demo, .login-form { grid-template-columns: minmax(0, 1fr); }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card { padding: 16px; }
@@ -996,6 +1026,19 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .btn-crear-principal { min-height: 58px; padding: 0 34px; font-size: 18px; gap: 10px; }
 .btn-crear-principal .icono { width: 22px; height: 22px; }
 .resultados-busqueda { padding: 16px 18px; }
+.resultados-busqueda-lista { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .85fr); padding: 0; overflow: hidden; }
+.resultados-busqueda-bloque:only-child { grid-column: 1 / -1; }
+.resultados-busqueda-bloque + .resultados-busqueda-bloque { border-left: 1px solid var(--borde); }
+.resultados-busqueda-bloque:last-child .resultados-busqueda { padding: 12px 14px; }
+.resultados-busqueda-bloque:last-child .sugerencias { gap: 8px; }
+.resultados-busqueda-titulo { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; background: var(--superficie-2); }
+.resultados-busqueda-titulo h2 { font-size: 18px; }
+.resultados-busqueda-titulo .cuenta { min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--gris-claro); color: var(--texto-suave); font-size: 13px; font-weight: 700; text-align: center; }
+@media (max-width: 760px) {
+  .resultados-busqueda-lista { display: block; }
+  .resultados-busqueda-bloque + .resultados-busqueda-bloque { border-top: 1px solid var(--borde); border-left: 0; }
+  .resultados-busqueda-bloque:last-child .resultados-busqueda { padding: 16px 18px; }
+}
 .buscar-pagina { display: none; }
 @media (max-width: 920px) { .buscar-pagina { display: flex; } }
 /* Con el buscador en la barra, el subtítulo de la marca se oculta antes. */

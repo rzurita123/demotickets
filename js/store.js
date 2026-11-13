@@ -562,8 +562,8 @@
   // ---------------------------------------------------- Alta de tickets ---
 
   /**
-   * Crea un ticket: En proceso, atendido por quien lo carga, si lo crea un
-   * operador; Abierto y sin asignar si lo crea un cliente o un administrador.
+  * Crea un ticket: los registros directos quedan atendidos por quien los carga;
+  * los tickets nuevos quedan Abiertos y sin asignar para entrar en la cola.
    * Con `registroDirecto` (sólo ORMEN; el cliente siempre lo crea Abierto) queda Cerrado con su
    * resolución. Si viene `borradorId`, el borrador se convierte en el ticket.
    */
@@ -586,9 +586,10 @@
       const ahora = U.isoAhora();
       const numero = db.secuencias.ticket++;
       const esOp = esOrmen(u);
-      const t = Object.assign({ id: 't-' + numero, numero, estado: esOp ? 'EN_PROCESO' : 'ABIERTO' }, datosTicket(datos, u), {
+      const quedaEnProceso = esOp && !!op.registroDirecto;
+      const t = Object.assign({ id: 't-' + numero, numero, estado: quedaEnProceso ? 'EN_PROCESO' : 'ABIERTO' }, datosTicket(datos, u), {
         creadoPorId: u.id,
-        operadorId: esOp ? u.id : null,
+        operadorId: quedaEnProceso ? u.id : null,
         elevadoA: null,
         creadoEn: ahora,
         actualizadoEn: ahora,
@@ -597,7 +598,7 @@
         solucion: null,
         registroDirecto: !!op.registroDirecto,
         privado: !!op.privado,
-        actividad: [{ id: U.uid('a'), tipo: 'creado', fecha: ahora, autorId: u.id, estado: esOp ? 'EN_PROCESO' : 'ABIERTO', operadorId: esOp ? u.id : null, desdeBorrador: !!op.borradorId }],
+        actividad: [{ id: U.uid('a'), tipo: 'creado', fecha: ahora, autorId: u.id, estado: quedaEnProceso ? 'EN_PROCESO' : 'ABIERTO', operadorId: quedaEnProceso ? u.id : null, desdeBorrador: !!op.borradorId }],
       });
       if (op.borradorId) {
         db.tickets = db.tickets.filter((x) => x.id !== op.borradorId);

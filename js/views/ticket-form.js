@@ -221,7 +221,7 @@
       try {
         const t = S.crearTicket(leer(), u, opciones);
         ctx.marcarSucio(false);
-        ui.toast(modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado.' + (esOperador ? ' Queda En proceso, a tu nombre.' : ''));
+        ui.toast(modo === 'resuelto' ? 'Ticket #' + t.numero + ' registrado como cerrado.' : 'Ticket #' + t.numero + ' creado.' + (esOperador ? ' Queda pendiente, sin asignar.' : ''));
         App.router.ir('/tickets/' + t.numero);
       } catch (e) {
         if (e.campos) ui.mostrarErrores(form, e.campos, resumen);
