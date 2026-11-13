@@ -57,7 +57,6 @@
     const inDesc = editorDesc.el;
 
     // Si se resolvió en la llamada, la resolución también va en la descripción (no hay sección aparte).
-    const ayudaDesc = h('p', { class: 'chico suave' });
     const basadaEn = h('div', { class: 'fila-sm' });
 
     function pintarBasadaEn() {
@@ -78,7 +77,7 @@
     // ------------------------------------------------------- Secciones ---
     // Cerrado va primero y como opción principal; Pendiente, del mismo tamaño, como secundaria.
     // El cliente ve el estado con el que queda su ticket, sin poder cambiarlo.
-    const chkPrivado = esCliente ? null : h('input', { type: 'checkbox', id: 't-privado', checked: !!(b && b.privado) });
+    const chkPrivado = esCliente ? null : h('input', { type: 'checkbox', id: 't-privado', checked: b ? !!b.privado : true });
     const iconoPrivado = esCliente ? null : h('span', { class: 'candado-privado', 'aria-hidden': 'true' });
     function pintarPrivacidad(animar) {
       if (!iconoPrivado) return;
@@ -132,7 +131,6 @@
           h('span', { class: 'info-control', 'aria-hidden': 'true' }, ui.icono('info', 'i-sm')))),
       ui.campo({ nombre: 'titulo', id: 't-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
       ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción', requerido: true, control: inDesc }),
-      ayudaDesc,
       basadaEn);
 
     const btnCrear = h('button', { type: 'submit', class: 'btn btn-primario btn-lg' });
@@ -209,8 +207,6 @@
         lateral.hidden = !elegido;
         columnas.className = elegido ? 'dos-columnas-anchas' : 'columna-unica';
       }
-      ayudaDesc.textContent = 'Contá el problema y qué se hizo para resolverlo, todo en el mismo texto.';
-      ayudaDesc.hidden = modo !== 'resuelto';
       if (btnBorrador) btnBorrador.hidden = modo === 'resuelto';
       U.vaciar(btnCrear).append(ui.icono(modo === 'resuelto' ? 'checkCirculo' : 'enviar', 'i-sm'), modo === 'resuelto' ? 'Crear ticket cerrado' : 'Crear ticket');
       tituloPagina.textContent = b ? 'Continuar borrador' : 'Crear ticket';

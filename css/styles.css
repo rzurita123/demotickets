@@ -927,6 +927,13 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .modo-ormen .segmentado { gap: 10px; }
 .modo-ormen .segmentado label > span { min-height: 60px; padding: 10px 14px; }
 .modo-ormen .segmentado label > span .icono { width: 24px; height: 24px; }
+.modo-ormen { width: 100%; }
+.modo-ormen .segmentado { width: min(100%, 720px); margin: 0 auto; gap: 12px; }
+.modo-ormen .segmentado label > span { min-height: 50px; padding: 8px 14px; border-radius: var(--radio); gap: 10px; }
+.modo-ormen .segmentado label > span .icono { width: 21px; height: 21px; }
+.modo-ormen .seg-textos { gap: 2px; }
+.modo-ormen .seg-textos strong { font-size: 17px; }
+.modo-ormen .seg-textos small { font-size: 12.5px; }
 /* Cliente: el estado se muestra, no se elige. Cartel discreto, sin ícono. */
 .modo-fijo {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; align-self: flex-start;
