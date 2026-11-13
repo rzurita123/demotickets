@@ -78,7 +78,18 @@
     // ------------------------------------------------------- Secciones ---
     // Cerrado va primero y como opción principal; Pendiente, del mismo tamaño, como secundaria.
     // El cliente ve el estado con el que queda su ticket, sin poder cambiarlo.
-    const chkPrivado = esCliente ? null : h('input', { type: 'checkbox', id: 't-privado' });
+    const chkPrivado = esCliente ? null : h('input', { type: 'checkbox', id: 't-privado', checked: !!(b && b.privado) });
+    const iconoPrivado = esCliente ? null : h('span', { class: 'candado-privado', 'aria-hidden': 'true' });
+    function pintarPrivacidad(animar) {
+      if (!iconoPrivado) return;
+      U.vaciar(iconoPrivado).append(ui.icono(chkPrivado.checked ? 'candado' : 'candadoAbierto'));
+      iconoPrivado.classList.toggle('es-privado', chkPrivado.checked);
+      if (!animar) return;
+      iconoPrivado.classList.remove('cambio-privacidad');
+      requestAnimationFrame(() => iconoPrivado.classList.add('cambio-privacidad'));
+    }
+    if (chkPrivado) chkPrivado.addEventListener('change', () => pintarPrivacidad(true));
+    pintarPrivacidad();
     const segModo = b ? null : esCliente
       ? h('div', { class: 'modo-fijo' },
         h('strong', null, 'Abierto'), h('span', null, 'Mesa de ayuda lo va a tomar y te avisamos por correo cuando haya novedades.'))
@@ -94,20 +105,31 @@
           onChange: (v) => cambiarModo(v),
         }));
 
+    const opcionesDatos = h('div', { class: 'datos-opciones' },
+      h('fieldset', { class: ['campo', 'criticidad-inline'], dataset: { campo: 'criticidadId' }, 'aria-describedby': 'criticidadId-error' },
+        h('legend', { class: 'sr-only' }, 'Criticidad'),
+        h('span', { id: 'criticidad-info', class: 'info-control', title: 'Alta: impacto crítico. Media: afecta parte del servicio. Baja: inconveniente menor.', 'aria-label': 'Información sobre criticidad' }, ui.icono('info', 'i-sm')),
+        segCri,
+        h('div', { class: 'error-campo', id: 'criticidadId-error', hidden: true })));
+
     const cardDatos = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-datos' },
       h('h2', { id: 'sec-datos' }, 'Datos del ticket'),
-      h('div', { class: 'grid-2' },
-        ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: eligeLocalidad, control: selLocalidad }),
-        ui.campo({ nombre: 'sistemaId', id: 't-sistema', etiqueta: 'Sistema o servicio afectado', requerido: true, control: selSistema })),
-      h('div', { class: 'grid-2' },
-        ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub }),
-        esOperador ? ui.campo({ nombre: 'tipoProblemaId', id: 't-tipo-problema', etiqueta: 'Tipo de problema', opcional: true, control: selTipoProblema }) : h('div')),
-      ui.grupo({ nombre: 'criticidadId', etiqueta: 'Criticidad', requerido: true, control: segCri }),
-      esCliente ? null : h('label', { class: 'check check-privado', for: 't-privado' }, chkPrivado,
-        h('span', null, h('strong', null, 'Ticket privado'), h('br'), h('span', { class: 'chico suave' }, 'Sólo lo ven Mesa de ayuda y administración. La localidad no se entera de que existe.'))));
+      h('div', { class: 'datos-layout' },
+        h('div', { class: 'datos-campos' },
+          ui.campo({ nombre: 'localidadId', id: 't-localidad', etiqueta: 'Localidad', requerido: eligeLocalidad, control: selLocalidad }),
+          ui.campo({ nombre: 'sistemaId', id: 't-sistema', etiqueta: 'Sistema o servicio afectado', requerido: true, control: selSistema }),
+          ui.campo({ nombre: 'subsistemaId', id: 't-subsistema', etiqueta: 'Subsistema', opcional: true, control: selSub }),
+          esOperador ? ui.campo({ nombre: 'tipoProblemaId', id: 't-tipo-problema', etiqueta: 'Tipo de problema', opcional: true, control: selTipoProblema }) : h('div')),
+        opcionesDatos));
 
     const cardProblema = h('section', { class: 'hoja-seccion pila', 'aria-labelledby': 'sec-problema' },
-      h('h2', { id: 'sec-problema' }, 'Problema'),
+      h('div', { class: 'cabecera-problema' },
+        h('h2', { id: 'sec-problema' }, 'Problema'),
+        esCliente ? null : h('label', { class: 'check check-privado compacto', for: 't-privado', title: 'Candado cerrado: ticket privado. Candado abierto: ticket público.' },
+          chkPrivado,
+          h('span', { class: 'sr-only' }, 'Ticket privado'),
+          iconoPrivado,
+          h('span', { class: 'info-control', 'aria-hidden': 'true' }, ui.icono('info', 'i-sm')))),
       ui.campo({ nombre: 'titulo', id: 't-titulo', etiqueta: 'Título', requerido: true, control: inTitulo }),
       ui.campo({ nombre: 'descripcion', id: 't-descripcion', etiqueta: 'Descripción', requerido: true, control: inDesc }),
       ayudaDesc,

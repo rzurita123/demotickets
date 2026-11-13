@@ -38,6 +38,7 @@
     correo: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
     imagen: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
     candado: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    candadoAbierto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-2.6"/>',
     ojo: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     libro: '<path d="M4 19V5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="M8 7h7"/>',
     grafico: '<path d="M3 20h18"/><path d="M6 16v-5M11 16V6M16 16v-8"/>',
@@ -412,9 +413,9 @@
 
   function segmentado(op) {
     return h('div', { class: 'segmentado' },
-      op.opciones.map((o) => h('label', null,
+      op.opciones.map((o) => h('label', { title: o.texto, 'aria-label': o.texto },
         h('input', { type: 'radio', name: op.nombre, value: o.valor, checked: op.valor === o.valor, onChange: () => op.onChange && op.onChange(o.valor) }),
-        h('span', null, o.punto && h('i', { class: ['cri-dot', o.punto], 'aria-hidden': 'true' }), o.icono && icono(o.icono, 'i-sm'),
+        h('span', { class: ['seg-opcion', o.punto && 'nivel-' + o.punto] }, o.punto && h('i', { class: ['cri-dot', o.punto], 'aria-hidden': 'true' }), o.icono && icono(o.icono, 'i-sm'),
           o.detalle ? h('span', { class: 'seg-textos' }, h('strong', null, o.texto), h('small', null, o.detalle)) : o.texto))));
   }
 

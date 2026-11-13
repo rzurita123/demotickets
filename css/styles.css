@@ -980,6 +980,45 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .hoja { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-lg); min-width: 0; }
 .hoja-seccion { padding: 20px 24px; }
 .hoja-seccion + .hoja-seccion { border-top: 1px solid var(--borde); }
+.datos-layout { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 18px; align-items: stretch; }
+.datos-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.datos-opciones { display: flex; flex-direction: column; align-items: center; justify-content: stretch; gap: 16px; height: 100%; padding: 2px 0 2px 12px; border-left: 1px solid var(--borde-suave); }
+.criticidad-inline { display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 100%; border: 0; padding: 0; margin: 0; }
+.criticidad-inline legend { float: left; width: auto; margin: 0 10px 0 0; font-size: 13px; font-weight: 600; color: var(--texto-suave); }
+.criticidad-inline legend .info-control { margin-left: 4px; vertical-align: middle; }
+.criticidad-inline .segmentado { flex: 1; flex-direction: column; align-items: center; justify-content: space-around; gap: 5px; }
+.criticidad-inline .segmentado label > span { width: 32px; min-height: 32px; padding: 0; justify-content: center; border-radius: 999px; font-size: 0; gap: 0; }
+.criticidad-inline .segmentado label > span .cri-dot { width: 8px; height: 8px; }
+.criticidad-inline .segmentado label > span.nivel-cri-alta { color: var(--rojo); border-color: var(--rojo); }
+.criticidad-inline .segmentado label > span.nivel-cri-media { color: var(--dorado-oscuro); border-color: var(--dorado); }
+.criticidad-inline .segmentado label > span.nivel-cri-baja { color: var(--azul-profundo); border-color: var(--azul); }
+.criticidad-inline .segmentado input:checked + span.nivel-cri-alta { background: var(--rojo-claro); }
+.criticidad-inline .segmentado input:checked + span.nivel-cri-media { background: var(--dorado-claro); }
+.criticidad-inline .segmentado input:checked + span.nivel-cri-baja { background: var(--azul-claro); }
+.criticidad-inline .segmentado input:checked + span .cri-dot { background: currentColor !important; }
+.info-control { display: inline-flex; align-items: center; color: var(--texto-suave); cursor: help; }
+.check-privado.compacto { align-items: center; gap: 5px; padding: 0; border: 0; background: none; font-size: 14px; }
+.check-privado.compacto input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.candado-privado { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; color: #8793A0; }
+.candado-privado .icono { width: 21px; height: 21px; transition: color .18s ease, transform .18s ease; }
+.candado-privado.es-privado { color: var(--azul); }
+.candado-privado.cambio-privacidad .icono { animation: giro-candado .28s ease both; }
+.check-privado.compacto:focus-within { outline: none; }
+@keyframes giro-candado {
+  0% { transform: rotate(0) scale(1); }
+  45% { transform: rotate(-10deg) scale(1.12); }
+  100% { transform: rotate(0) scale(1); }
+}
+.cabecera-problema { display: flex; align-items: center; justify-content: flex-start; gap: 12px; }
+.check-privado.compacto .info-control { margin-left: 1px; }
+@media (max-width: 760px) {
+  .datos-layout { grid-template-columns: minmax(0, 1fr); }
+  .datos-campos { grid-template-columns: minmax(0, 1fr); }
+  .datos-opciones { flex-direction: row; align-items: center; height: auto; padding: 14px 0 0; border-top: 1px solid var(--borde-suave); border-left: 0; }
+  .criticidad-inline { flex-direction: row; align-items: center; height: auto; }
+  .criticidad-inline .segmentado { flex: none; flex-direction: row; }
+  .cabecera-problema { align-items: flex-start; }
+}
 .meta-ticket { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 2px 0 0; }
 .meta-ticket div { display: flex; gap: 6px; align-items: baseline; }
 .meta-ticket dt { font-size: 14px; color: var(--texto-suave); }
@@ -1007,6 +1046,7 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .formulario-ticket { transform: none; }
 .resumen-formulario:empty { display: none; }
 .vista-ticket-form > .cabecera { margin-bottom: 0; }
+.formulario-ticket .hoja-seccion:first-child { padding-bottom: 12px; }
 .modo-registro .segmentado label > span { min-height: 76px; }
 
 /* Filtros en grilla pareja (estadísticas) */
