@@ -14,7 +14,7 @@
   const D = App.dominio;
 
   const activo = (t) => D.ESTADOS_ACTIVOS.includes(t.estado);
-  const POR_PAGINA_OPERADOR = 3;
+  const POR_PAGINA_OPERADOR = 4;
 
   const mosaico = (op) => App.comun.mosaico(op);
 
@@ -49,7 +49,7 @@
 
   // ------------------------------------------------------------- Cliente ---
 
-  const POR_PAGINA_CLIENTE = 15;
+  const POR_PAGINA_CLIENTE = 4;
 
   /**
    * Inicio del cliente: la única lista de tickets de su localidad (ya no hay
@@ -62,10 +62,10 @@
     const u = ctx.usuario;
     const loc = S.nombre('localidades', u.localidadId);
     const tickets = S.ticketsVisibles(u);
-    const enCurso = tickets.filter(activo).sort(C.ORDENES.actualizados.fn);
-    const bloqueados = enCurso.filter((t) => t.estado === 'BLOQUEADO');
+    const enCurso = tickets.filter((t) => activo(t) && t.estado !== 'BLOQUEADO').sort(C.ORDENES.actualizados.fn);
+    const bloqueados = tickets.filter((t) => t.estado === 'BLOQUEADO').sort(C.ORDENES.actualizados.fn);
     const cerrados = tickets.filter((t) => t.estado === 'CERRADO').sort((a, b) => b.cerradoEn.localeCompare(a.cerradoEn));
-    const cols = ['numero', 'ticket', 'creador', 'estado', 'duracion', 'actualizado'];
+    const cols = ['numero', 'ticket', 'estado', 'actualizado'];
     const vistaActual = ctx.query.vista || 'curso';
     const borradores = S.borradoresDe(u);
 
@@ -74,28 +74,47 @@
       const paginas = Math.ceil(items.length / POR_PAGINA_CLIENTE);
       const pagina = clave === vistaActual ? Math.min(Math.max(1, Number(ctx.query.p) || 1), paginas) : 1;
       return [
-        C.tablaTickets(items.slice((pagina - 1) * POR_PAGINA_CLIENTE, pagina * POR_PAGINA_CLIENTE), cols, { caption: 'Tickets de ' + loc }),
-        paginas > 1 ? ui.paginador({
+        C.tablaTickets(items.slice((pagina - 1) * POR_PAGINA_CLIENTE, pagina * POR_PAGINA_CLIENTE), cols, { caption: 'Tickets de ' + loc, truncarTitulo: true }),
+        ui.paginador({
           total: items.length, pagina, porPagina: POR_PAGINA_CLIENTE,
           alCambiar: (p) => { App.router.actualizarQuery({ vista: clave, p: String(p) }); ctx.refrescar(); },
-        }) : null,
+        }),
       ];
     }
 
+    function listaBorradores() {
+      if (!borradores.length) return ui.vacio({ icono: 'borrador', titulo: 'No tenés borradores', texto: 'Mientras cargás un ticket podés guardarlo y terminarlo después.' });
+      const paginas = Math.ceil(borradores.length / POR_PAGINA_CLIENTE);
+      const pagina = Math.min(Math.max(1, Number(ctx.query.pBorradores) || 1), paginas);
+      return [
+        tablaBorradores(borradores.slice((pagina - 1) * POR_PAGINA_CLIENTE, pagina * POR_PAGINA_CLIENTE), false),
+        ui.paginador({
+          total: borradores.length, pagina, porPagina: POR_PAGINA_CLIENTE,
+          alCambiar: (p) => { App.router.actualizarQuery({ pBorradores: String(p) }); ctx.refrescar(); },
+        }),
+      ];
+    }
+
+    const bloqueEnCurso = h('section', { class: 'card inicio-cliente-bloque inicio-cliente-mitad' },
+      h('div', { class: 'card-titulo' }, h('h2', null, 'En curso'), h('span', { class: 'cuenta-titulo' }, U.formatoNumero(enCurso.length))),
+      lista('curso', enCurso, 'No hay tickets en curso'));
+    const bloqueEsperan = h('section', { class: 'card inicio-cliente-bloque inicio-cliente-mitad' },
+      h('div', { class: 'card-titulo' }, h('h2', null, 'Esperan tu respuesta'), h('span', { class: 'cuenta-titulo' }, U.formatoNumero(bloqueados.length))),
+      lista('bloqueados', bloqueados, 'Ningún ticket espera tu respuesta'));
+    const bloqueCerrados = h('section', { class: 'card inicio-cliente-bloque inicio-cliente-cerrados' },
+      h('div', { class: 'card-titulo' }, h('h2', null, 'Cerrados'), h('span', { class: 'cuenta-titulo' }, U.formatoNumero(cerrados.length))),
+      lista('cerrados', cerrados, 'Todavía no hay tickets cerrados'));
+    const bloqueBorradores = h('section', { class: 'card inicio-cliente-bloque inicio-cliente-borradores' },
+      h('div', { class: 'card-titulo' }, h('h2', null, 'Borradores'), h('span', { class: 'cuenta-titulo' }, U.formatoNumero(borradores.length))),
+      listaBorradores());
+
     return h('div', { class: 'pila-lg' },
       h('h1', { id: 'titulo-pagina', tabindex: '-1', class: 'sr-only' }, 'Inicio'),
-      C.cola({
-        id: 'cola-cliente',
-        etiqueta: 'Tickets de ' + loc,
-        activa: ctx.query.vista,
-        alCambiar: (v) => App.router.actualizarQuery({ vista: v }),
-        pestanas: [
-          { clave: 'curso', texto: 'En curso', cuenta: enCurso.length, contenido: () => lista('curso', enCurso, 'No hay tickets en curso') },
-          { clave: 'bloqueados', texto: 'Esperan tu respuesta', cuenta: bloqueados.length, tono: 'rojo', contenido: () => lista('bloqueados', bloqueados, 'Ningún ticket espera tu respuesta') },
-          { clave: 'cerrados', texto: 'Cerrados', cuenta: cerrados.length, tono: 'verde', contenido: () => lista('cerrados', cerrados, 'Todavía no hay tickets cerrados') },
-          borradores.length || vistaActual === 'borradores' ? pestanaBorradores(borradores) : null,
-        ].filter(Boolean),
-      }));
+      h('div', { class: 'inicio-cliente-cuadrantes' },
+        bloqueEnCurso,
+        bloqueEsperan,
+        bloqueCerrados,
+        bloqueBorradores));
   }
 
   /**
@@ -182,7 +201,7 @@
       const actual = Math.min(Math.max(1, Number(ctx.query[clave]) || 1), totalPaginas);
       return {
         items: items.slice((actual - 1) * POR_PAGINA_OPERADOR, actual * POR_PAGINA_OPERADOR),
-        control: items.length > POR_PAGINA_OPERADOR ? ui.paginador({
+        control: items.length ? ui.paginador({
           total: items.length, pagina: actual, porPagina: POR_PAGINA_OPERADOR,
           alCambiar: (p) => { App.router.actualizarQuery(Object.assign({}, ctx.query, { [clave]: String(p) })); ctx.refrescar(); },
         }) : null,
@@ -213,7 +232,7 @@
         const ticketsPagina = pag.items.filter((item) => item.tipo === 'ticket').map((item) => item.item);
         const solucionesPagina = pag.items.filter((item) => item.tipo === 'solucion').map((item) => item.item);
         return [].concat(
-          ticketsPagina.length ? [h('h3', { class: 'cola-subtitulo' }, 'Tickets'), C.tablaTickets(ticketsPagina, ['numero', 'ticket', 'estado', 'actualizado'], {
+          ticketsPagina.length ? [C.tablaTickets(ticketsPagina, ['numero', 'ticket', 'estado', 'actualizado'], {
             caption: 'Tickets favoritos',
             detalleTicket: (t) => [
               C.clasificacionCorta(t),

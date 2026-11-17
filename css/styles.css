@@ -430,7 +430,19 @@ fieldset > legend { margin-bottom: 6px; padding: 0; }
 .palabra-clave button:hover { background: rgba(0, 0, 0, .08); }
 
 /* Paginador */
-.paginador { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--borde); font-size: 14px; color: var(--texto-suave); flex-wrap: wrap; }
+.paginador {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px;
+  padding: 6px 10px 6px 14px; border-top: 2px solid var(--azul-claro);
+  background: var(--superficie-2); font-size: 13px; color: var(--texto-suave); flex-wrap: wrap;
+}
+.paginador > span { line-height: 1.2; }
+.paginador > .fila-sm { margin-left: auto; gap: 5px; }
+.paginador > .fila-sm .chico { padding: 0 4px; color: var(--azul-texto); font-weight: 600; white-space: nowrap; }
+.paginador > .fila-sm .btn-sm {
+  min-height: 28px; padding: 3px 8px; border-color: var(--borde); color: var(--azul-texto); background: var(--superficie);
+}
+.paginador > .fila-sm .btn-sm:not(:disabled):hover { background: var(--azul-muy-claro); border-color: var(--azul); }
+.paginador > .fila-sm .btn-sm:disabled { opacity: .45; }
 
 /* ---------- Estado vacío ---------- */
 .vacio { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 20px; color: var(--texto-suave); }
@@ -548,8 +560,16 @@ body.con-modal { overflow: hidden; }
 .inicio-operador { gap: 12px; }
 .inicio-operador-cuadrantes { display: grid; grid-template-columns: minmax(230px, .82fr) minmax(0, 1.18fr); gap: 12px; }
 .inicio-operador-pendientes { grid-column: 1 / -1; }
-.inicio-operador-bloque { display: flex; flex-direction: column; min-width: 0; height: 350px; overflow: hidden; }
-.inicio-operador-bloque .tabla-envoltura { flex: 1 1 auto; min-height: 0; margin: 0 -22px; overflow: hidden; }
+.inicio-operador-bloque {
+  display: flex; flex-direction: column; min-width: 0; height: 370px; overflow: visible;
+  border-top: 3px solid var(--azul); box-shadow: 0 2px 8px rgba(28, 58, 90, .06);
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.inicio-operador-bloque:hover { box-shadow: 0 5px 16px rgba(28, 58, 90, .1); transform: translateY(-1px); }
+.inicio-operador-pendientes { border-top-color: var(--dorado); }
+.inicio-operador-borradores { border-top-color: var(--gris-oscuro); }
+.inicio-operador-favoritos { border-top-color: var(--azul); }
+.inicio-operador-bloque .tabla-envoltura { flex: 1 1 auto; min-height: 0; margin: 0 -22px; overflow: visible; }
 .inicio-operador-bloque .cola-pie { margin: 0 -22px -20px; }
 .inicio-operador-bloque .card-titulo { margin-bottom: 8px; }
 .inicio-operador-bloque .tabla th { padding-top: 6px; padding-bottom: 6px; }
@@ -563,15 +583,55 @@ body.con-modal { overflow: hidden; }
 .inicio-operador-favoritos .tabla .sub { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-operador-favoritos .tabla .titulo-celda { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-operador-favoritos .tabla-envoltura { overflow: visible; }
+.inicio-cliente-cuadrantes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.inicio-cliente-mitad { grid-column: span 3; }
+.inicio-cliente-bloque {
+  display: flex; flex-direction: column; align-self: start; min-width: 0; height: 370px; overflow: visible;
+  border-top: 3px solid var(--azul);
+  box-shadow: 0 2px 8px rgba(28, 58, 90, .06);
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.inicio-cliente-bloque:hover { box-shadow: 0 5px 16px rgba(28, 58, 90, .1); transform: translateY(-1px); }
+.inicio-cliente-cuadrantes > .inicio-cliente-mitad:nth-child(2) { border-top-color: var(--dorado); }
+.inicio-cliente-cuadrantes > .inicio-cliente-cerrados { border-top-color: var(--verde); }
+.inicio-cliente-cuadrantes > .inicio-cliente-borradores { border-top-color: var(--gris-oscuro); }
+.inicio-cliente-cerrados { grid-column: span 4; }
+.inicio-cliente-borradores { grid-column: span 2; }
+.inicio-cliente-bloque .card-titulo { margin-bottom: 10px; }
+.inicio-cliente-bloque .tabla-envoltura { flex: 1 1 auto; min-height: 0; margin: 0 -22px; overflow: visible; }
+.inicio-cliente-bloque .tabla { table-layout: fixed; }
+.inicio-cliente-bloque .tabla th { padding: 9px 10px; }
+.inicio-cliente-bloque .tabla td { padding: 8px 10px; }
+.inicio-cliente-bloque .tabla .titulo-celda { overflow: hidden; }
+.inicio-cliente-bloque .tabla .titulo-celda a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inicio-cliente-bloque .lista-tickets th:nth-child(1), .inicio-cliente-bloque .lista-tickets td:nth-child(1) { width: 9%; }
+.inicio-cliente-bloque .lista-tickets th:nth-child(2), .inicio-cliente-bloque .lista-tickets td:nth-child(2) { width: 51%; }
+.inicio-cliente-bloque .lista-tickets th:nth-child(3), .inicio-cliente-bloque .lista-tickets td:nth-child(3) { width: 18%; }
+.inicio-cliente-bloque .lista-tickets th:nth-child(4), .inicio-cliente-bloque .lista-tickets td:nth-child(4) { width: 22%; }
+.inicio-cliente-mitad .card-titulo h2 { flex: 1 1 auto; min-width: 0; }
+.inicio-cliente-mitad .lista-tickets th:nth-child(2), .inicio-cliente-mitad .lista-tickets td:nth-child(2) { width: 48%; }
+.inicio-cliente-mitad .lista-tickets th:nth-child(3), .inicio-cliente-mitad .lista-tickets td:nth-child(3) { width: 25%; text-align: center; }
+.inicio-cliente-mitad .lista-tickets th:nth-child(4), .inicio-cliente-mitad .lista-tickets td:nth-child(4) { width: 18%; }
+.inicio-cliente-bloque > .paginador { margin: 0 -22px -20px; padding: 6px 10px; gap: 6px; font-size: 12.5px; }
+.inicio-cliente-bloque > .paginador > .fila-sm { align-items: center; }
 @media (max-width: 1050px) {
   .inicio-operador-cuadrantes { grid-template-columns: minmax(200px, .82fr) minmax(0, 1.18fr); }
+  .inicio-cliente-cuadrantes { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
   .inicio-operador-cuadrantes { grid-template-columns: minmax(0, 1fr); }
   .inicio-operador-pendientes { grid-column: auto; }
-  .inicio-operador-bloque { height: auto; min-height: 300px; }
+  .inicio-operador-bloque { height: 410px; }
   .inicio-operador-bloque .tabla-envoltura { margin: 0 -16px; }
   .inicio-operador-bloque .cola-pie { margin: 0 -16px -16px; }
+  .inicio-operador-bloque:hover { transform: none; }
+  .inicio-cliente-cuadrantes { grid-template-columns: minmax(0, 1fr); }
+  .inicio-cliente-mitad, .inicio-cliente-cerrados, .inicio-cliente-borradores { grid-column: auto; }
+  .inicio-cliente-bloque { height: 410px; }
+  .inicio-cliente-bloque .tabla-envoltura { margin: 0 -16px; }
+  .inicio-cliente-bloque > .paginador { margin-left: -16px; margin-right: -16px; margin-bottom: -16px; }
+  .inicio-cliente-bloque > .paginador > .fila-sm { width: 100%; justify-content: flex-end; }
+  .inicio-cliente-bloque:hover { transform: none; }
 }
 .saludo h1 { font-size: 30px; }
 .buscador-rapido {
@@ -1110,13 +1170,13 @@ a.mosaico:hover, button.mosaico:hover { text-decoration: none; background: var(-
 .por-aprobar-item a.fuerte { color: var(--tinta); }
 @media (max-width: 760px) { .por-aprobar-item { flex-wrap: wrap; } }
 
-/* Pista de estado: tres tramos del flujo Abierto → En proceso → Cerrado */
-.pista-estado { --c: #1D5F8F; display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--c); white-space: nowrap; }
+/* Pista compacta de estado: tres puntos del flujo Abierto → En proceso → Cerrado */
+.pista-estado { --c: #1D5F8F; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--c); white-space: nowrap; }
 .pista-estado[data-estado="EN_PROCESO"] { --c: var(--dorado-oscuro); }
 .pista-estado[data-estado="BLOQUEADO"] { --c: var(--rojo); }
 .pista-estado[data-estado="CERRADO"] { --c: var(--verde); }
 .pista-estado .tramos { display: inline-flex; gap: 3px; }
-.pista-estado .tramos i { width: 13px; height: 5px; border-radius: 3px; background: var(--borde); }
+.pista-estado .tramos i { width: 6px; height: 6px; border-radius: 50%; background: var(--borde); }
 .pista-estado .tramos i.lleno { background: var(--c); }
 
 /* Cola de trabajo: pestañas con contador sobre una sola superficie */

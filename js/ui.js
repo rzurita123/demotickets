@@ -252,10 +252,11 @@
    */
   function badgeElevado(t, alClic) {
     if (!t.elevadoA) return null;
-    const contenido = [icono('elevar', 'i-sm'), 'Elevado a ' + App.store.nombreDestino(t.elevadoA)];
+    const destino = App.store.nombreDestino(t.elevadoA);
+    const contenido = icono('elevar', 'i-sm');
     return alClic
-      ? h('button', { type: 'button', class: 'badge elevado', title: 'Ver el recorrido del ticket', onClick: alClic }, contenido)
-      : h('span', { class: 'badge elevado' }, contenido);
+      ? h('button', { type: 'button', class: 'badge elevado', title: 'Elevado a ' + destino, 'aria-label': 'Elevado a ' + destino + '. Ver recorrido del ticket', onClick: alClic }, contenido)
+      : h('span', { class: 'badge elevado', title: 'Elevado a ' + destino, 'aria-label': 'Elevado a ' + destino }, contenido);
   }
 
   /**

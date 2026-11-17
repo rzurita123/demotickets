@@ -43,7 +43,7 @@
     const sol = u && u.rol !== 'CLIENTE' ? S.solucionOriginadaPor(t) : null;
     return [
       t.privado ? [' · ', h('span', { class: 'marca-fila priv', title: 'Sólo lo ve ORMEN' }, ui.icono('candado', 'i-sm'), 'Privado')] : null,
-      t.elevadoA ? [' · ', h('span', { class: 'marca-fila elev', title: 'Elevado a ' + S.nombreDestino(t.elevadoA) }, ui.icono('elevar', 'i-sm'), 'Elevado a ' + S.nombreDestino(t.elevadoA))] : null,
+      t.elevadoA ? [' · ', h('span', { class: 'marca-fila elev', title: 'Elevado a ' + S.nombreDestino(t.elevadoA), 'aria-label': 'Elevado a ' + S.nombreDestino(t.elevadoA) }, ui.icono('elevar', 'i-sm'))] : null,
       sol ? [' · ', h('span', { class: 'marca-fila sol', title: '«' + sol.titulo + '»' }, ui.icono('libro', 'i-sm'), 'Originó una solución reutilizable')] : null,
     ];
   }
@@ -67,7 +67,7 @@
       ticket: {
         th: 'Ticket',
         td: (t) => ui.celda('Ticket', h('div', { class: 'titulo-celda' },
-          enlaceTicket(t, t.titulo),
+          h('a', { href: '#/tickets/' + t.numero, title: o.truncarTitulo && t.titulo.length >= 30 ? t.titulo : null }, o.truncarTitulo && t.titulo.length >= 30 ? U.truncar(t.titulo, 30) : t.titulo),
           h('span', { class: 'sub' }, o.detalleTicket ? o.detalleTicket(t) : [clasificacionCorta(t), t.registroDirecto ? ' · Registrado ya resuelto' : '', marcas(t)])), 'sin-label'),
       },
       localidad: { th: 'Localidad', td: (t) => ui.celda('Localidad', S.nombre('localidades', t.localidadId)) },
